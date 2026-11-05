@@ -1,0 +1,22 @@
+﻿# Dependencies
+node_modules/
+
+# Build output and coverage
+/dist/
+/coverage/
+*.tsbuildinfo
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime files and generated documents
+/storage/
+/tmp/
+/.playwright-mcp/
+/test-results/
+/playwright-report/
+
+# Local agent instructions may contain machine-specific context
+/AGENTS.md
