@@ -193,10 +193,17 @@ export class CotizacionesService {
         lock: { mode: 'pessimistic_write' },
       });
       if (!current) throw new NotFoundException(`Cotización #${id} no encontrada`);
-      if (
-        !current.pdf_url ||
-        current.pdf_renderer_version === PDF_RENDERER_VERSION
-      ) {
+      if (!current.fecha_emision) return current;
+      if (current.pdf_url && current.hash_pdf &&
+        current.pdf_renderer_version === PDF_RENDERER_VERSION) {
+        try {
+          await this.pdfGenerator.getFile(current.pdf_url, current.hash_pdf);
+          return current;
+        } catch {
+          // A missing or altered object is rebuilt from the persisted snapshot below.
+        }
+      }
+      if (!current.pdf_url && !current.snapshot_datos) {
         return current;
       }
 
@@ -205,10 +212,10 @@ export class CotizacionesService {
         await this.formatoResolver.resolveCotizacion(current.tipo_servicio, current.cliente_id, manager),
         current.fecha_emision ?? current.fecha,
       );
-      const storageKey = current.pdf_url.replace(
-        /\.pdf$/,
-        `-${PDF_RENDERER_VERSION}.pdf`,
-      );
+      const previousKey = current.pdf_url ?? `cotizaciones/${current.consecutivo}.pdf`;
+      const storageKey = current.pdf_renderer_version === PDF_RENDERER_VERSION
+        ? previousKey
+        : previousKey.replace(/\.pdf$/, `-${PDF_RENDERER_VERSION}.pdf`);
       const result = await this.pdfGenerator.generate(snapshot, storageKey);
       current.pdf_url = result.storageKey;
       current.hash_pdf = result.hash;

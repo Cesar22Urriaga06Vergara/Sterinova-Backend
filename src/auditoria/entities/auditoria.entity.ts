@@ -16,6 +16,12 @@ export enum AccionAuditoria {
   EMITIR = 'emitir',
   PUBLICAR = 'publicar',
   ELIMINAR = 'eliminar',
+  LOGIN_EXITOSO = 'login_exitoso',
+  LOGIN_FALLIDO = 'login_fallido',
+  APROBAR = 'aprobar',
+  RECHAZAR = 'rechazar',
+  CAMBIAR_ESTADO = 'cambiar_estado',
+  DESCARGAR = 'descargar',
 }
 
 @Entity('auditoria')
@@ -35,10 +41,10 @@ export class Auditoria {
   @Column({ type: 'varchar', length: 100 })
   entidad: string;
 
-  @Column({ type: 'int' })
-  entidad_id: number;
+  @Column({ type: 'int', nullable: true })
+  entidad_id: number | null;
 
-  @Column({ type: 'enum', enum: AccionAuditoria })
+  @Column({ type: 'varchar', length: 30 })
   accion: AccionAuditoria;
 
   @Column({ type: 'json', nullable: true })

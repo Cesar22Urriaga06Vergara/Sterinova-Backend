@@ -1,4 +1,9 @@
-> **Documento histórico — 3 de noviembre de 2026.** Fue reemplazado por [el análisis del 4 de noviembre](../analisis-estado-2026-11-04.md). No usar como estado vigente.
+> **Estado:** histórico — fotografía de código al 3 de noviembre de 2026.
+> **Verificado contra:** no revalidado en esta auditoría; se preserva como antecedente.
+> **Alcance:** fotografía previa del estado backend/frontend.
+> **No cubre:** estado actual posterior al 3 de noviembre ni operación desplegada.
+> **Reemplazado por:** [análisis del 4 de noviembre](analisis-estado-2026-11-04.md), posteriormente sustituido por [documentación vigente](../modulos.md).
+> No usar como estado vigente.
 
 # Análisis del estado actual — Sterinova ERP
 

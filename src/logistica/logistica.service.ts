@@ -11,6 +11,10 @@ import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.e
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
 import { CreateOrdenDto } from './dto/create-orden.dto.js';
 import { UpdateEstadoOrdenDto } from './dto/update-estado-orden.dto.js';
+import { InjectDataSource } from '@nestjs/typeorm';
+import type { DataSource } from 'typeorm';
+import { AuditoriaService } from '../auditoria/auditoria.service.js';
+import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
 
 @Injectable()
 export class LogisticaService {
@@ -19,6 +23,8 @@ export class LogisticaService {
     private readonly ordenesRepository: Repository<OrdenServicio>,
     @InjectRepository(Cotizacion)
     private readonly cotizacionesRepository: Repository<Cotizacion>,
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly auditoriaService: AuditoriaService,
   ) {}
 
   private async generateConsecutivo(): Promise<string> {
@@ -110,15 +116,28 @@ export class LogisticaService {
   async updateEstado(
     id: number,
     dto: UpdateEstadoOrdenDto,
+    usuarioId: number,
   ): Promise<OrdenServicio> {
     if (!Object.values(EstadoOrdenServicio).includes(dto.estado)) {
       throw new BadRequestException('Estado de orden inválido');
     }
 
-    const orden = await this.findOne(id);
-    orden.estado = dto.estado;
-    await this.ordenesRepository.save(orden);
-    return this.findOne(id);
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(OrdenServicio);
+      const orden = await repository.findOne({ where: { id } });
+      if (!orden) throw new NotFoundException(`Orden de servicio #${id} no encontrada`);
+      const estadoAnterior = orden.estado;
+      orden.estado = dto.estado;
+      const saved = await repository.save(orden);
+      await this.auditoriaService.create({
+        usuario_id: usuarioId,
+        entidad: 'orden_servicio',
+        entidad_id: id,
+        accion: AccionAuditoria.CAMBIAR_ESTADO,
+        detalle: { estado_anterior: estadoAnterior, estado_nuevo: dto.estado },
+      }, manager);
+      return saved;
+    });
   }
 
   async findCotizacionesAprobadasSinOrden(): Promise<Cotizacion[]> {

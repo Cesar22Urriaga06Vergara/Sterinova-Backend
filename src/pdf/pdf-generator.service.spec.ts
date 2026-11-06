@@ -1,9 +1,11 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { chromium, type Browser } from 'playwright';
 import { readPdfRenderToken } from './pdf-render-token.js';
 import { PdfGeneratorService } from './pdf-generator.service.js';
+import { LocalStorageService } from '../common/services/storage.service.js';
 
 vi.mock('playwright', () => ({ chromium: { launch: vi.fn() } }));
 
@@ -12,6 +14,7 @@ describe('PdfGeneratorService', () => {
     storage: process.env.PDF_STORAGE_PATH,
     baseUrl: process.env.PDF_RENDER_BASE_URL,
     secret: process.env.PDF_RENDER_SECRET,
+    timeout: process.env.PDF_RENDER_TIMEOUT_MS,
   };
 
   afterEach(() => {
@@ -20,6 +23,7 @@ describe('PdfGeneratorService', () => {
       PDF_STORAGE_PATH: originalEnvironment.storage,
       PDF_RENDER_BASE_URL: originalEnvironment.baseUrl,
       PDF_RENDER_SECRET: originalEnvironment.secret,
+      PDF_RENDER_TIMEOUT_MS: originalEnvironment.timeout,
     })) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
@@ -43,7 +47,7 @@ describe('PdfGeneratorService', () => {
     };
     const browser = { newPage: vi.fn(async () => page), close: vi.fn() };
     vi.mocked(chromium.launch).mockResolvedValue(browser as unknown as Browser);
-    const service = new PdfGeneratorService();
+    const service = new PdfGeneratorService(new LocalStorageService());
     const snapshot = {
       documento: { tipo: 'COTIZACION', consecutivo: 'COT-LAV-TEST' },
       formato: { codigo: 'R-CM-07-5', version: 4 },
@@ -51,10 +55,10 @@ describe('PdfGeneratorService', () => {
 
     try {
       const result = await service.generate(snapshot, 'cotizaciones/COT-LAV-TEST.pdf');
-      const stored = await readFile(await service.getAbsolutePath(result.storageKey));
+      const stored = await service.getFile(result.storageKey, result.hash);
 
       expect(stored).toEqual(pdfBuffer);
-      expect(result.hash).toBeDefined();
+      expect(result.hash).toBe(createHash('sha256').update(stored).digest('hex'));
       expect(page.goto).toHaveBeenCalledWith(
         'http://frontend.internal:3000/internal/pdf/cotizacion',
         expect.objectContaining({ waitUntil: 'networkidle' }),
@@ -89,11 +93,11 @@ describe('PdfGeneratorService', () => {
       close: vi.fn(),
     };
     vi.mocked(chromium.launch).mockResolvedValue({ newPage: vi.fn(async () => page), close: vi.fn() } as unknown as Browser);
-    const service = new PdfGeneratorService();
+    const service = new PdfGeneratorService(new LocalStorageService());
 
     try {
       await expect(service.generate({ documento: { tipo: 'CERTIFICADO' } }, 'certificados/CERT-TEST.pdf'))
-        .rejects.toThrow(/renderizado respondió 404/);
+        .rejects.toThrow(/No fue posible generar el PDF/);
       await expect(readFile(path.join(temporaryRoot, 'certificados', 'CERT-TEST.pdf')))
         .rejects.toMatchObject({ code: 'ENOENT' });
     } finally {
@@ -110,10 +114,36 @@ describe('PdfGeneratorService', () => {
     };
     vi.mocked(chromium.launch).mockResolvedValue({ newPage: vi.fn(async () => page), close: vi.fn() } as unknown as Browser);
     process.env.PDF_RENDER_SECRET = 'test-render-secret-containing-at-least-32-bytes';
-    const service = new PdfGeneratorService();
+    const service = new PdfGeneratorService(new LocalStorageService());
 
     await expect(service.generate({ documento: { tipo: 'COTIZACION' } }, '../bad.pdf'))
       .rejects.toThrow(/Clave de almacenamiento/);
     await service.onModuleDestroy();
+  });
+
+  it('times out a stalled Playwright render and leaves no PDF in storage', async () => {
+    const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'sterinova-pdf-timeout-'));
+    process.env.PDF_STORAGE_PATH = temporaryRoot;
+    process.env.PDF_RENDER_SECRET = 'test-render-secret-containing-at-least-32-bytes';
+    process.env.PDF_RENDER_TIMEOUT_MS = '20';
+    const page = {
+      setExtraHTTPHeaders: vi.fn(),
+      goto: vi.fn(() => new Promise(() => undefined)),
+      close: vi.fn(async () => undefined),
+    };
+    vi.mocked(chromium.launch).mockResolvedValue({
+      newPage: vi.fn(async () => page), close: vi.fn(),
+    } as unknown as Browser);
+    const service = new PdfGeneratorService(new LocalStorageService());
+    try {
+      await expect(service.generate({ documento: { tipo: 'CERTIFICADO' } }, 'certificados/CERT-TIMEOUT.pdf'))
+        .rejects.toThrow(/tiempo límite/);
+      await expect(readFile(path.join(temporaryRoot, 'certificados', 'CERT-TIMEOUT.pdf')))
+        .rejects.toMatchObject({ code: 'ENOENT' });
+      expect(page.close).toHaveBeenCalled();
+    } finally {
+      await service.onModuleDestroy();
+      await rm(temporaryRoot, { recursive: true, force: true });
+    }
   });
 });

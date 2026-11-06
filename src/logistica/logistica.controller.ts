@@ -6,7 +6,11 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
+
+type AuthenticatedRequest = Request & { user: { id: number } };
 import { LogisticaService } from './logistica.service.js';
 import { CreateOrdenDto } from './dto/create-orden.dto.js';
 import { UpdateEstadoOrdenDto } from './dto/update-estado-orden.dto.js';
@@ -42,7 +46,8 @@ export class LogisticaController {
   updateEstado(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateEstadoOrdenDto: UpdateEstadoOrdenDto,
+    @Req() request: AuthenticatedRequest,
   ) {
-    return this.logisticaService.updateEstado(id, updateEstadoOrdenDto);
+    return this.logisticaService.updateEstado(id, updateEstadoOrdenDto, request.user.id);
   }
 }

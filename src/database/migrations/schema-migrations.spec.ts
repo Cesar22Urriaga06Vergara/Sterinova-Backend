@@ -3,9 +3,23 @@ import { CreateAuditoria1793813300000 } from './1793813300000-CreateAuditoria.js
 import { AddTemplateResponsible1793813400000 } from './1793813400000-AddTemplateResponsible.js';
 import { AddPdfRendererVersion1793813500000 } from './1793813500000-AddPdfRendererVersion.js';
 import { AddUsersAndCertificationSeals1793813600000 } from './1793813600000-AddUsersAndCertificationSeals.js';
+import { ExtendAuditoriaEvents1793813700000 } from './1793813700000-ExtendAuditoriaEvents.js';
 import type { QueryRunner } from 'typeorm';
 
 describe('document administration migrations', () => {
+  it('allows nullable entity ids and flexible audit action names', async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('SELECT COUNT')) return [{ total: 0 }];
+      return undefined;
+    });
+    const migration = new ExtendAuditoriaEvents1793813700000();
+
+    await migration.up({ query } as unknown as QueryRunner);
+
+    expect(query.mock.calls[0][0]).toContain('MODIFY accion VARCHAR(30) NOT NULL');
+    expect(query.mock.calls[0][0]).toContain('MODIFY entidad_id INT NULL');
+  });
+
   it('adds optional Cliente document fields without connecting to a database', async () => {
     const query = vi.fn(async () => undefined);
     const migration = new AddClienteDocumentFields1793813200000();

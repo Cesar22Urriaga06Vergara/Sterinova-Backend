@@ -4,9 +4,10 @@ import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entit
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
 import { LogisticaController } from './logistica.controller.js';
 import { LogisticaService } from './logistica.service.js';
+import { AuditoriaModule } from '../auditoria/auditoria.module.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([OrdenServicio, Cotizacion])],
+  imports: [TypeOrmModule.forFeature([OrdenServicio, Cotizacion]), AuditoriaModule],
   controllers: [LogisticaController],
   providers: [LogisticaService],
   exports: [LogisticaService],

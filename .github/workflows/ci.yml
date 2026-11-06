@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: sterinova_test_root
+          MARIADB_DATABASE: sterinova_test
+          MARIADB_USER: sterinova
+          MARIADB_PASSWORD: sterinova_test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USERNAME: sterinova
+      DB_PASSWORD: sterinova_test_password
+      DB_DATABASE: sterinova_test
+      JWT_SECRET: ci-only-jwt-secret-with-at-least-32-characters
+      PDF_RENDER_SECRET: ci-only-pdf-render-secret-with-at-least-32-characters
+      PDF_RENDER_BASE_URL: http://localhost:3000
+      FRONTEND_INTERNAL_URL: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Apply database migrations
+        run: npm run migration:run
+
+      - name: Unit tests with critical-module coverage thresholds
+        run: npm run test -- --coverage
+
+      - name: E2E and OpenAPI contract tests
+        run: npm run test:e2e
+        env:
+          RUN_E2E_FULL_FLOW: '1'

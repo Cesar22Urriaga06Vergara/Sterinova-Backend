@@ -8,16 +8,20 @@ describe('CotizacionesController.descargar', () => {
     const quote = {
       consecutivo: 'COT-LAV-007',
       pdf_url: 'cotizaciones/COT-LAV-007-react-playwright-v1.pdf',
+      hash_pdf: 'a'.repeat(64),
     };
     const cotizacionesService = {
       ensurePdfCurrent: vi.fn(async () => quote),
     };
     const pdfGenerator = {
-      getAbsolutePath: vi.fn(async () => 'C:\\pdfs\\COT-LAV-007-react-playwright-v1.pdf'),
+      getFile: vi.fn(async (_key, hash) => {
+        expect(hash).toBe(quote.hash_pdf);
+        return Buffer.from('%PDF downloaded bytes');
+      }),
     };
     const response = {
       setHeader: vi.fn(),
-      download: vi.fn(),
+      send: vi.fn(),
     };
     const controller = new CotizacionesController(
       cotizacionesService as never,
@@ -27,11 +31,8 @@ describe('CotizacionesController.descargar', () => {
     await controller.descargar(7, response as unknown as Response);
 
     expect(cotizacionesService.ensurePdfCurrent).toHaveBeenCalledWith(7);
-    expect(pdfGenerator.getAbsolutePath).toHaveBeenCalledWith(quote.pdf_url);
-    expect(response.download).toHaveBeenCalledWith(
-      'C:\\pdfs\\COT-LAV-007-react-playwright-v1.pdf',
-      'COT-LAV-007.pdf',
-    );
+    expect(pdfGenerator.getFile).toHaveBeenCalledWith(quote.pdf_url, quote.hash_pdf);
+    expect(response.send).toHaveBeenCalledWith(Buffer.from('%PDF downloaded bytes'));
     expect(response.setHeader).toHaveBeenCalledWith(
       'Cache-Control',
       'private, no-store, no-cache, must-revalidate',

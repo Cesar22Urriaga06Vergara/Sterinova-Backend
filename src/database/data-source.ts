@@ -12,6 +12,7 @@ import { CreateAuditoria1793813300000 } from './migrations/1793813300000-CreateA
 import { AddTemplateResponsible1793813400000 } from './migrations/1793813400000-AddTemplateResponsible.js';
 import { AddPdfRendererVersion1793813500000 } from './migrations/1793813500000-AddPdfRendererVersion.js';
 import { AddUsersAndCertificationSeals1793813600000 } from './migrations/1793813600000-AddUsersAndCertificationSeals.js';
+import { ExtendAuditoriaEvents1793813700000 } from './migrations/1793813700000-ExtendAuditoriaEvents.js';
 
 export const AppDataSource = new DataSource({
   type: 'mariadb',
@@ -33,6 +34,7 @@ export const AppDataSource = new DataSource({
     AddTemplateResponsible1793813400000,
     AddPdfRendererVersion1793813500000,
     AddUsersAndCertificationSeals1793813600000,
+    ExtendAuditoriaEvents1793813700000,
   ],
   migrationsTableName: 'typeorm_migrations',
   migrationsTransactionMode: 'each',

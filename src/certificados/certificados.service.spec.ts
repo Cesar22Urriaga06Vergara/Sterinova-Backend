@@ -4,6 +4,7 @@ import { CertificadoEsterilizacion } from './entities/certificado-esterilizacion
 import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecutivos.entity.js';
 import { CertificadosService } from './certificados.service.js';
 import { User } from '../users/entities/user.entity.js';
+import { createHash } from 'node:crypto';
 
 describe('CertificadosService', () => {
   const createService = (ultimoValor = '0') => {
@@ -84,6 +85,42 @@ describe('CertificadosService', () => {
     expect(result).toEqual(expect.objectContaining({ consecutivo: '001', ciclo_id: 12 }));
     expect(result.pdf_renderer_version).toBe('react-playwright-v1');
     expect(certificateRepository.save).toHaveBeenCalled();
+  });
+
+  it('returns only non-sensitive certificate validation fields', async () => {
+    const certificateRepository = {
+      findOne: vi.fn(async () => ({
+        equipo: 'E03', estado: 'Aprobado', aprobado_at: new Date('2026-11-01T12:00:00Z'),
+        cliente: { razon_social: 'Confidencial S.A.', nit: '900123456' },
+        cicloEsterilizacion: { metodo: 'ETO' },
+      })),
+    };
+    const service = new CertificadosService(certificateRepository as never, {} as never, {} as never, {} as never);
+
+    const result = await service.validarToken('public-token');
+
+    expect(result).toEqual({
+      valido: true,
+      equipo: 'E03',
+      fecha_emision: new Date('2026-11-01T12:00:00Z'),
+      fecha_vencimiento: new Date('2029-11-01T12:00:00Z'),
+      estado: 'Aprobado',
+    });
+    expect(JSON.stringify(result)).not.toMatch(/Confidencial|900123456|ETO/);
+  });
+
+  it('does not persist a certificate if PDF rendering times out', async () => {
+    const { service, manager, certificateRepository } = createService();
+    const pdfGenerator = (service as any).pdfGenerator;
+    pdfGenerator.generate.mockRejectedValue(new Error('render timeout'));
+
+    await expect(service.emitirDesdeCiclo(
+      manager,
+      { id: 12, orden_id: 90, equipo: 'E03', orden: { id: 90 } } as CicloEsterilizacion,
+      7,
+      new Date(),
+    )).rejects.toThrow('render timeout');
+    expect(certificateRepository.save).not.toHaveBeenCalled();
   });
 
   it('regenerates a legacy certificate PDF and persists its new storage key and hash', async () => {

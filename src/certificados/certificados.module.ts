@@ -5,11 +5,13 @@ import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecut
 import { CertificadosService } from './certificados.service.js';
 import { CertificadosController } from './certificados.controller.js';
 import { FormatosDocumentalesModule } from '../formatos-documentales/formatos-documentales.module.js';
+import { AuditoriaModule } from '../auditoria/auditoria.module.js';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([CertificadoEsterilizacion, SecuenciaConsecutivos]),
     FormatosDocumentalesModule,
+    AuditoriaModule,
   ],
   controllers: [CertificadosController],
   providers: [CertificadosService],

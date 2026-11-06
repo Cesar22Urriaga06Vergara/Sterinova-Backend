@@ -20,12 +20,50 @@ import { PdfModule } from './pdf/pdf.module.js';
 import { FormatosDocumentalesModule } from './formatos-documentales/formatos-documentales.module.js';
 import { AuditoriaModule } from './auditoria/auditoria.module.js';
 import { SellosModule } from './sellos/sellos.module.js';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
+import { randomUUID } from 'node:crypto';
+import { HealthModule } from './health/health.module.js';
 
 @Module({
   imports: [
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        ...(process.env.NODE_ENV === 'production'
+          ? {}
+          : { transport: { target: 'pino-pretty', options: { colorize: true, singleLine: true } } }),
+        genReqId: (_request, response) => {
+          const correlationId = randomUUID();
+          response.setHeader('x-correlation-id', correlationId);
+          return correlationId;
+        },
+        customProps: (request) => ({ correlation_id: request.id }),
+        serializers: {
+          req: (request) => ({
+            id: request.id,
+            method: request.method,
+            url: request.url?.split('?')[0],
+          }),
+          res: (response) => ({ statusCode: response.statusCode }),
+        },
+        redact: {
+          paths: [
+            'password', '*.password', '*.password.*',
+            'token', '*.token', '*.token.*',
+            'access_token', '*.access_token',
+            'refresh_token', '*.refresh_token',
+            'authorization', '*.authorization',
+            'cookie', '*.cookie',
+          ],
+          censor: '[REDACTED]',
+        },
+      },
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -56,10 +94,12 @@ import { SellosModule } from './sellos/sellos.module.js';
     FormatosDocumentalesModule,
     AuditoriaModule,
     SellosModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

@@ -63,4 +63,23 @@ describe('JWT authentication guard', () => {
     await expect(strategy.validate({ sub: 8, email: 'off@example.com', rol: UserRole.ADMIN }))
       .rejects.toMatchObject({ status: 401 });
   });
+
+  it('fails to initialize when JWT_SECRET is missing', () => {
+    const originalSecret = process.env.JWT_SECRET;
+    delete process.env.JWT_SECRET;
+
+    try {
+      const configService = { get: vi.fn(() => undefined) };
+      const usersService = { findActiveById: vi.fn() };
+
+      expect(() => new JwtStrategy(configService as never, usersService as never))
+        .toThrow('JWT_SECRET is not defined in environment variables');
+    } finally {
+      if (originalSecret === undefined) {
+        delete process.env.JWT_SECRET;
+      } else {
+        process.env.JWT_SECRET = originalSecret;
+      }
+    }
+  });
 });

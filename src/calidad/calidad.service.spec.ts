@@ -43,9 +43,10 @@ describe('CalidadService', () => {
       emitirDesdeCiclo: vi.fn(async () => certificate),
     } as unknown as CertificadosService;
     const pdfGenerator = { remove: vi.fn(async () => undefined) };
+    const auditoriaService = { create: vi.fn(async (entry) => entry) };
 
     return {
-      service: new CalidadService(dataSource, authService, certificadosService, pdfGenerator as never),
+      service: new CalidadService(dataSource, authService, certificadosService, pdfGenerator as never, auditoriaService as never),
       cycle,
       cycleRepository,
       dataSource,
@@ -53,11 +54,12 @@ describe('CalidadService', () => {
       certificadosService,
       certificate,
       pdfGenerator,
+      auditoriaService,
     };
   };
 
   it('issues a certificate and approves the cycle after password confirmation', async () => {
-    const { service, cycle, cycleRepository, certificadosService, certificate } = createService();
+    const { service, cycle, cycleRepository, certificadosService, certificate, auditoriaService } = createService();
 
     const result = await service.aprobar({ ciclo_id: 12, password: 'calidad-pass' }, 7);
 
@@ -71,6 +73,9 @@ describe('CalidadService', () => {
     expect(cycle.estado).toBe(EstadoCicloEsterilizacion.APROBADO);
     expect(cycle.revisado_por).toBe(7);
     expect(cycleRepository.save).toHaveBeenCalledWith(cycle);
+    expect(auditoriaService.create).toHaveBeenCalledWith(expect.objectContaining({
+      accion: 'aprobar', entidad: 'ciclo', entidad_id: 12, usuario_id: 7,
+    }), expect.anything());
   });
 
   it('rejects approval when the password confirmation is invalid', async () => {

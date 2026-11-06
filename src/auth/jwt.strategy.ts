@@ -16,8 +16,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(configService: ConfigService, private readonly usersService: UsersService) {
     const secret =
       configService.get<string>('JWT_SECRET') ??
-      process.env.JWT_SECRET ??
-      'sterinova_secret_key_2026';
+      process.env.JWT_SECRET;
+
+    if (!secret?.trim()) {
+      throw new Error('JWT_SECRET is not defined in environment variables');
+    }
 
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

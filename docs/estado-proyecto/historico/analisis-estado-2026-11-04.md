@@ -1,4 +1,9 @@
-> **Análisis fechado — 4 de noviembre de 2026.** Es una revisión de código en un momento concreto, no una guía operativa. Para el arranque local y el aprovisionamiento del administrador, sigue los manuales vigentes de este repositorio.
+> **Estado:** histórico — fotografía de código al 4 de noviembre de 2026.
+> **Verificado contra:** no revalidado en esta auditoría; se preserva como antecedente.
+> **Alcance:** fotografía anterior del estado backend/frontend.
+> **No cubre:** cambios posteriores al 4 de noviembre ni operación desplegada.
+> **Reemplazado por:** [estado funcional vigente](../modulos.md) y [auditoría documental del 6 de noviembre](../auditoria-docs-2026-11-06.md).
+> No usar como descripción actual ni guía operativa.
 
 # Análisis de Estado Actual - Sterinova ERP (V2)
 **Fecha:** 4 de noviembre de 2026

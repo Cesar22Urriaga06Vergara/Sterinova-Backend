@@ -1,0 +1,1703 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/users": {
+      "get": {
+        "operationId": "UsersController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      },
+      "post": {
+        "operationId": "UsersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/users/{id}": {
+      "patch": {
+        "operationId": "UsersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      },
+      "delete": {
+        "operationId": "UsersController_deactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/users/{id}/password": {
+      "patch": {
+        "operationId": "UsersController_changePassword",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeUserPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/users/{id}/status": {
+      "patch": {
+        "operationId": "UsersController_setActive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token de acceso emitido"
+          },
+          "401": {
+            "description": "Credenciales inválidas"
+          },
+          "429": {
+            "description": "Límite de intentos excedido"
+          }
+        },
+        "summary": "Iniciar sesión",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auditoria": {
+      "get": {
+        "operationId": "AuditoriaController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Consultar auditoría paginada (solo Admin)",
+        "tags": [
+          "Auditoría"
+        ]
+      }
+    },
+    "/clientes": {
+      "post": {
+        "operationId": "ClientesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClienteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cliente creado"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          }
+        },
+        "summary": "Crear cliente",
+        "tags": [
+          "Clientes"
+        ]
+      },
+      "get": {
+        "operationId": "ClientesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de clientes"
+          }
+        },
+        "summary": "Listar clientes",
+        "tags": [
+          "Clientes"
+        ]
+      }
+    },
+    "/clientes/bulk": {
+      "post": {
+        "operationId": "ClientesController_bulk",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Clientes procesados"
+          }
+        },
+        "summary": "Crear clientes en lote",
+        "tags": [
+          "Clientes"
+        ]
+      }
+    },
+    "/clientes/{id}": {
+      "get": {
+        "operationId": "ClientesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cliente encontrado"
+          }
+        },
+        "summary": "Consultar cliente",
+        "tags": [
+          "Clientes"
+        ]
+      },
+      "put": {
+        "operationId": "ClientesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClienteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cliente actualizado"
+          }
+        },
+        "summary": "Actualizar cliente",
+        "tags": [
+          "Clientes"
+        ]
+      },
+      "delete": {
+        "operationId": "ClientesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cliente eliminado"
+          }
+        },
+        "summary": "Eliminar cliente",
+        "tags": [
+          "Clientes"
+        ]
+      }
+    },
+    "/cotizaciones": {
+      "post": {
+        "operationId": "CotizacionesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCotizacionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cotización creada"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          }
+        },
+        "summary": "Crear cotización",
+        "tags": [
+          "Cotizaciones"
+        ]
+      },
+      "get": {
+        "operationId": "CotizacionesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de cotizaciones"
+          }
+        },
+        "summary": "Listar cotizaciones",
+        "tags": [
+          "Cotizaciones"
+        ]
+      }
+    },
+    "/cotizaciones/{id}": {
+      "get": {
+        "operationId": "CotizacionesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cotización encontrada"
+          }
+        },
+        "summary": "Consultar cotización",
+        "tags": [
+          "Cotizaciones"
+        ]
+      },
+      "put": {
+        "operationId": "CotizacionesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCotizacionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cotización actualizada"
+          }
+        },
+        "summary": "Actualizar cotización",
+        "tags": [
+          "Cotizaciones"
+        ]
+      },
+      "delete": {
+        "operationId": "CotizacionesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cotización eliminada"
+          }
+        },
+        "summary": "Eliminar cotización",
+        "tags": [
+          "Cotizaciones"
+        ]
+      }
+    },
+    "/cotizaciones/{id}/previsualizar": {
+      "get": {
+        "operationId": "CotizacionesController_previsualizar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contenido de la cotización"
+          }
+        },
+        "summary": "Previsualizar cotización",
+        "tags": [
+          "Cotizaciones"
+        ]
+      }
+    },
+    "/cotizaciones/{id}/emitir": {
+      "post": {
+        "operationId": "CotizacionesController_emitir",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Cotización emitida"
+          }
+        },
+        "summary": "Emitir cotización",
+        "tags": [
+          "Cotizaciones"
+        ]
+      }
+    },
+    "/cotizaciones/{id}/descargar": {
+      "get": {
+        "operationId": "CotizacionesController_descargar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivo PDF"
+          }
+        },
+        "summary": "Descargar PDF de cotización",
+        "tags": [
+          "Cotizaciones"
+        ]
+      }
+    },
+    "/formatos-documentales": {
+      "get": {
+        "operationId": "FormatosDocumentalesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FormatosDocumentales"
+        ]
+      },
+      "post": {
+        "operationId": "FormatosDocumentalesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFormatoDocumentalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FormatosDocumentales"
+        ]
+      }
+    },
+    "/formatos-documentales/{id}": {
+      "get": {
+        "operationId": "FormatosDocumentalesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FormatosDocumentales"
+        ]
+      },
+      "put": {
+        "operationId": "FormatosDocumentalesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFormatoDocumentalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FormatosDocumentales"
+        ]
+      },
+      "delete": {
+        "operationId": "FormatosDocumentalesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FormatosDocumentales"
+        ]
+      }
+    },
+    "/formatos-documentales/{id}/versiones": {
+      "post": {
+        "operationId": "FormatosDocumentalesController_createVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFormatoVersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FormatosDocumentales"
+        ]
+      }
+    },
+    "/formatos-documentales/{id}/versiones/{versionId}": {
+      "put": {
+        "operationId": "FormatosDocumentalesController_updateVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "versionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFormatoVersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FormatosDocumentales"
+        ]
+      }
+    },
+    "/formatos-documentales/{id}/versiones/{versionId}/estado": {
+      "post": {
+        "operationId": "FormatosDocumentalesController_updateVersionState",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "versionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFormatoVersionStateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FormatosDocumentales"
+        ]
+      }
+    },
+    "/logistica/ordenes": {
+      "post": {
+        "operationId": "LogisticaController_createOrden",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrdenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Logistica"
+        ]
+      },
+      "get": {
+        "operationId": "LogisticaController_findAllOrdenes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Logistica"
+        ]
+      }
+    },
+    "/logistica/cotizaciones-aprobadas": {
+      "get": {
+        "operationId": "LogisticaController_findCotizacionesAprobadas",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Logistica"
+        ]
+      }
+    },
+    "/logistica/ordenes/{id}": {
+      "get": {
+        "operationId": "LogisticaController_findOneOrden",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Logistica"
+        ]
+      }
+    },
+    "/logistica/ordenes/{id}/estado": {
+      "put": {
+        "operationId": "LogisticaController_updateEstado",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEstadoOrdenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Logistica"
+        ]
+      }
+    },
+    "/planta/ordenes": {
+      "get": {
+        "operationId": "PlantaController_findOrdenesEnPlanta",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Planta"
+        ]
+      }
+    },
+    "/planta/ciclos": {
+      "get": {
+        "operationId": "PlantaController_findCiclos",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Planta"
+        ]
+      },
+      "post": {
+        "operationId": "PlantaController_createCiclo",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCicloDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Planta"
+        ]
+      }
+    },
+    "/certificados": {
+      "get": {
+        "operationId": "CertificadosController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de certificados"
+          }
+        },
+        "summary": "Listar certificados",
+        "tags": [
+          "Certificados"
+        ]
+      }
+    },
+    "/certificados/validar/{token}": {
+      "get": {
+        "operationId": "CertificadosController_validar",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado de validación"
+          },
+          "404": {
+            "description": "Certificado no encontrado o inválido"
+          }
+        },
+        "summary": "Validar certificado mediante token público",
+        "tags": [
+          "Certificados"
+        ]
+      }
+    },
+    "/certificados/{id}": {
+      "get": {
+        "operationId": "CertificadosController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Certificado encontrado"
+          }
+        },
+        "summary": "Consultar certificado",
+        "tags": [
+          "Certificados"
+        ]
+      }
+    },
+    "/certificados/{id}/descargar": {
+      "get": {
+        "operationId": "CertificadosController_descargar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivo PDF"
+          }
+        },
+        "summary": "Descargar PDF de certificado",
+        "tags": [
+          "Certificados"
+        ]
+      }
+    },
+    "/calidad/pendientes": {
+      "get": {
+        "operationId": "CalidadController_findPendientes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Ciclos pendientes"
+          }
+        },
+        "summary": "Listar ciclos pendientes de revisión",
+        "tags": [
+          "Calidad"
+        ]
+      }
+    },
+    "/calidad/ciclos/{id}": {
+      "get": {
+        "operationId": "CalidadController_findCicloPendiente",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ciclo encontrado"
+          }
+        },
+        "summary": "Consultar ciclo pendiente",
+        "tags": [
+          "Calidad"
+        ]
+      }
+    },
+    "/calidad/aprobar": {
+      "post": {
+        "operationId": "CalidadController_aprobar",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveCycleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ciclo aprobado"
+          },
+          "400": {
+            "description": "Datos o contraseña inválidos"
+          }
+        },
+        "summary": "Aprobar ciclo",
+        "tags": [
+          "Calidad"
+        ]
+      }
+    },
+    "/calidad/rechazar": {
+      "post": {
+        "operationId": "CalidadController_rechazar",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectCycleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ciclo rechazado"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          }
+        },
+        "summary": "Rechazar ciclo",
+        "tags": [
+          "Calidad"
+        ]
+      }
+    },
+    "/sellos": {
+      "get": {
+        "operationId": "SellosController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Sellos"
+        ]
+      },
+      "post": {
+        "operationId": "SellosController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSelloCertificacionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Sellos"
+        ]
+      }
+    },
+    "/sellos/{id}/imagen": {
+      "get": {
+        "operationId": "SellosController_getImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Sellos"
+        ]
+      }
+    },
+    "/sellos/{id}": {
+      "patch": {
+        "operationId": "SellosController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSelloCertificacionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Sellos"
+        ]
+      },
+      "delete": {
+        "operationId": "SellosController_deactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Sellos"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "HealthController_live",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "HealthController_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok",
+                        "degraded"
+                      ],
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up",
+                          "responseTime": 12
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "up",
+                              "degraded",
+                              "down"
+                            ]
+                          },
+                          "responseTime": {
+                            "type": "number",
+                            "description": "Time the health indicator took to respond, in ms"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "up",
+                              "degraded",
+                              "down"
+                            ]
+                          },
+                          "responseTime": {
+                            "type": "number",
+                            "description": "Time the health indicator took to respond, in ms"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up",
+                          "responseTime": 12
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "up",
+                              "degraded",
+                              "down"
+                            ]
+                          },
+                          "responseTime": {
+                            "type": "number",
+                            "description": "Time the health indicator took to respond, in ms"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error",
+                        "shutting_down"
+                      ],
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up",
+                          "responseTime": 12
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "up",
+                              "degraded",
+                              "down"
+                            ]
+                          },
+                          "responseTime": {
+                            "type": "number",
+                            "description": "Time the health indicator took to respond, in ms"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect",
+                          "responseTime": 3005
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "up",
+                              "degraded",
+                              "down"
+                            ]
+                          },
+                          "responseTime": {
+                            "type": "number",
+                            "description": "Time the health indicator took to respond, in ms"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up",
+                          "responseTime": 12
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect",
+                          "responseTime": 3005
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "up",
+                              "degraded",
+                              "down"
+                            ]
+                          },
+                          "responseTime": {
+                            "type": "number",
+                            "description": "Time the health indicator took to respond, in ms"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Sterinova API",
+    "description": "",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ChangeUserPasswordDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetUserStatusDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "usuario@sterinova.com"
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "CreateClienteDto": {
+        "type": "object",
+        "properties": {
+          "razon_social": {
+            "type": "string",
+            "example": "Clínica Ejemplo S.A.S."
+          },
+          "nit": {
+            "type": "string",
+            "example": "900123456-1"
+          },
+          "contacto": {
+            "type": "string",
+            "example": "Ana Pérez"
+          },
+          "telefono": {
+            "type": "string",
+            "example": "+57 300 000 0000"
+          },
+          "email": {
+            "type": "string",
+            "example": "compras@ejemplo.com"
+          },
+          "direccion": {
+            "type": "string",
+            "example": "Calle 10 # 20-30"
+          },
+          "cargo": {
+            "type": "string"
+          },
+          "ciudad": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "razon_social",
+          "nit",
+          "contacto",
+          "telefono",
+          "email",
+          "direccion"
+        ]
+      },
+      "UpdateClienteDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateCotizacionItemDto": {
+        "type": "object",
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "example": "Esterilización de instrumental"
+          },
+          "cantidad": {
+            "type": "number",
+            "example": 1,
+            "minimum": 0
+          },
+          "valor_unitario": {
+            "type": "number",
+            "example": 150000,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "descripcion",
+          "cantidad",
+          "valor_unitario"
+        ]
+      },
+      "CreateCotizacionDto": {
+        "type": "object",
+        "properties": {
+          "cliente_id": {
+            "type": "number",
+            "example": 1
+          },
+          "tipo_servicio": {
+            "type": "string",
+            "enum": [
+              "INDUSTRIAL_ETO",
+              "INSTITUCIONAL_ETO",
+              "INSTITUCIONAL_VAPOR",
+              "INSUMOS",
+              "LAVANDERIA",
+              "FARMACEUTICO",
+              "FABRICANTE"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateCotizacionItemDto"
+            }
+          },
+          "condiciones_comerciales": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cliente_id",
+          "tipo_servicio",
+          "items"
+        ]
+      },
+      "UpdateCotizacionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateFormatoDocumentalDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateFormatoDocumentalDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateFormatoVersionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateFormatoVersionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateFormatoVersionStateDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateOrdenDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateEstadoOrdenDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateCicloDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ApproveCycleDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RejectCycleDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateSelloCertificacionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateSelloCertificacionDto": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  }
+}

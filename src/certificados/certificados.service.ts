@@ -214,10 +214,16 @@ export class CertificadosService {
       if (!certificate) {
         throw new NotFoundException(`Certificado #${id} no encontrado`);
       }
-      if (
-        !certificate.pdf_url ||
-        certificate.pdf_renderer_version === PDF_RENDERER_VERSION
-      ) {
+      if (certificate.pdf_url && certificate.hash_pdf &&
+        certificate.pdf_renderer_version === PDF_RENDERER_VERSION) {
+        try {
+          await this.pdfGenerator.getFile(certificate.pdf_url, certificate.hash_pdf);
+          return certificate;
+        } catch {
+          // A missing or altered object is rebuilt from the persisted snapshot below.
+        }
+      }
+      if (!certificate.pdf_url && !certificate.snapshot_datos) {
         return certificate;
       }
       if (!certificate.snapshot_datos) {
@@ -226,10 +232,10 @@ export class CertificadosService {
         );
       }
 
-      const storageKey = certificate.pdf_url.replace(
-        /\.pdf$/,
-        `-${PDF_RENDERER_VERSION}.pdf`,
-      );
+      const previousKey = certificate.pdf_url ?? `certificados/${certificate.consecutivo}.pdf`;
+      const storageKey = certificate.pdf_renderer_version === PDF_RENDERER_VERSION
+        ? previousKey
+        : previousKey.replace(/\.pdf$/, `-${PDF_RENDERER_VERSION}.pdf`);
       const result = await this.pdfGenerator.generate(
         certificate.snapshot_datos,
         storageKey,
@@ -249,12 +255,6 @@ export class CertificadosService {
   async validarToken(token: string) {
     const certificado = await this.certificadoRepository.findOne({
       where: { token_publico: token, estado: 'Aprobado' },
-      relations: [
-        'cicloEsterilizacion',
-        'cicloEsterilizacion.orden',
-        'cicloEsterilizacion.orden.cotizacion',
-        'cicloEsterilizacion.orden.cotizacion.cliente',
-      ],
     });
     if (!certificado) {
       throw new NotFoundException('No se encontró un certificado válido');
@@ -262,15 +262,11 @@ export class CertificadosService {
     const fechaEmision = certificado.aprobado_at ?? certificado.created_at;
     const fechaVencimiento = new Date(fechaEmision);
     fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + 3);
-    const ciclo = certificado.cicloEsterilizacion;
-
     return {
       valido: true,
-      consecutivo: certificado.consecutivo,
+      equipo: certificado.equipo,
       fecha_emision: fechaEmision,
       fecha_vencimiento: fechaVencimiento,
-      cliente: ciclo.orden?.cotizacion?.cliente?.razon_social ?? null,
-      metodo: ciclo.metodo,
       estado: certificado.estado,
     };
   }

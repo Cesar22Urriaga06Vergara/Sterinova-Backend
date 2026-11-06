@@ -9,5 +9,13 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    coverage: {
+      include: ['src/cotizaciones/**/*.ts', 'src/calidad/**/*.ts', 'src/certificados/**/*.ts'],
+      thresholds: {
+        'src/cotizaciones/**/*.ts': { lines: 70, branches: 60 },
+        'src/calidad/**/*.ts': { lines: 70, branches: 60 },
+        'src/certificados/**/*.ts': { lines: 70, branches: 60 },
+      },
+    },
   },
 });
