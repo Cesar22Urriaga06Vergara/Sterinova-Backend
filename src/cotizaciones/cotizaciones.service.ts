@@ -14,11 +14,16 @@ import { ClientesService } from '../clientes/clientes.service.js';
 import { TipoServicioCotizacion } from './entities/tipo-servicio.enum.js';
 import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecutivos.entity.js';
 import { FormatoResolverService } from '../formatos-documentales/formato-resolver.service.js';
-import { PDF_RENDERER_VERSION, PdfGeneratorService } from '../pdf/pdf-generator.service.js';
+import {
+  PDF_RENDERER_VERSION,
+  PdfGeneratorService,
+} from '../pdf/pdf-generator.service.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
 import { FormatoVersiones } from '../formatos-documentales/entities/formato-versiones.entity.js';
 import { User } from '../users/entities/user.entity.js';
+import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
+import { quoteWhere, quoteCreationScope } from './quote-access.js';
 
 const IVA_RATE = 0.19;
 const PREFIXES: Partial<Record<TipoServicioCotizacion, string>> = {
@@ -40,7 +45,11 @@ type CotizacionListItem = Omit<Cotizacion, 'creador'> & {
   creador: CotizacionCreatorSummary | null;
 };
 
-function buildPdfSnapshot(quote: Cotizacion, version: FormatoVersiones, emittedAt: Date) {
+function buildPdfSnapshot(
+  quote: Cotizacion,
+  version: FormatoVersiones,
+  emittedAt: Date,
+) {
   const config = version.configuracion_json;
   return {
     documento: {
@@ -70,13 +79,15 @@ function buildPdfSnapshot(quote: Cotizacion, version: FormatoVersiones, emittedA
     cotizacion: {
       fecha: quote.fecha,
       tipo_servicio: quote.tipo_servicio,
-      items: quote.items.map(({ id, descripcion, cantidad, valor_unitario, valor_total }) => ({
-        id,
-        descripcion,
-        cantidad,
-        valor_unitario,
-        valor_total,
-      })),
+      items: quote.items.map(
+        ({ id, descripcion, cantidad, valor_unitario, valor_total }) => ({
+          id,
+          descripcion,
+          cantidad,
+          valor_unitario,
+          valor_total,
+        }),
+      ),
       subtotal: quote.subtotal,
       iva: quote.iva,
       total: quote.total,
@@ -104,27 +115,48 @@ export class CotizacionesService {
     return `${PREFIXES[tipo] ?? `COT-${new Date().getFullYear()}`}-`;
   }
 
-  async create(dto: CreateCotizacionDto, creatorId: number | null = null): Promise<Cotizacion> {
-    if (!dto.items?.length) throw new BadRequestException('La cotización debe incluir al menos un ítem');
+  async create(
+    dto: CreateCotizacionDto,
+    access: PermissionContext,
+  ): Promise<Cotizacion> {
+    const scopeId = quoteCreationScope(access);
+    if (!dto.items?.length)
+      throw new BadRequestException(
+        'La cotización debe incluir al menos un ítem',
+      );
     await this.clientesService.findOne(dto.cliente_id);
     const items = dto.items.map((item) => {
       const cantidad = Number(item.cantidad);
       const valor_unitario = Number(item.valor_unitario);
       const valor_total = Number((cantidad * valor_unitario).toFixed(2));
-      return this.itemsRepository.create({ descripcion: item.descripcion, cantidad, valor_unitario, valor_total });
+      return this.itemsRepository.create({
+        descripcion: item.descripcion,
+        cantidad,
+        valor_unitario,
+        valor_total,
+      });
     });
-    const subtotal = Number(items.reduce((sum, item) => sum + Number(item.valor_total), 0).toFixed(2));
+    const subtotal = Number(
+      items.reduce((sum, item) => sum + Number(item.valor_total), 0).toFixed(2),
+    );
     const iva = Number((subtotal * IVA_RATE).toFixed(2));
     const total = Number((subtotal + iva).toFixed(2));
     const prefix = this.prefix(dto.tipo_servicio);
     const saved = await this.dataSource.transaction(async (manager) => {
       const sequences = manager.getRepository(SecuenciaConsecutivos);
       const name = `cotizacion:${prefix.slice(0, -1)}`;
-      let sequence = await sequences.findOne({ where: { nombre: name }, lock: { mode: 'pessimistic_write' } });
+      let sequence = await sequences.findOne({
+        where: { nombre: name },
+        lock: { mode: 'pessimistic_write' },
+      });
       if (!sequence) {
         sequence = sequences.create({ nombre: name, ultimo_valor: '0' });
         await sequences.save(sequence);
-        sequence = await sequences.findOne({ where: { nombre: name }, lock: { mode: 'pessimistic_write' } }) ?? sequence;
+        sequence =
+          (await sequences.findOne({
+            where: { nombre: name },
+            lock: { mode: 'pessimistic_write' },
+          })) ?? sequence;
       }
       const next = BigInt(sequence.ultimo_valor) + 1n;
       const consecutivo = `${prefix}${next.toString().padStart(3, '0')}`;
@@ -134,7 +166,8 @@ export class CotizacionesService {
       const cotizacion = repository.create({
         consecutivo,
         cliente_id: dto.cliente_id,
-        creador_id: creatorId,
+        creador_id: access.policy.userId,
+        scope_id: scopeId,
         tipo_servicio: dto.tipo_servicio,
         condiciones_comerciales: dto.condiciones_comerciales ?? null,
         estado: dto.estado ?? 'Borrador',
@@ -145,11 +178,17 @@ export class CotizacionesService {
       });
       return repository.save(cotizacion);
     });
-    return this.findOne(saved.id);
+    return this.loadAuthorized(
+      this.cotizacionesRepository,
+      saved.id,
+      access,
+      'cotizaciones.crear',
+    );
   }
 
-  async findAll(): Promise<CotizacionListItem[]> {
+  async findAll(access: PermissionContext): Promise<CotizacionListItem[]> {
     const cotizaciones = await this.cotizacionesRepository.find({
+      where: quoteWhere(access, 'cotizaciones.ver'),
       relations: ['cliente', 'items', 'creador'],
       order: { id: 'DESC' },
     });
@@ -168,14 +207,37 @@ export class CotizacionesService {
     }));
   }
 
-  async findOne(id: number): Promise<Cotizacion> {
-    const cotizacion = await this.cotizacionesRepository.findOne({ where: { id }, relations: ['cliente', 'items'] });
-    if (!cotizacion) throw new NotFoundException(`Cotización #${id} no encontrada`);
+  private async loadAuthorized(
+    repository: Repository<Cotizacion>,
+    id: number,
+    access: PermissionContext,
+    permission: PermissionContext['permission'],
+  ): Promise<Cotizacion> {
+    const cotizacion = await repository.findOne({
+      where: quoteWhere(access, permission, id),
+      relations: ['cliente', 'items'],
+    });
+    if (!cotizacion)
+      throw new NotFoundException(`Cotización #${id} no encontrada`);
     return cotizacion;
   }
 
-  async previsualizar(id: number) {
-    const quote = await this.findOne(id);
+  findOne(id: number, access: PermissionContext): Promise<Cotizacion> {
+    return this.loadAuthorized(
+      this.cotizacionesRepository,
+      id,
+      access,
+      'cotizaciones.ver',
+    );
+  }
+
+  async previsualizar(id: number, access: PermissionContext) {
+    const quote = await this.loadAuthorized(
+      this.cotizacionesRepository,
+      id,
+      access,
+      'cotizaciones.previsualizar',
+    );
     const version = await this.formatoResolver.resolveCotizacion(
       quote.tipo_servicio,
       quote.cliente_id,
@@ -184,18 +246,25 @@ export class CotizacionesService {
     return buildPdfSnapshot(quote, version, quote.fecha);
   }
 
-  async ensurePdfCurrent(id: number): Promise<Cotizacion> {
+  async ensurePdfCurrent(
+    id: number,
+    access: PermissionContext,
+  ): Promise<Cotizacion> {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Cotizacion);
       const current = await repository.findOne({
-        where: { id },
+        where: quoteWhere(access, 'cotizaciones.descargar', id),
         relations: ['cliente', 'items'],
         lock: { mode: 'pessimistic_write' },
       });
-      if (!current) throw new NotFoundException(`Cotización #${id} no encontrada`);
+      if (!current)
+        throw new NotFoundException(`Cotización #${id} no encontrada`);
       if (!current.fecha_emision) return current;
-      if (current.pdf_url && current.hash_pdf &&
-        current.pdf_renderer_version === PDF_RENDERER_VERSION) {
+      if (
+        current.pdf_url &&
+        current.hash_pdf &&
+        current.pdf_renderer_version === PDF_RENDERER_VERSION
+      ) {
         try {
           await this.pdfGenerator.getFile(current.pdf_url, current.hash_pdf);
           return current;
@@ -207,15 +276,23 @@ export class CotizacionesService {
         return current;
       }
 
-      const snapshot = current.snapshot_datos ?? buildPdfSnapshot(
-        current,
-        await this.formatoResolver.resolveCotizacion(current.tipo_servicio, current.cliente_id, manager),
-        current.fecha_emision ?? current.fecha,
-      );
-      const previousKey = current.pdf_url ?? `cotizaciones/${current.consecutivo}.pdf`;
-      const storageKey = current.pdf_renderer_version === PDF_RENDERER_VERSION
-        ? previousKey
-        : previousKey.replace(/\.pdf$/, `-${PDF_RENDERER_VERSION}.pdf`);
+      const snapshot =
+        current.snapshot_datos ??
+        buildPdfSnapshot(
+          current,
+          await this.formatoResolver.resolveCotizacion(
+            current.tipo_servicio,
+            current.cliente_id,
+            manager,
+          ),
+          current.fecha_emision ?? current.fecha,
+        );
+      const previousKey =
+        current.pdf_url ?? `cotizaciones/${current.consecutivo}.pdf`;
+      const storageKey =
+        current.pdf_renderer_version === PDF_RENDERER_VERSION
+          ? previousKey
+          : previousKey.replace(/\.pdf$/, `-${PDF_RENDERER_VERSION}.pdf`);
       const result = await this.pdfGenerator.generate(snapshot, storageKey);
       current.pdf_url = result.storageKey;
       current.hash_pdf = result.hash;
@@ -229,8 +306,13 @@ export class CotizacionesService {
     });
   }
 
-  async emitir(id: number, usuarioId: number | null): Promise<Cotizacion> {
-    const quote = await this.findOne(id);
+  async emitir(id: number, access: PermissionContext): Promise<Cotizacion> {
+    const quote = await this.loadAuthorized(
+      this.cotizacionesRepository,
+      id,
+      access,
+      'cotizaciones.emitir',
+    );
     if (quote.fecha_emision) return quote;
     const storageKey = `cotizaciones/${quote.consecutivo.replace(/[^\w.-]/g, '_')}.pdf`;
     let generated = false;
@@ -238,14 +320,19 @@ export class CotizacionesService {
       await this.dataSource.transaction(async (manager) => {
         const repo = manager.getRepository(Cotizacion);
         const current = await repo.findOne({
-          where: { id },
+          where: quoteWhere(access, 'cotizaciones.emitir', id),
           relations: ['cliente', 'items'],
           lock: { mode: 'pessimistic_write' },
         });
-        if (!current) throw new NotFoundException(`Cotización #${id} no encontrada`);
+        if (!current)
+          throw new NotFoundException(`Cotización #${id} no encontrada`);
         if (current.fecha_emision) return;
         const emittedAt = new Date();
-        const version = await this.formatoResolver.resolveCotizacion(current.tipo_servicio, current.cliente_id, manager);
+        const version = await this.formatoResolver.resolveCotizacion(
+          current.tipo_servicio,
+          current.cliente_id,
+          manager,
+        );
         const snapshot = buildPdfSnapshot(current, version, emittedAt);
         const result = await this.pdfGenerator.generate(snapshot, storageKey);
         generated = true;
@@ -258,7 +345,7 @@ export class CotizacionesService {
         await repo.save(current);
         await this.auditoriaService.create(
           {
-            usuario_id: usuarioId,
+            usuario_id: access.policy.userId,
             entidad: 'cotizaciones',
             entidad_id: current.id,
             accion: AccionAuditoria.EMITIR,
@@ -275,27 +362,61 @@ export class CotizacionesService {
       if (generated) await this.pdfGenerator.remove(storageKey);
       throw error;
     }
-    const emitted = await this.findOne(id);
-    if (!emitted.fecha_emision) throw new ConflictException('La cotización no pudo emitirse');
+    const emitted = await this.loadAuthorized(
+      this.cotizacionesRepository,
+      id,
+      access,
+      'cotizaciones.emitir',
+    );
+    if (!emitted.fecha_emision)
+      throw new ConflictException('La cotización no pudo emitirse');
     return emitted;
   }
 
-  async update(id: number, dto: UpdateCotizacionDto): Promise<Cotizacion> {
-    const cotizacion = await this.findOne(id);
-    if (cotizacion.fecha_emision) {
-      const keys = Object.keys(dto);
-      if (keys.some((key) => key !== 'estado')) throw new ConflictException('Una cotización emitida es inmutable');
-    }
-    if (dto.cliente_id) await this.clientesService.findOne(dto.cliente_id);
-    Object.assign(cotizacion, dto);
-    await this.cotizacionesRepository.save(cotizacion);
-    return this.findOne(id);
+  async update(
+    id: number,
+    dto: UpdateCotizacionDto,
+    access: PermissionContext,
+  ): Promise<Cotizacion> {
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(Cotizacion);
+      const cotizacion = await repository.findOne({
+        where: quoteWhere(access, 'cotizaciones.editar', id),
+        relations: ['cliente', 'items'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!cotizacion)
+        throw new NotFoundException(`Cotización #${id} no encontrada`);
+      if (cotizacion.fecha_emision) {
+        const keys = Object.keys(dto);
+        if (keys.some((key) => key !== 'estado'))
+          throw new ConflictException('Una cotización emitida es inmutable');
+      }
+      if (dto.cliente_id) await this.clientesService.findOne(dto.cliente_id);
+      Object.assign(cotizacion, dto);
+      await repository.save(cotizacion);
+      return this.loadAuthorized(repository, id, access, 'cotizaciones.editar');
+    });
   }
 
-  async remove(id: number): Promise<{ message: string }> {
-    const cotizacion = await this.findOne(id);
-    if (cotizacion.fecha_emision) throw new ConflictException('No se puede eliminar una cotización emitida');
-    await this.cotizacionesRepository.remove(cotizacion);
-    return { message: `Cotización #${id} eliminada` };
+  async remove(
+    id: number,
+    access: PermissionContext,
+  ): Promise<{ message: string }> {
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(Cotizacion);
+      const cotizacion = await repository.findOne({
+        where: quoteWhere(access, 'cotizaciones.eliminar', id),
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!cotizacion)
+        throw new NotFoundException(`Cotización #${id} no encontrada`);
+      if (cotizacion.fecha_emision)
+        throw new ConflictException(
+          'No se puede eliminar una cotización emitida',
+        );
+      await repository.remove(cotizacion);
+      return { message: `Cotización #${id} eliminada` };
+    });
   }
 }

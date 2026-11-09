@@ -44,6 +44,7 @@ describe('OpenAPI route contract (e2e)', () => {
         app,
         new DocumentBuilder()
           .setTitle('Sterinova API')
+          .setDescription('Contrato HTTP del backend Sterinova')
           .setVersion('1.0')
           .addBearerAuth()
           .build(),

@@ -11,6 +11,9 @@ import { FormatoVersiones } from '../formatos-documentales/entities/formato-vers
 import { FormatoAsignacionesCliente } from '../formatos-documentales/entities/formato-asignaciones-cliente.entity.js';
 import { Auditoria } from '../auditoria/entities/auditoria.entity.js';
 import { SelloCertificacion } from '../sellos/entities/sello-certificacion.entity.js';
+import { RbacScope, RbacScopeClosure } from '../rbac/entities/scope.entity.js';
+import { RbacRole, RbacPermission, RbacRolePermission } from '../rbac/entities/role.entity.js';
+import { RbacUserRoleAssignment, RbacPlatformOwner } from '../rbac/entities/user-role-assignment.entity.js';
 
 export const STERINOVA_ENTITIES = [
   User,
@@ -26,4 +29,11 @@ export const STERINOVA_ENTITIES = [
   FormatoAsignacionesCliente,
   Auditoria,
   SelloCertificacion,
+  RbacScope,
+  RbacScopeClosure,
+  RbacRole,
+  RbacPermission,
+  RbacRolePermission,
+  RbacUserRoleAssignment,
+  RbacPlatformOwner,
 ];

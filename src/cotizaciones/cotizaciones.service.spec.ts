@@ -1,3 +1,4 @@
+import { quotePermission } from '../../test/fixtures/quote-permission.js';
 import type { DataSource, Repository } from 'typeorm';
 import { CotizacionesService } from './cotizaciones.service.js';
 import { Cotizacion } from './entities/cotizacion.entity.js';
@@ -18,7 +19,9 @@ describe('CotizacionesService consecutivos', () => {
       findOne: vi.fn(async () => savedCotizacion),
     };
     const itemsRepository = {
-      create: vi.fn((value: Partial<CotizacionItem>) => value as CotizacionItem),
+      create: vi.fn(
+        (value: Partial<CotizacionItem>) => value as CotizacionItem,
+      ),
     };
     const clientesService = { findOne: vi.fn(async () => ({})) };
     const sequenceRepository = {
@@ -28,18 +31,38 @@ describe('CotizacionesService consecutivos', () => {
           const maximum = existingConsecutivos
             .filter((value) => value.startsWith(`${prefix}-`))
             .map((value) => Number(value.split('-').at(-1)))
-            .reduce((max, value) => Math.max(max, Number.isFinite(value) ? value : 0), 0);
-          sequence = { nombre: where.nombre, ultimo_valor: String(maximum) } as SecuenciaConsecutivos;
+            .reduce(
+              (max, value) => Math.max(max, Number.isFinite(value) ? value : 0),
+              0,
+            );
+          sequence = {
+            nombre: where.nombre,
+            ultimo_valor: String(maximum),
+          } as SecuenciaConsecutivos;
         }
         return sequence;
       }),
-      create: vi.fn((value: Partial<SecuenciaConsecutivos>) => value as SecuenciaConsecutivos),
-      save: vi.fn(async (value: SecuenciaConsecutivos) => { sequence = value; return value; }),
+      create: vi.fn(
+        (value: Partial<SecuenciaConsecutivos>) =>
+          value as SecuenciaConsecutivos,
+      ),
+      save: vi.fn(async (value: SecuenciaConsecutivos) => {
+        sequence = value;
+        return value;
+      }),
     };
     const manager = {
-      getRepository: vi.fn((entity: unknown) => entity === SecuenciaConsecutivos ? sequenceRepository : cotizacionesRepository),
+      getRepository: vi.fn((entity: unknown) =>
+        entity === SecuenciaConsecutivos
+          ? sequenceRepository
+          : cotizacionesRepository,
+      ),
     };
-    const dataSource = { transaction: vi.fn(async (work: (manager: unknown) => unknown) => work(manager)) };
+    const dataSource = {
+      transaction: vi.fn(async (work: (manager: unknown) => unknown) =>
+        work(manager),
+      ),
+    };
     const service = new CotizacionesService(
       cotizacionesRepository as unknown as Repository<Cotizacion>,
       itemsRepository as unknown as Repository<CotizacionItem>,
@@ -63,11 +86,14 @@ describe('CotizacionesService consecutivos', () => {
   ])('genera %s con consecutivo %s', async (tipo_servicio, expected) => {
     const { service, cotizacionesRepository } = createService();
 
-    await service.create({
-      cliente_id: 1,
-      tipo_servicio,
-      items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
-    }, 42);
+    await service.create(
+      {
+        cliente_id: 1,
+        tipo_servicio,
+        items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
+      },
+      quotePermission('cotizaciones.crear'),
+    );
 
     expect(cotizacionesRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({ consecutivo: expected, creador_id: 42 }),
@@ -80,11 +106,14 @@ describe('CotizacionesService consecutivos', () => {
       'COT-LAV-018',
     ]);
 
-    await service.create({
-      cliente_id: 1,
-      tipo_servicio: TipoServicioCotizacion.INSUMOS,
-      items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
-    });
+    await service.create(
+      {
+        cliente_id: 1,
+        tipo_servicio: TipoServicioCotizacion.INSUMOS,
+        items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
+      },
+      quotePermission('cotizaciones.crear'),
+    );
 
     expect(cotizacionesRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({ consecutivo: 'COT-CMI-010' }),
@@ -94,11 +123,14 @@ describe('CotizacionesService consecutivos', () => {
   it('genera consecutivos INDUSTRIAL_ETO con el prefijo COT-IND', async () => {
     const { service, cotizacionesRepository } = createService();
 
-    await service.create({
-      cliente_id: 1,
-      tipo_servicio: TipoServicioCotizacion.INDUSTRIAL_ETO,
-      items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
-    });
+    await service.create(
+      {
+        cliente_id: 1,
+        tipo_servicio: TipoServicioCotizacion.INDUSTRIAL_ETO,
+        items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
+      },
+      quotePermission('cotizaciones.crear'),
+    );
 
     expect(cotizacionesRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({ consecutivo: 'COT-IND-001' }),
@@ -108,11 +140,14 @@ describe('CotizacionesService consecutivos', () => {
   it('continúa más allá de 999 sin truncar el consecutivo', async () => {
     const { service, cotizacionesRepository } = createService(['COT-LAV-999']);
 
-    await service.create({
-      cliente_id: 1,
-      tipo_servicio: TipoServicioCotizacion.LAVANDERIA,
-      items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
-    });
+    await service.create(
+      {
+        cliente_id: 1,
+        tipo_servicio: TipoServicioCotizacion.LAVANDERIA,
+        items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
+      },
+      quotePermission('cotizaciones.crear'),
+    );
 
     expect(cotizacionesRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({ consecutivo: 'COT-LAV-1000' }),
@@ -120,13 +155,18 @@ describe('CotizacionesService consecutivos', () => {
   });
 
   it('mantiene números de cotización de mil millones', async () => {
-    const { service, cotizacionesRepository } = createService(['COT-CMI-999999999']);
+    const { service, cotizacionesRepository } = createService([
+      'COT-CMI-999999999',
+    ]);
 
-    await service.create({
-      cliente_id: 1,
-      tipo_servicio: TipoServicioCotizacion.INSUMOS,
-      items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
-    });
+    await service.create(
+      {
+        cliente_id: 1,
+        tipo_servicio: TipoServicioCotizacion.INSUMOS,
+        items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
+      },
+      quotePermission('cotizaciones.crear'),
+    );
 
     expect(cotizacionesRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({ consecutivo: 'COT-CMI-1000000000' }),

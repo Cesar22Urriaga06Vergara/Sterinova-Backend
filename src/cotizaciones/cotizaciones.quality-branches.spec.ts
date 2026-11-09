@@ -1,3 +1,4 @@
+import { quotePermission } from '../../test/fixtures/quote-permission.js';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import type { DataSource, Repository } from 'typeorm';
 import { Cotizacion } from './entities/cotizacion.entity.js';
@@ -34,11 +35,14 @@ describe('CotizacionesService critical branch coverage', () => {
     const { service } = serviceFor({});
 
     await expect(
-      service.create({
-        cliente_id: 3,
-        tipo_servicio: 'LAVANDERIA',
-        items: [],
-      } as any),
+      service.create(
+        {
+          cliente_id: 3,
+          tipo_servicio: 'LAVANDERIA',
+          items: [],
+        } as any,
+        quotePermission('cotizaciones.crear'),
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -49,7 +53,9 @@ describe('CotizacionesService critical branch coverage', () => {
       snapshot_datos: null,
     });
 
-    await expect(service.ensurePdfCurrent(7)).resolves.toMatchObject({ id: 7 });
+    await expect(
+      service.ensurePdfCurrent(7, quotePermission('cotizaciones.descargar')),
+    ).resolves.toMatchObject({ id: 7 });
   });
 
   it('returns an intact current PDF without saving or regenerating it', async () => {
@@ -63,7 +69,10 @@ describe('CotizacionesService critical branch coverage', () => {
     const { service, repository } = serviceFor(quote);
     (service as any).pdfGenerator = pdfGenerator;
 
-    await service.ensurePdfCurrent(7);
+    await service.ensurePdfCurrent(
+      7,
+      quotePermission('cotizaciones.descargar'),
+    );
 
     expect(pdfGenerator.getFile).toHaveBeenCalledWith(
       quote.pdf_url,
@@ -78,7 +87,9 @@ describe('CotizacionesService critical branch coverage', () => {
       pdf_url: 'cotizaciones/already.pdf',
     });
 
-    await expect(service.emitir(7, 4)).resolves.toBe(current);
+    await expect(
+      service.emitir(7, quotePermission('cotizaciones.emitir')),
+    ).resolves.toBe(current);
   });
 
   it('allows status-only edits to emitted quotes and rejects document edits', async () => {
@@ -86,13 +97,21 @@ describe('CotizacionesService critical branch coverage', () => {
       fecha_emision: new Date(),
     });
 
-    await service.update(7, { estado: 'APROBADA' });
+    await service.update(
+      7,
+      { estado: 'APROBADA' },
+      quotePermission('cotizaciones.editar'),
+    );
     expect(repository.save).toHaveBeenCalledWith(
       expect.objectContaining({ estado: 'APROBADA' }),
     );
 
     await expect(
-      service.update(7, { condiciones_comerciales: 'Cambio' }),
+      service.update(
+        7,
+        { condiciones_comerciales: 'Cambio' },
+        quotePermission('cotizaciones.editar'),
+      ),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(current.estado).toBe('APROBADA');
   });
@@ -100,7 +119,11 @@ describe('CotizacionesService critical branch coverage', () => {
   it('validates a replacement client before updating a draft quote', async () => {
     const { service, repository } = serviceFor({ fecha_emision: null });
 
-    await service.update(7, { cliente_id: 3 });
+    await service.update(
+      7,
+      { cliente_id: 3 },
+      quotePermission('cotizaciones.editar'),
+    );
 
     expect(repository.save).toHaveBeenCalledWith(
       expect.objectContaining({ cliente_id: 3 }),
@@ -109,13 +132,15 @@ describe('CotizacionesService critical branch coverage', () => {
 
   it('blocks deletion of an emitted quote but removes a draft quote', async () => {
     const emitted = serviceFor({ fecha_emision: new Date() });
-    await expect(emitted.service.remove(7)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(
+      emitted.service.remove(7, quotePermission('cotizaciones.eliminar')),
+    ).rejects.toBeInstanceOf(ConflictException);
     expect(emitted.repository.remove).not.toHaveBeenCalled();
 
     const draft = serviceFor({ fecha_emision: null });
-    await expect(draft.service.remove(7)).resolves.toEqual({
+    await expect(
+      draft.service.remove(7, quotePermission('cotizaciones.eliminar')),
+    ).resolves.toEqual({
       message: 'Cotización #7 eliminada',
     });
     expect(draft.repository.remove).toHaveBeenCalledWith(draft.current);

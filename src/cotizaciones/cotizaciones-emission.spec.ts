@@ -1,3 +1,4 @@
+import { quotePermission } from '../../test/fixtures/quote-permission.js';
 import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
 import { TipoServicioCotizacion } from './entities/tipo-servicio.enum.js';
 import { CotizacionesService } from './cotizaciones.service.js';
@@ -83,7 +84,10 @@ describe('CotizacionesService.emitir', () => {
       auditoriaService as never,
     );
 
-    const emitted = await service.emitir(7, 42);
+    const emitted = await service.emitir(
+      7,
+      quotePermission('cotizaciones.emitir'),
+    );
 
     expect(emitted.fecha_emision).toBeInstanceOf(Date);
     expect(emitted.version_formato_id).toBe(14);
@@ -139,7 +143,9 @@ describe('CotizacionesService.emitir', () => {
     const manager = { getRepository: vi.fn(() => quoteRepository) };
     const dataSource = {
       manager: {},
-      transaction: vi.fn(async (work: (manager: unknown) => unknown) => work(manager)),
+      transaction: vi.fn(async (work: (manager: unknown) => unknown) =>
+        work(manager),
+      ),
     };
     const pdfGenerator = {
       generate: vi.fn(async (_snapshot: unknown, storageKey: string) => ({
@@ -157,13 +163,18 @@ describe('CotizacionesService.emitir', () => {
       {} as never,
     );
 
-    const result = await service.ensurePdfCurrent(7);
+    const result = await service.ensurePdfCurrent(
+      7,
+      quotePermission('cotizaciones.descargar'),
+    );
 
     expect(pdfGenerator.generate).toHaveBeenCalledWith(
       quote.snapshot_datos,
       'cotizaciones/COT-LAV-007-react-playwright-v1.pdf',
     );
-    expect(result.pdf_url).toBe('cotizaciones/COT-LAV-007-react-playwright-v1.pdf');
+    expect(result.pdf_url).toBe(
+      'cotizaciones/COT-LAV-007-react-playwright-v1.pdf',
+    );
     expect(result.hash_pdf).toBe('b'.repeat(64));
     expect(result.pdf_renderer_version).toBe('react-playwright-v1');
     expect(result.fecha_emision).toEqual(new Date('2026-11-04T15:00:00.000Z'));
@@ -178,7 +189,14 @@ describe('CotizacionesService.emitir', () => {
       tipo_servicio: TipoServicioCotizacion.LAVANDERIA,
       fecha: new Date('2026-11-04T12:00:00.000Z'),
       cliente: { id: 3, razon_social: 'Cliente Demo', nit: '900' },
-      items: [{ descripcion: 'Lavado', cantidad: 1, valor_unitario: 10, valor_total: 10 }],
+      items: [
+        {
+          descripcion: 'Lavado',
+          cantidad: 1,
+          valor_unitario: 10,
+          valor_total: 10,
+        },
+      ],
       subtotal: 10,
       iva: 1.9,
       total: 11.9,
@@ -196,7 +214,9 @@ describe('CotizacionesService.emitir', () => {
       },
     };
     const service = new CotizacionesService(
-      { findOne: vi.fn(async () => quote) } as unknown as Repository<Cotizacion>,
+      {
+        findOne: vi.fn(async () => quote),
+      } as unknown as Repository<Cotizacion>,
       {} as Repository<CotizacionItem>,
       {} as never,
       { manager: {} } as unknown as DataSource,
@@ -205,7 +225,10 @@ describe('CotizacionesService.emitir', () => {
       {} as never,
     );
 
-    const preview = await service.previsualizar(7);
+    const preview = await service.previsualizar(
+      7,
+      quotePermission('cotizaciones.previsualizar'),
+    );
 
     expect(preview).toMatchObject({
       documento: { tipo: 'COTIZACION', consecutivo: 'COT-LAV-007' },

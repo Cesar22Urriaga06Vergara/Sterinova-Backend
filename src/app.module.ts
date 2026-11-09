@@ -12,7 +12,8 @@ import { CotizacionesModule } from './cotizaciones/cotizaciones.module.js';
 import { LogisticaModule } from './logistica/logistica.module.js';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard.js';
 import { PlantaModule } from './planta/planta.module.js';
-import { RolesGuard } from './common/guards/roles.guard.js';
+import { RbacModule } from './rbac/rbac.module.js';
+import { AuthorizationGuard } from './rbac/authorization.guard.js';
 import { CalidadModule } from './calidad/calidad.module.js';
 import { CertificadosModule } from './certificados/certificados.module.js';
 import { STERINOVA_ENTITIES } from './database/entities.js';
@@ -95,13 +96,14 @@ import { HealthModule } from './health/health.module.js';
     AuditoriaModule,
     SellosModule,
     HealthModule,
+    RbacModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useExisting: AuthorizationGuard },
   ],
 })
 export class AppModule {}

@@ -367,7 +367,18 @@
     "/cotizaciones": {
       "post": {
         "operationId": "CotizacionesController_create",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "x-scope-id",
+            "in": "header",
+            "description": "Ámbito autorizado. Obligatorio al crear si la cuenta tiene varios ámbitos posibles.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -386,10 +397,16 @@
             "description": "Datos inválidos"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Crear cotización",
         "tags": [
           "Cotizaciones"
-        ]
+        ],
+        "x-required-permission": "cotizaciones.crear"
       },
       "get": {
         "operationId": "CotizacionesController_findAll",
@@ -399,10 +416,16 @@
             "description": "Lista de cotizaciones"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Listar cotizaciones",
         "tags": [
           "Cotizaciones"
-        ]
+        ],
+        "x-required-permission": "cotizaciones.ver"
       }
     },
     "/cotizaciones/{id}": {
@@ -423,10 +446,16 @@
             "description": "Cotización encontrada"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Consultar cotización",
         "tags": [
           "Cotizaciones"
-        ]
+        ],
+        "x-required-permission": "cotizaciones.ver"
       },
       "put": {
         "operationId": "CotizacionesController_update",
@@ -455,10 +484,16 @@
             "description": "Cotización actualizada"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Actualizar cotización",
         "tags": [
           "Cotizaciones"
-        ]
+        ],
+        "x-required-permission": "cotizaciones.editar"
       },
       "delete": {
         "operationId": "CotizacionesController_remove",
@@ -477,10 +512,16 @@
             "description": "Cotización eliminada"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Eliminar cotización",
         "tags": [
           "Cotizaciones"
-        ]
+        ],
+        "x-required-permission": "cotizaciones.eliminar"
       }
     },
     "/cotizaciones/{id}/previsualizar": {
@@ -501,10 +542,16 @@
             "description": "Contenido de la cotización"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Previsualizar cotización",
         "tags": [
           "Cotizaciones"
-        ]
+        ],
+        "x-required-permission": "cotizaciones.previsualizar"
       }
     },
     "/cotizaciones/{id}/emitir": {
@@ -525,10 +572,16 @@
             "description": "Cotización emitida"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Emitir cotización",
         "tags": [
           "Cotizaciones"
-        ]
+        ],
+        "x-required-permission": "cotizaciones.emitir"
       }
     },
     "/cotizaciones/{id}/descargar": {
@@ -549,10 +602,16 @@
             "description": "Archivo PDF"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Descargar PDF de cotización",
         "tags": [
           "Cotizaciones"
-        ]
+        ],
+        "x-required-permission": "cotizaciones.descargar"
       }
     },
     "/formatos-documentales": {
@@ -1488,7 +1547,7 @@
   },
   "info": {
     "title": "Sterinova API",
-    "description": "",
+    "description": "Contrato HTTP del backend Sterinova",
     "version": "1.0",
     "contact": {}
   },

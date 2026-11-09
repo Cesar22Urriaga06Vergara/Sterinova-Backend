@@ -14,9 +14,11 @@ import { CotizacionItem } from './cotizacion-item.entity.js';
 import { TipoServicioCotizacion } from './tipo-servicio.enum.js';
 import { FormatoVersiones } from '../../formatos-documentales/entities/formato-versiones.entity.js';
 import { User } from '../../users/entities/user.entity.js';
+import { RbacScope } from '../../rbac/entities/scope.entity.js';
 
 @Entity('cotizaciones')
 @Index('IDX_cotizaciones_version_formato', ['version_formato_id'])
+@Index('IDX_cotizaciones_scope_creator', ['scope_id', 'creador_id', 'id'])
 export class Cotizacion {
   @PrimaryGeneratedColumn()
   id: number;
@@ -75,6 +77,13 @@ export class Cotizacion {
 
   @Column({ type: 'int', nullable: true })
   creador_id: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  scope_id: number | null;
+
+  @ManyToOne(() => RbacScope, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'scope_id' })
+  scope: Relation<RbacScope> | null;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'creador_id' })

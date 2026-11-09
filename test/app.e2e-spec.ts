@@ -79,6 +79,19 @@ describe('AppController (e2e)', () => {
           activo: true,
         }),
       );
+      const pilotScopeCode = `e2e-commercial-${suffix}`;
+      await dataSource.query(
+        "INSERT INTO rbac_scopes (code,name,kind,parent_id) SELECT ?,?,'DEPARTMENT',id FROM rbac_scopes WHERE kind='GLOBAL'",
+        [pilotScopeCode, 'Comercial de prueba'],
+      );
+      const [pilotScope] = (await dataSource.query(
+        'SELECT id FROM rbac_scopes WHERE code=?',
+        [pilotScopeCode],
+      )) as Array<{ id: number }>;
+      await dataSource.query(
+        "INSERT INTO rbac_user_role_assignments (user_id,role_id,scope_id,scope_kind) SELECT ?,id,?,'DEPARTMENT' FROM rbac_roles WHERE code IN ('comercial','emisor_comercial')",
+        [admin.id, pilotScope.id],
+      );
       let clienteId: number | undefined;
       let cotizacionId: number | undefined;
       let ordenId: number | undefined;
@@ -136,7 +149,9 @@ describe('AppController (e2e)', () => {
           .set('Authorization', authorization)
           .send({
             cotizacion_id: cotizacionId,
-            fecha_programada: new Date(Date.now() + 86_400_000).toISOString(),
+            fecha_programada: new Date(Date.now() + 86_400_000)
+              .toISOString()
+              .slice(0, 10),
           })
           .expect(201);
         ordenId = order.body.id;
@@ -217,6 +232,13 @@ describe('AppController (e2e)', () => {
             await queryRunner.query('DELETE FROM clientes WHERE id = ?', [
               clienteId,
             ]);
+          await queryRunner.query(
+            'DELETE FROM rbac_user_role_assignments WHERE user_id = ?',
+            [admin.id],
+          );
+          await queryRunner.query('DELETE FROM rbac_scopes WHERE id = ?', [
+            pilotScope.id,
+          ]);
           await queryRunner.query(
             'DELETE FROM auditoria WHERE usuario_id = ?',
             [admin.id],
