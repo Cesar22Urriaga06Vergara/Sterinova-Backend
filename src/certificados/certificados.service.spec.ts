@@ -1,10 +1,11 @@
+import { operationalCycle, qualityEvaluations, materialFixture } from '../../test/fixtures/operational-cycle.js';
+import { CicloParametroEvaluacion } from '../planta/entities/ciclo-parametro-evaluacion.entity.js';
 import type { EntityManager } from 'typeorm';
 import { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
 import { CertificadoEsterilizacion } from './entities/certificado-esterilizacion.entity.js';
 import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecutivos.entity.js';
 import { CertificadosService } from './certificados.service.js';
 import { User } from '../users/entities/user.entity.js';
-import { createHash } from 'node:crypto';
 
 describe('CertificadosService', () => {
   const createService = (ultimoValor = '0') => {
@@ -34,7 +35,7 @@ describe('CertificadosService', () => {
     };
     const manager = {
       getRepository: vi.fn((entity: typeof SecuenciaConsecutivos | typeof CertificadoEsterilizacion | typeof User) =>
-        entity === SecuenciaConsecutivos
+        entity === CicloParametroEvaluacion ? {insert:vi.fn(async()=>({}))} : entity === SecuenciaConsecutivos
           ? sequenceRepository
           : entity === User
             ? userRepository
@@ -61,6 +62,7 @@ describe('CertificadosService', () => {
   it('starts the certificate sequence at 001 and persists it in the transaction', async () => {
     const { service, manager, sequence, sequenceRepository, certificateRepository } = createService();
     const cycle = {
+      ...operationalCycle(),
       id: 12,
       orden_id: 90,
       equipo: 'E03',
@@ -72,18 +74,21 @@ describe('CertificadosService', () => {
       tiempo_aireacion: 10,
       control_biologico: 'Negativo',
       control_quimico: 'Cambio de color',
-      orden: { id: 90 },
+      orden: { id: 90, materiales:[materialFixture] },
     } as CicloEsterilizacion;
 
-    const result = await service.emitirDesdeCiclo(manager, cycle, 7, new Date());
+    const result = await service.emitirDesdeCiclo(manager, cycle, 7, new Date(), qualityEvaluations);
 
     expect(sequenceRepository.findOne).toHaveBeenCalledWith({
       where: { nombre: 'certificado_esterilizacion' },
       lock: { mode: 'pessimistic_write' },
     });
     expect(sequence.ultimo_valor).toBe('1');
+    expect(result.fecha_vencimiento).toBe('2027-02-28');
+    expect(result.snapshot_datos?.materiales).toMatchObject([{lote:'L1',cantidad:39}]);
+    expect(result.snapshot_datos?.informacion_tecnica).toMatchObject({tablas:{VAPOR:expect.arrayContaining([expect.objectContaining({resultado:'N/A'})])}});
     expect(result).toEqual(expect.objectContaining({ consecutivo: '001', ciclo_id: 12 }));
-    expect(result.pdf_renderer_version).toBe('react-playwright-v1');
+    expect(result.pdf_renderer_version).toBe('react-playwright-v2');
     expect(certificateRepository.save).toHaveBeenCalled();
   });
 
@@ -103,7 +108,7 @@ describe('CertificadosService', () => {
       valido: true,
       equipo: 'E03',
       fecha_emision: new Date('2026-11-01T12:00:00Z'),
-      fecha_vencimiento: new Date('2029-11-01T12:00:00Z'),
+      fecha_vencimiento: null,
       estado: 'Aprobado',
     });
     expect(JSON.stringify(result)).not.toMatch(/Confidencial|900123456|ETO/);
@@ -116,9 +121,10 @@ describe('CertificadosService', () => {
 
     await expect(service.emitirDesdeCiclo(
       manager,
-      { id: 12, orden_id: 90, equipo: 'E03', orden: { id: 90 } } as CicloEsterilizacion,
+      operationalCycle(),
       7,
       new Date(),
+      qualityEvaluations,
     )).rejects.toThrow('render timeout');
     expect(certificateRepository.save).not.toHaveBeenCalled();
   });
@@ -174,9 +180,10 @@ describe('CertificadosService', () => {
     const { service, manager } = createService('9');
     const result = await service.emitirDesdeCiclo(
       manager,
-      { id: 1, orden_id: 2 } as CicloEsterilizacion,
+      operationalCycle({id:1,orden_id:2}),
       7,
       new Date(),
+      qualityEvaluations,
     );
 
     expect(result.consecutivo).toBe('010');
@@ -186,30 +193,34 @@ describe('CertificadosService', () => {
     const { service, manager, sequence } = createService('999');
     const result = await service.emitirDesdeCiclo(
       manager,
-      { id: 1, orden_id: 2 } as CicloEsterilizacion,
+      operationalCycle({id:1,orden_id:2}),
       7,
       new Date(),
+      qualityEvaluations,
     );
 
     expect(result.consecutivo).toBe('1000');
     expect(sequence.ultimo_valor).toBe('1000');
   });
 
-  it('supports certificate numbers through billions', async () => {
-    const { service, manager } = createService('999999999');
-    const result = await service.emitirDesdeCiclo(
+  it('rejects exhausted numbers before changing the sequence or generating a PDF', async () => {
+    const { service, manager, sequenceRepository, certificateRepository, generatedSnapshots } = createService('99999999');
+    await expect(service.emitirDesdeCiclo(
       manager,
-      { id: 1, orden_id: 2 } as CicloEsterilizacion,
+      operationalCycle({id:1,orden_id:2}),
       7,
       new Date(),
-    );
-
-    expect(result.consecutivo).toBe('1000000000');
+      qualityEvaluations,
+    )).rejects.toMatchObject({ response: { code: 'CONSECUTIVO_AGOTADO' } });
+    expect(sequenceRepository.save).not.toHaveBeenCalled();
+    expect(certificateRepository.save).not.toHaveBeenCalled();
+    expect(generatedSnapshots).toHaveLength(0);
   });
 
   it('persists all preview data and version metadata in the PDF snapshot', async () => {
     const { service, manager, userRepository, generatedSnapshots } = createService();
     const cycle = {
+      ...operationalCycle(),
       id: 12,
       orden_id: 90,
       equipo: 'E03',
@@ -224,6 +235,7 @@ describe('CertificadosService', () => {
       fecha_proceso: new Date('2026-11-04T12:00:00.000Z'),
       orden: {
         id: 90,
+        materiales:[materialFixture],
         consecutivo: 'ORD-090',
         cotizacion: {
           cliente: { id: 3, razon_social: 'Cliente Demo', nit: '900123456' },
@@ -232,7 +244,7 @@ describe('CertificadosService', () => {
       },
     } as unknown as CicloEsterilizacion;
 
-    await service.emitirDesdeCiclo(manager, cycle, 7, new Date('2026-11-04T15:00:00.000Z'));
+    await service.emitirDesdeCiclo(manager, cycle, 7, new Date('2026-11-04T15:00:00.000Z'), qualityEvaluations);
 
     expect(userRepository.findOne).toHaveBeenCalledWith({ where: { id: 7 } });
     expect(generatedSnapshots[0]).toMatchObject({

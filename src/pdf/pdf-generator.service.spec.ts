@@ -10,6 +10,18 @@ import { LocalStorageService } from '../common/services/storage.service.js';
 vi.mock('playwright', () => ({ chromium: { launch: vi.fn() } }));
 
 describe('PdfGeneratorService', () => {
+  it('refuses schema 2 snapshots when the renderer only implements the old contract', async () => {
+    process.env.PDF_RENDER_SECRET='test-render-secret-containing-at-least-32-bytes';
+    const page={setExtraHTTPHeaders:vi.fn(),goto:vi.fn(async()=>({ok:()=>true})),
+      waitForSelector:vi.fn(async(selector:string)=>{if(selector.includes('data-pdf-schema-version'))throw new Error('incompatible renderer');}),
+      evaluate:vi.fn(),emulateMedia:vi.fn(),pdf:vi.fn(async()=>Buffer.from('%PDF')),close:vi.fn()};
+    vi.mocked(chromium.launch).mockResolvedValue({newPage:async()=>page} as unknown as Browser);
+    const storage={saveFile:vi.fn()};
+    const service=new PdfGeneratorService(storage as never,{} as never);
+    await expect(service.generate({schema_version:2,documento:{tipo:'CERTIFICADO'}},'certificados/schema2.pdf')).rejects.toThrow();
+    expect(page.pdf).not.toHaveBeenCalled();
+    expect(storage.saveFile).not.toHaveBeenCalled();
+  });
   const originalEnvironment = {
     storage: process.env.PDF_STORAGE_PATH,
     baseUrl: process.env.PDF_RENDER_BASE_URL,

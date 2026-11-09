@@ -8,6 +8,7 @@ describe('CreateCicloDto validation', () => {
     const dto = plainToInstance(CreateCicloDto, {
       orden_id: '21',
       equipo: 'CICLO 10M68',
+      fecha_esterilizacion:'2026-10-30',
       metodo: 'ETO',
       temperatura: '45',
       humedad: '60',
@@ -27,6 +28,7 @@ describe('CreateCicloDto validation', () => {
     const dto = plainToInstance(CreateCicloDto, {
       orden_id: 21,
       equipo: 'CICLO 10M68',
+      fecha_esterilizacion:'2026-10-30',
       metodo: 'OZONO',
       temperatura: 'alta',
       humedad: 60,

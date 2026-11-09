@@ -1,3 +1,4 @@
+import { UpdateMaterialesOrdenDto } from './dto/update-materiales-orden.dto.js';
 import {
   Body,
   Controller,
@@ -6,6 +7,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Patch,
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
@@ -25,6 +27,15 @@ export class LogisticaController {
   @Post('ordenes')
   createOrden(@Body() createOrdenDto: CreateOrdenDto) {
     return this.logisticaService.createOrden(createOrdenDto);
+  }
+
+  @Patch('ordenes/:id/materiales')
+  updateMateriales(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateMaterialesOrdenDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.logisticaService.updateMateriales(id, dto, request.user.id);
   }
 
   @Get('ordenes')
@@ -48,6 +59,10 @@ export class LogisticaController {
     @Body() updateEstadoOrdenDto: UpdateEstadoOrdenDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.logisticaService.updateEstado(id, updateEstadoOrdenDto, request.user.id);
+    return this.logisticaService.updateEstado(
+      id,
+      updateEstadoOrdenDto,
+      request.user.id,
+    );
   }
 }

@@ -1,3 +1,6 @@
+import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
+import { ProtocoloEsterilizacionVersion } from './entities/protocolo-esterilizacion-version.entity.js';
+import { OrdenServicioMaterial } from '../ordenes-servicio/entities/orden-servicio-material.entity.js';
 import type { DataSource, EntityManager } from 'typeorm';
 import { User } from '../users/entities/user.entity.js';
 import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.enum.js';
@@ -10,6 +13,8 @@ describe('PlantaService', () => {
   const createService = () => {
     const orden = {
       id: 21,
+      cotizacion_id:1,
+      metodo_esterilizacion:'ETO',
       estado: EstadoOrdenServicio.EN_PLANTA,
     } as OrdenServicio;
     const operador = { id: 8 } as User;
@@ -36,6 +41,9 @@ describe('PlantaService', () => {
       getRepository: vi.fn((entity: typeof OrdenServicio | typeof User | typeof CicloEsterilizacion) => {
         if (entity === OrdenServicio) return ordenesRepository;
         if (entity === User) return usersRepository;
+        if (entity === Cotizacion) return { findOneByOrFail:async()=>({tipo_servicio:'INDUSTRIAL_ETO'}) };
+        if (entity === OrdenServicioMaterial) return {find:async()=>[{id:1}]};
+        if (entity === ProtocoloEsterilizacionVersion) return {findOne:async()=>({id:1,metodo:'ETO',especificaciones_json:{filas:[]}})};
         return ciclosRepository;
       }),
     };
@@ -64,6 +72,7 @@ describe('PlantaService', () => {
     const dto: CreateCicloDto = {
       orden_id: 21,
       equipo: 'CICLO 10M68',
+      fecha_esterilizacion:'2026-10-30',
       metodo: 'ETO',
       temperatura: 45,
       humedad: 60,
@@ -118,6 +127,7 @@ describe('PlantaService', () => {
         {
           orden_id: orden.id,
           equipo: 'CICLO 10M68',
+      fecha_esterilizacion:'2026-10-30',
           metodo: 'ETO',
           temperatura: 45,
           humedad: 60,

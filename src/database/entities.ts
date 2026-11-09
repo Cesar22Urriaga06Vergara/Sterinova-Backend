@@ -1,3 +1,7 @@
+import { OrdenServicioMaterial } from '../ordenes-servicio/entities/orden-servicio-material.entity.js';
+import { ProtocoloEsterilizacionVersion } from '../planta/entities/protocolo-esterilizacion-version.entity.js';
+import { CicloParametroEvaluacion } from '../planta/entities/ciclo-parametro-evaluacion.entity.js';
+import { SelloCertificacionVersion } from '../sellos/entities/sello-certificacion-version.entity.js';
 import { User } from '../users/entities/user.entity.js';
 import { TasaFiscal } from '../tasas-fiscales/entities/tasa-fiscal.entity.js';
 import { Cliente } from '../clientes/entities/cliente.entity.js';
@@ -17,6 +21,11 @@ import { RbacRole, RbacPermission, RbacRolePermission } from '../rbac/entities/r
 import { RbacUserRoleAssignment, RbacPlatformOwner } from '../rbac/entities/user-role-assignment.entity.js';
 
 export const STERINOVA_ENTITIES = [
+  OrdenServicioMaterial,
+  ProtocoloEsterilizacionVersion,
+  CicloParametroEvaluacion,
+  SelloCertificacionVersion,
+
   TasaFiscal,
   User,
   Cliente,

@@ -1,3 +1,4 @@
+import { SelloCertificacionVersion } from '../../sellos/entities/sello-certificacion-version.entity.js';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -21,6 +22,13 @@ import { TasaFiscal } from '../../tasas-fiscales/entities/tasa-fiscal.entity.js'
 @Index('IDX_cotizaciones_version_formato', ['version_formato_id'])
 @Index('IDX_cotizaciones_scope_creator', ['scope_id', 'creador_id', 'id'])
 export class Cotizacion {
+  @Column({ type: 'int', nullable: true })
+  sello_icontec_version_id: number | null;
+
+  @ManyToOne(() => SelloCertificacionVersion, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'sello_icontec_version_id' })
+  sello_icontec_version: Relation<SelloCertificacionVersion> | null;
+
   @PrimaryGeneratedColumn()
   id: number;
 

@@ -155,22 +155,12 @@ describe('CotizacionesService consecutivos', () => {
     );
   });
 
-  it('mantiene números de cotización de mil millones', async () => {
-    const { service, cotizacionesRepository } = createService([
-      'COT-CMI-999999999',
-    ]);
-
-    await service.create(
-      {
-        cliente_id: 1,
-        tipo_servicio: TipoServicioCotizacion.INSUMOS,
-        items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
-      },
-      quotePermission('cotizaciones.crear'),
-    );
-
-    expect(cotizacionesRepository.save).toHaveBeenCalledWith(
-      expect.objectContaining({ consecutivo: 'COT-CMI-1000000000' }),
-    );
+  it('rejects an exhausted historical sequence without renumbering', async () => {
+    const { service, cotizacionesRepository, sequenceRepository } = createService(['COT-CMI-999999999']);
+    await expect(service.create({ cliente_id: 1, tipo_servicio: TipoServicioCotizacion.INSUMOS,
+      items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }] },
+      quotePermission('cotizaciones.crear'))).rejects.toMatchObject({ response: { code: 'CONSECUTIVO_AGOTADO' } });
+    expect(cotizacionesRepository.save).not.toHaveBeenCalled();
+    expect(sequenceRepository.save).not.toHaveBeenCalled();
   });
 });

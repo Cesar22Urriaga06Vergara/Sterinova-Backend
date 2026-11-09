@@ -1,3 +1,4 @@
+import { CicloParametroEvaluacion } from '../planta/entities/ciclo-parametro-evaluacion.entity.js';
 import {
   BadRequestException,
   ForbiddenException,
@@ -8,7 +9,10 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { AuthService } from '../auth/auth.service.js';
 import { CertificadosService } from '../certificados/certificados.service.js';
-import { CicloEsterilizacion, EstadoCicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
+import {
+  CicloEsterilizacion,
+  EstadoCicloEsterilizacion,
+} from '../planta/entities/ciclo-esterilizacion.entity.js';
 import { ApproveCycleDto } from './dto/approve-cycle.dto.js';
 import { RejectCycleDto } from './dto/reject-cycle.dto.js';
 import { PdfGeneratorService } from '../pdf/pdf-generator.service.js';
@@ -28,16 +32,31 @@ export class CalidadService {
   findPendientes(): Promise<CicloEsterilizacion[]> {
     return this.dataSource.getRepository(CicloEsterilizacion).find({
       where: { estado: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD },
-      relations: ['orden', 'orden.cotizacion', 'orden.cotizacion.cliente', 'operador'],
+      relations: [
+        'orden',
+        'orden.cotizacion',
+        'orden.cotizacion.cliente',
+        'operador',
+      ],
       order: { fecha_proceso: 'ASC', id: 'ASC' },
     });
   }
 
   async findCicloPendiente(id: number): Promise<CicloEsterilizacion> {
-    const cycle = await this.dataSource.getRepository(CicloEsterilizacion).findOne({
-      where: { id, estado: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD },
-      relations: ['orden', 'orden.cotizacion', 'orden.cotizacion.cliente', 'orden.cotizacion.items', 'operador'],
-    });
+    const cycle = await this.dataSource
+      .getRepository(CicloEsterilizacion)
+      .findOne({
+        where: { id, estado: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD },
+        relations: [
+          'orden',
+          'orden.cotizacion',
+          'orden.cotizacion.cliente',
+          'orden.cotizacion.items',
+          'orden.materiales',
+          'protocolo_version',
+          'operador',
+        ],
+      });
     if (!cycle) {
       throw new NotFoundException(`Ciclo pendiente #${id} no encontrado`);
     }
@@ -50,7 +69,13 @@ export class CalidadService {
       dto.password,
     );
     if (!passwordValida) {
-      await this.recordFailedAttempt({ usuario_id: aprobadorId, entidad: 'ciclo', entidad_id: dto.ciclo_id, accion: AccionAuditoria.APROBAR, detalle: { resultado: 'fallido', causa: 'confirmacion_invalida' } });
+      await this.recordFailedAttempt({
+        usuario_id: aprobadorId,
+        entidad: 'ciclo',
+        entidad_id: dto.ciclo_id,
+        accion: AccionAuditoria.APROBAR,
+        detalle: { resultado: 'fallido', causa: 'confirmacion_invalida' },
+      });
       throw new ForbiddenException('La contraseña de Calidad no es válida');
     }
 
@@ -60,7 +85,15 @@ export class CalidadService {
         const cycleRepository = manager.getRepository(CicloEsterilizacion);
         const cycle = await cycleRepository.findOne({
           where: { id: dto.ciclo_id },
-          relations: ['orden', 'orden.cotizacion', 'orden.cotizacion.cliente', 'orden.cotizacion.items', 'operador'],
+          relations: [
+            'orden',
+            'orden.cotizacion',
+            'orden.cotizacion.cliente',
+            'orden.cotizacion.items',
+            'orden.materiales',
+            'protocolo_version',
+            'operador',
+          ],
           lock: { mode: 'pessimistic_write' },
         });
         if (!cycle) {
@@ -74,6 +107,7 @@ export class CalidadService {
           cycle,
           aprobadorId,
           decidedAt,
+          dto.evaluaciones,
         );
         generatedPdfKey = certificate.pdf_url;
         cycle.estado = EstadoCicloEsterilizacion.APROBADO;
@@ -81,20 +115,32 @@ export class CalidadService {
         cycle.revisado_en = decidedAt;
         cycle.motivo_rechazo = null;
         await cycleRepository.save(cycle);
-        await this.auditoriaService.create({
-          usuario_id: aprobadorId,
-          entidad: 'ciclo',
-          entidad_id: cycle.id,
-          accion: AccionAuditoria.APROBAR,
-          detalle: { estado_anterior: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD, estado_nuevo: cycle.estado },
-        }, manager);
-        await this.auditoriaService.create({
-          usuario_id: aprobadorId,
-          entidad: 'certificado',
-          entidad_id: certificate.id,
-          accion: AccionAuditoria.EMITIR,
-          detalle: { ciclo_id: cycle.id, consecutivo: certificate.consecutivo },
-        }, manager);
+        await this.auditoriaService.create(
+          {
+            usuario_id: aprobadorId,
+            entidad: 'ciclo',
+            entidad_id: cycle.id,
+            accion: AccionAuditoria.APROBAR,
+            detalle: {
+              estado_anterior: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD,
+              estado_nuevo: cycle.estado,
+            },
+          },
+          manager,
+        );
+        await this.auditoriaService.create(
+          {
+            usuario_id: aprobadorId,
+            entidad: 'certificado',
+            entidad_id: certificate.id,
+            accion: AccionAuditoria.EMITIR,
+            detalle: {
+              ciclo_id: cycle.id,
+              consecutivo: certificate.consecutivo,
+            },
+          },
+          manager,
+        );
 
         return certificate;
       });
@@ -107,7 +153,11 @@ export class CalidadService {
         detalle: { resultado: 'fallido' },
       });
       if (generatedPdfKey) {
-        try { await this.pdfGenerator.remove(generatedPdfKey); } catch { /* Preservar el error de la transacción. */ }
+        try {
+          await this.pdfGenerator.remove(generatedPdfKey);
+        } catch {
+          /* Preservar el error de la transacción. */
+        }
       }
       throw error;
     }
@@ -116,44 +166,101 @@ export class CalidadService {
   async rechazar(dto: RejectCycleDto, revisorId: number) {
     const motivo = dto.motivo.trim();
     if (!motivo) {
-      await this.recordFailedAttempt({ usuario_id: revisorId, entidad: 'ciclo', entidad_id: dto.ciclo_id, accion: AccionAuditoria.RECHAZAR, detalle: { resultado: 'fallido', causa: 'motivo_vacio' } });
+      await this.recordFailedAttempt({
+        usuario_id: revisorId,
+        entidad: 'ciclo',
+        entidad_id: dto.ciclo_id,
+        accion: AccionAuditoria.RECHAZAR,
+        detalle: { resultado: 'fallido', causa: 'motivo_vacio' },
+      });
       throw new BadRequestException('El motivo de rechazo es obligatorio');
     }
 
     try {
       return await this.dataSource.transaction(async (manager) => {
-      const cycleRepository = manager.getRepository(CicloEsterilizacion);
-      const cycle = await cycleRepository.findOne({
-        where: { id: dto.ciclo_id },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!cycle) {
-        throw new NotFoundException(`Ciclo #${dto.ciclo_id} no encontrado`);
-      }
-      this.assertPending(cycle);
+        const cycleRepository = manager.getRepository(CicloEsterilizacion);
+        const cycle = await cycleRepository.findOne({
+          where: { id: dto.ciclo_id },
+          relations: ['protocolo_version'],
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!cycle) {
+          throw new NotFoundException(`Ciclo #${dto.ciclo_id} no encontrado`);
+        }
+        this.assertPending(cycle);
 
-      cycle.estado = EstadoCicloEsterilizacion.RECHAZADO;
-      cycle.revisado_por = revisorId;
-      cycle.revisado_en = new Date();
-      cycle.motivo_rechazo = motivo;
-      const saved = await cycleRepository.save(cycle);
-      await this.auditoriaService.create({
-        usuario_id: revisorId,
-        entidad: 'ciclo',
-        entidad_id: cycle.id,
-        accion: AccionAuditoria.RECHAZAR,
-        detalle: { estado_anterior: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD, estado_nuevo: cycle.estado },
-      }, manager);
-      return saved;
+        if (dto.evaluaciones?.length) {
+          const rows = cycle.protocolo_version?.especificaciones_json.filas as
+            | { parametro: string; aplicable: boolean; opciones: string[] }[]
+            | undefined;
+          const entries = dto.evaluaciones;
+          if (
+            !rows ||
+            new Set(entries.map((e) => e.parametro)).size !== entries.length ||
+            entries.some(
+              (e) =>
+                !rows.some(
+                  (r) =>
+                    r.parametro === e.parametro &&
+                    r.aplicable &&
+                    r.opciones[e.opcion] !== undefined,
+                ),
+            )
+          )
+            throw new BadRequestException('Evaluaciones ajenas al protocolo');
+          await manager
+            .getRepository(CicloParametroEvaluacion)
+            .insert(
+              entries.map((e) => ({
+                ciclo_id: cycle.id,
+                parametro: e.parametro,
+                criterio: e.criterio,
+                evaluador_id: revisorId,
+                evaluado_at: new Date(),
+              })),
+            );
+        }
+        cycle.estado = EstadoCicloEsterilizacion.RECHAZADO;
+        cycle.revisado_por = revisorId;
+        cycle.revisado_en = new Date();
+        cycle.motivo_rechazo = motivo;
+        const saved = await cycleRepository.save(cycle);
+        await this.auditoriaService.create(
+          {
+            usuario_id: revisorId,
+            entidad: 'ciclo',
+            entidad_id: cycle.id,
+            accion: AccionAuditoria.RECHAZAR,
+            detalle: {
+              estado_anterior: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD,
+              estado_nuevo: cycle.estado,
+              evaluaciones: dto.evaluaciones ?? [],
+            },
+          },
+          manager,
+        );
+        return saved;
       });
     } catch (error) {
-      await this.recordFailedAttempt({ usuario_id: revisorId, entidad: 'ciclo', entidad_id: dto.ciclo_id, accion: AccionAuditoria.RECHAZAR, detalle: { resultado: 'fallido' } });
+      await this.recordFailedAttempt({
+        usuario_id: revisorId,
+        entidad: 'ciclo',
+        entidad_id: dto.ciclo_id,
+        accion: AccionAuditoria.RECHAZAR,
+        detalle: { resultado: 'fallido' },
+      });
       throw error;
     }
   }
 
-  private async recordFailedAttempt(entry: Parameters<AuditoriaService['create']>[0]) {
-    try { await this.auditoriaService.create(entry); } catch { /* Preservar el error de dominio original. */ }
+  private async recordFailedAttempt(
+    entry: Parameters<AuditoriaService['create']>[0],
+  ) {
+    try {
+      await this.auditoriaService.create(entry);
+    } catch {
+      /* Preservar el error de dominio original. */
+    }
   }
 
   private assertPending(cycle: CicloEsterilizacion): void {

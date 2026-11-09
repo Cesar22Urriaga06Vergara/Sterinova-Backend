@@ -1,3 +1,4 @@
+import { SelloSnapshotModule } from '../sellos/sello-snapshot.module.js';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Cotizacion } from './entities/cotizacion.entity.js';
@@ -11,6 +12,7 @@ import { AuditoriaModule } from '../auditoria/auditoria.module.js';
 
 @Module({
   imports: [
+    SelloSnapshotModule,
     TypeOrmModule.forFeature([Cotizacion, CotizacionItem, SecuenciaConsecutivos]),
     ClientesModule,
     FormatosDocumentalesModule,

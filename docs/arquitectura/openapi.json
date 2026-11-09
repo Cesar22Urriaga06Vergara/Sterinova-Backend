@@ -720,6 +720,46 @@
         "x-required-permission": "cotizaciones.descargar"
       }
     },
+    "/cotizaciones/{id}/aprobar": {
+      "post": {
+        "operationId": "CotizacionesController_aprobar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteVersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aprobar un borrador sin modificar su contenido",
+        "tags": [
+          "Cotizaciones"
+        ],
+        "x-required-permission": "cotizaciones.editar"
+      }
+    },
     "/formatos-documentales": {
       "get": {
         "operationId": "FormatosDocumentalesController_findAll",
@@ -982,6 +1022,39 @@
         ]
       }
     },
+    "/logistica/ordenes/{id}/materiales": {
+      "patch": {
+        "operationId": "LogisticaController_updateMateriales",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMaterialesOrdenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Logistica"
+        ]
+      }
+    },
     "/logistica/cotizaciones-aprobadas": {
       "get": {
         "operationId": "LogisticaController_findCotizacionesAprobadas",
@@ -1049,6 +1122,20 @@
         },
         "tags": [
           "Logistica"
+        ]
+      }
+    },
+    "/planta/protocolos": {
+      "get": {
+        "operationId": "PlantaController_findProtocolos",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Planta"
         ]
       }
     },
@@ -1837,9 +1924,79 @@
           "items"
         ]
       },
+      "QuoteVersionDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "description": "Versión leída; una versión obsoleta produce 409",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "UpdateCotizacionItemDto": {
+        "type": "object",
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "example": "Esterilización de instrumental"
+          },
+          "cantidad": {
+            "type": "number",
+            "example": 1,
+            "minimum": 0
+          },
+          "valor_unitario": {
+            "type": "number",
+            "example": 150000,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "descripcion",
+          "cantidad",
+          "valor_unitario"
+        ]
+      },
       "UpdateCotizacionDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "version": {
+            "type": "number",
+            "description": "Versión leída; una versión obsoleta produce 409",
+            "minimum": 1
+          },
+          "cliente_id": {
+            "type": "number"
+          },
+          "tipo_servicio": {
+            "type": "string",
+            "enum": [
+              "INDUSTRIAL_ETO",
+              "INSTITUCIONAL_ETO",
+              "INSTITUCIONAL_VAPOR",
+              "INSUMOS",
+              "LAVANDERIA",
+              "FARMACEUTICO",
+              "FABRICANTE"
+            ]
+          },
+          "condiciones_comerciales": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateCotizacionItemDto"
+            }
+          }
+        },
+        "required": [
+          "version"
+        ]
       },
       "CreateFormatoDocumentalDto": {
         "type": "object",
@@ -1861,9 +2018,110 @@
         "type": "object",
         "properties": {}
       },
+      "MaterialOrdenDto": {
+        "type": "object",
+        "properties": {
+          "cotizacion_item_id": {
+            "type": "number",
+            "nullable": true
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "referencia": {
+            "type": "string",
+            "nullable": true
+          },
+          "lote": {
+            "type": "string",
+            "nullable": true
+          },
+          "cantidad": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "empaque": {
+            "type": "string",
+            "nullable": true
+          },
+          "muestras_retencion": {
+            "type": "number",
+            "nullable": true
+          },
+          "muestras_cliente": {
+            "type": "number",
+            "nullable": true
+          },
+          "muestras_laboratorio": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "descripcion",
+          "cantidad"
+        ]
+      },
       "CreateOrdenDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "metodo_esterilizacion": {
+            "type": "string",
+            "enum": [
+              "ETO",
+              "VAPOR"
+            ]
+          },
+          "materiales": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaterialOrdenDto"
+            }
+          },
+          "cotizacion_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "fecha_programada": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "cotizacion_id",
+          "fecha_programada"
+        ]
+      },
+      "UpdateMaterialesOrdenDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1
+          },
+          "metodo_esterilizacion": {
+            "type": "string",
+            "enum": [
+              "ETO",
+              "VAPOR"
+            ]
+          },
+          "materiales": {
+            "minItems": 1,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaterialOrdenDto"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "materiales"
+        ]
       },
       "UpdateEstadoOrdenDto": {
         "type": "object",
@@ -1871,15 +2129,135 @@
       },
       "CreateCicloDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "fecha_esterilizacion": {
+            "type": "string",
+            "format": "date"
+          },
+          "protocolo_version_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "tiempo_secado": {
+            "type": "number",
+            "nullable": true,
+            "description": "Requerido para Vapor; independiente de aireacion"
+          },
+          "orden_id": {
+            "type": "number"
+          },
+          "equipo": {
+            "type": "string"
+          },
+          "metodo": {
+            "type": "string",
+            "enum": [
+              "ETO",
+              "VAPOR"
+            ]
+          },
+          "temperatura": {
+            "type": "number"
+          },
+          "humedad": {
+            "type": "number",
+            "nullable": true,
+            "description": "Requerido para EtO; presion admite valores negativos en inHg"
+          },
+          "presion": {
+            "type": "number",
+            "nullable": true,
+            "description": "Requerido para EtO; presion admite valores negativos en inHg"
+          },
+          "tiempo_exposicion": {
+            "type": "number"
+          },
+          "tiempo_aireacion": {
+            "type": "number",
+            "nullable": true,
+            "description": "Requerido para EtO; presion admite valores negativos en inHg"
+          },
+          "control_biologico": {
+            "type": "string"
+          },
+          "control_quimico": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fecha_esterilizacion",
+          "orden_id",
+          "equipo",
+          "metodo",
+          "temperatura",
+          "tiempo_exposicion",
+          "control_biologico",
+          "control_quimico"
+        ]
+      },
+      "EvaluacionParametroDto": {
+        "type": "object",
+        "properties": {
+          "parametro": {
+            "type": "string",
+            "example": "temperatura"
+          },
+          "criterio": {
+            "type": "string",
+            "enum": [
+              "CUMPLE",
+              "NO_CUMPLE",
+              "NO_APLICA"
+            ]
+          },
+          "opcion": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Indice cero-based de la alternativa del protocolo inmutable"
+          }
+        },
+        "required": [
+          "parametro",
+          "criterio",
+          "opcion"
+        ]
       },
       "ApproveCycleDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "evaluaciones": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvaluacionParametroDto"
+            }
+          },
+          "ciclo_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "password": {
+            "type": "string",
+            "format": "password"
+          }
+        },
+        "required": [
+          "evaluaciones",
+          "ciclo_id",
+          "password"
+        ]
       },
       "RejectCycleDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "evaluaciones": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvaluacionParametroDto"
+            }
+          }
+        }
       },
       "CreateSelloCertificacionDto": {
         "type": "object",

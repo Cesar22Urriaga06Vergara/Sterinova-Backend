@@ -1,3 +1,5 @@
+import { ProtocoloEsterilizacionVersion } from './protocolo-esterilizacion-version.entity.js';
+import { CicloParametroEvaluacion } from './ciclo-parametro-evaluacion.entity.js';
 import {
   Column,
   CreateDateColumn,
@@ -5,6 +7,7 @@ import {
   JoinColumn,
   ManyToOne,
   OneToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   type Relation,
 } from 'typeorm';
@@ -26,6 +29,22 @@ export enum EstadoCicloEsterilizacion {
 
 @Entity('ciclos_esterilizacion')
 export class CicloEsterilizacion {
+  @Column({ type: 'date', nullable: true })
+  fecha_esterilizacion: string | null;
+
+  @Column({ type: 'decimal', precision: 10, scale: 3, nullable: true })
+  tiempo_secado: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  protocolo_version_id: number | null;
+
+  @ManyToOne(() => ProtocoloEsterilizacionVersion, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'protocolo_version_id' })
+  protocolo_version: Relation<ProtocoloEsterilizacionVersion> | null;
+
+  @OneToMany(() => CicloParametroEvaluacion, (evaluacion) => evaluacion.ciclo)
+  evaluaciones: Relation<CicloParametroEvaluacion[]>;
+
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -52,17 +71,17 @@ export class CicloEsterilizacion {
   @Column({ type: 'float' })
   temperatura: number;
 
-  @Column({ type: 'float' })
-  humedad: number;
+  @Column({ type: 'float', nullable: true })
+  humedad: number | null;
 
-  @Column({ type: 'float' })
-  presion: number;
+  @Column({ type: 'float', nullable: true })
+  presion: number | null;
 
   @Column({ type: 'float' })
   tiempo_exposicion: number;
 
-  @Column({ type: 'float' })
-  tiempo_aireacion: number;
+  @Column({ type: 'float', nullable: true })
+  tiempo_aireacion: number | null;
 
   @Column({ type: 'varchar', length: 255 })
   control_biologico: string;

@@ -69,6 +69,7 @@ describe('CalidadService', () => {
       cycle,
       7,
       expect.any(Date),
+      undefined,
     );
     expect(cycle.estado).toBe(EstadoCicloEsterilizacion.APROBADO);
     expect(cycle.revisado_por).toBe(7);

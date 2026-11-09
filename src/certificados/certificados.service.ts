@@ -1,3 +1,9 @@
+import { BadRequestException } from '@nestjs/common';
+import { fechaVencimiento } from './fecha-vencimiento.js';
+import { prepararInformacionTecnica } from './informacion-tecnica.js';
+import { CicloParametroEvaluacion } from '../planta/entities/ciclo-parametro-evaluacion.entity.js';
+import type { EvaluacionParametroDto } from '../calidad/dto/evaluacion-parametro.dto.js';
+import { siguienteConsecutivo } from '../documentos/consecutivo.js';
 import {
   ConflictException,
   Injectable,
@@ -11,7 +17,11 @@ import { CertificadoEsterilizacion } from './entities/certificado-esterilizacion
 import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecutivos.entity.js';
 import { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
 import { FormatoResolverService } from '../formatos-documentales/formato-resolver.service.js';
-import { PDF_RENDERER_VERSION, PdfGeneratorService } from '../pdf/pdf-generator.service.js';
+import {
+  PDF_RENDERER_VERSION,
+  rendererVersionFor,
+  PdfGeneratorService,
+} from '../pdf/pdf-generator.service.js';
 import { User } from '../users/entities/user.entity.js';
 
 const SEQUENCE_NAME = 'certificado_esterilizacion';
@@ -40,6 +50,7 @@ export class CertificadosService {
     ciclo: CicloEsterilizacion,
     aprobadorId: number,
     aprobadoAt: Date,
+    evaluaciones: EvaluacionParametroDto[] = [],
   ): Promise<CertificadoEsterilizacion> {
     const sequenceRepository = manager.getRepository(SecuenciaConsecutivos);
     const sequence = await sequenceRepository.findOne({
@@ -52,12 +63,60 @@ export class CertificadosService {
         'No está inicializada la secuencia de certificados',
       );
     }
-    const nextConsecutive = BigInt(sequence.ultimo_valor) + 1n;
-    const consecutivo = nextConsecutive.toString().padStart(3, '0');
+    const { valor: nextConsecutive, numero: consecutivo } =
+      siguienteConsecutivo(sequence.ultimo_valor);
+    const vencimiento = fechaVencimiento(ciclo.fecha_esterilizacion!);
+    if (!ciclo.orden?.materiales?.length)
+      throw new BadRequestException('La orden no tiene materiales recibidos');
+    const tecnica = prepararInformacionTecnica(
+      ciclo,
+      ciclo.protocolo_version!,
+      evaluaciones,
+    );
+    const materiales = [...ciclo.orden.materiales]
+      .sort((a, b) => a.posicion - b.posicion)
+      .map(
+        ({
+          id,
+          posicion,
+          descripcion,
+          referencia,
+          lote,
+          cantidad,
+          empaque,
+          muestras_retencion,
+          muestras_cliente,
+          muestras_laboratorio,
+          cotizacion_item_id,
+        }) => ({
+          id,
+          posicion,
+          descripcion,
+          referencia,
+          lote,
+          cantidad,
+          empaque,
+          muestras_retencion,
+          muestras_cliente,
+          muestras_laboratorio,
+          cotizacion_item_id,
+        }),
+      );
+    await manager.getRepository(CicloParametroEvaluacion).insert(
+      evaluaciones.map((e) => ({
+        ciclo_id: ciclo.id,
+        parametro: e.parametro,
+        criterio: e.criterio,
+        evaluador_id: aprobadorId,
+        evaluado_at: aprobadoAt,
+      })),
+    );
     sequence.ultimo_valor = nextConsecutive.toString();
     await sequenceRepository.save(sequence);
 
-    const certificateRepository = manager.getRepository(CertificadoEsterilizacion);
+    const certificateRepository = manager.getRepository(
+      CertificadoEsterilizacion,
+    );
     const certificado = certificateRepository.create({
       consecutivo,
       token_publico: randomBytes(32).toString('base64url'),
@@ -83,9 +142,14 @@ export class CertificadosService {
       aprobador: { id: aprobadorId },
       aprobado_at: aprobadoAt,
       fecha_emision: aprobadoAt,
+      fecha_esterilizacion: ciclo.fecha_esterilizacion,
+      fecha_vencimiento: vencimiento,
     });
     const client = ciclo.orden?.cotizacion?.cliente;
-    const version = await this.formatoResolver.resolveCertificado(client?.id ?? null, manager);
+    const version = await this.formatoResolver.resolveCertificado(
+      client?.id ?? null,
+      manager,
+    );
     const aprobador = await manager.getRepository(User).findOne({
       where: { id: aprobadorId },
     });
@@ -94,11 +158,28 @@ export class CertificadosService {
     }
     const formatConfig = version.configuracion_json;
     const snapshot: Record<string, any> = {
+      schema_version: 2,
+      elaborado_por: ciclo.operador
+        ? {
+            id: ciclo.operador.id,
+            nombre: ciclo.operador.nombre,
+            apellido: ciclo.operador.apellido,
+            cargo: ciclo.operador.cargo,
+          }
+        : null,
+      materiales,
+      informacion_tecnica: tecnica,
+      evaluaciones: evaluaciones.map((e) => ({
+        ...e,
+        evaluador_id: aprobadorId,
+        evaluado_at: aprobadoAt.toISOString(),
+      })),
       documento: {
         tipo: 'CERTIFICADO',
         consecutivo,
         fecha_emision: aprobadoAt.toISOString(),
-        fecha_vencimiento: new Date(new Date(aprobadoAt).setFullYear(aprobadoAt.getFullYear() + 3)).toISOString(),
+        fecha_esterilizacion: ciclo.fecha_esterilizacion,
+        fecha_vencimiento: vencimiento,
       },
       formato: {
         id: version.id,
@@ -108,15 +189,17 @@ export class CertificadosService {
         renderer_key: version.renderer_key,
         configuracion_json: version.configuracion_json,
       },
-      cliente: client ? {
-        id: client.id,
-        razon_social: client.razon_social,
-        nit: client.nit,
-        direccion: client.direccion,
-        contacto: client.contacto,
-        telefono: client.telefono,
-        email: client.email,
-      } : null,
+      cliente: client
+        ? {
+            id: client.id,
+            razon_social: client.razon_social,
+            nit: client.nit,
+            direccion: client.direccion,
+            contacto: client.contacto,
+            telefono: client.telefono,
+            email: client.email,
+          }
+        : null,
       certificado: {
         consecutivo,
         equipo: ciclo.equipo,
@@ -127,12 +210,17 @@ export class CertificadosService {
       aprobador: {
         id: aprobador.id,
         nombre: aprobador.nombre,
+        apellido: aprobador.apellido,
+        cargo: aprobador.cargo,
         rol: aprobador.rol,
       },
       ciclo_esterilizacion: {
         id: ciclo.id,
         equipo: ciclo.equipo,
         fecha_proceso: ciclo.fecha_proceso?.toISOString() ?? null,
+        fecha_esterilizacion: ciclo.fecha_esterilizacion,
+        tiempo_secado: ciclo.tiempo_secado,
+        protocolo_version_id: ciclo.protocolo_version_id,
         metodo: ciclo.metodo,
         temperatura: ciclo.temperatura,
         humedad: ciclo.humedad,
@@ -141,22 +229,29 @@ export class CertificadosService {
         tiempo_aireacion: ciclo.tiempo_aireacion,
         control_biologico: ciclo.control_biologico,
         control_quimico: ciclo.control_quimico,
-        orden: ciclo.orden ? {
-          id: ciclo.orden.id,
-          consecutivo: ciclo.orden.consecutivo,
-          cotizacion: ciclo.orden.cotizacion ? {
-            cliente: ciclo.orden.cotizacion.cliente ? {
-              id: ciclo.orden.cotizacion.cliente.id,
-              razon_social: ciclo.orden.cotizacion.cliente.razon_social,
-              nit: ciclo.orden.cotizacion.cliente.nit,
-            } : null,
-            items: (ciclo.orden.cotizacion.items ?? []).map((item) => ({
-              id: item.id,
-              descripcion: item.descripcion,
-              cantidad: item.cantidad,
-            })),
-          } : null,
-        } : null,
+        orden: ciclo.orden
+          ? {
+              id: ciclo.orden.id,
+              consecutivo: ciclo.orden.consecutivo,
+              cotizacion: ciclo.orden.cotizacion
+                ? {
+                    cliente: ciclo.orden.cotizacion.cliente
+                      ? {
+                          id: ciclo.orden.cotizacion.cliente.id,
+                          razon_social:
+                            ciclo.orden.cotizacion.cliente.razon_social,
+                          nit: ciclo.orden.cotizacion.cliente.nit,
+                        }
+                      : null,
+                    items: (ciclo.orden.cotizacion.items ?? []).map((item) => ({
+                      id: item.id,
+                      descripcion: item.descripcion,
+                      cantidad: item.cantidad,
+                    })),
+                  }
+                : null,
+            }
+          : null,
       },
       reconstruido: false,
     };
@@ -214,10 +309,17 @@ export class CertificadosService {
       if (!certificate) {
         throw new NotFoundException(`Certificado #${id} no encontrado`);
       }
-      if (certificate.pdf_url && certificate.hash_pdf &&
-        certificate.pdf_renderer_version === PDF_RENDERER_VERSION) {
+      const rendererVersion = rendererVersionFor(certificate.snapshot_datos);
+      if (
+        certificate.pdf_url &&
+        certificate.hash_pdf &&
+        certificate.pdf_renderer_version === rendererVersion
+      ) {
         try {
-          await this.pdfGenerator.getFile(certificate.pdf_url, certificate.hash_pdf);
+          await this.pdfGenerator.getFile(
+            certificate.pdf_url,
+            certificate.hash_pdf,
+          );
           return certificate;
         } catch {
           // A missing or altered object is rebuilt from the persisted snapshot below.
@@ -232,17 +334,19 @@ export class CertificadosService {
         );
       }
 
-      const previousKey = certificate.pdf_url ?? `certificados/${certificate.consecutivo}.pdf`;
-      const storageKey = certificate.pdf_renderer_version === PDF_RENDERER_VERSION
-        ? previousKey
-        : previousKey.replace(/\.pdf$/, `-${PDF_RENDERER_VERSION}.pdf`);
+      const previousKey =
+        certificate.pdf_url ?? `certificados/${certificate.consecutivo}.pdf`;
+      const storageKey =
+        certificate.pdf_renderer_version === rendererVersion
+          ? previousKey
+          : previousKey.replace(/\.pdf$/, `-${rendererVersion}.pdf`);
       const result = await this.pdfGenerator.generate(
         certificate.snapshot_datos,
         storageKey,
       );
       certificate.pdf_url = result.storageKey;
       certificate.hash_pdf = result.hash;
-      certificate.pdf_renderer_version = PDF_RENDERER_VERSION;
+      certificate.pdf_renderer_version = rendererVersion;
       try {
         return await repository.save(certificate);
       } catch (error) {
@@ -260,15 +364,16 @@ export class CertificadosService {
       throw new NotFoundException('No se encontró un certificado válido');
     }
     const fechaEmision = certificado.aprobado_at ?? certificado.created_at;
-    const fechaVencimiento = new Date(fechaEmision);
-    fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + 3);
+    const document = certificado.snapshot_datos?.documento as
+      Record<string, unknown> | undefined;
+    const vencimiento =
+      certificado.fecha_vencimiento ?? document?.fecha_vencimiento ?? null;
     return {
       valido: true,
       equipo: certificado.equipo,
       fecha_emision: fechaEmision,
-      fecha_vencimiento: fechaVencimiento,
+      fecha_vencimiento: vencimiento,
       estado: certificado.estado,
     };
   }
-
 }

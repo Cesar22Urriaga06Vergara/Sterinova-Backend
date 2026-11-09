@@ -84,6 +84,7 @@ describe('CotizacionesService.emitir', () => {
       formatResolver as never,
       pdfGenerator as never,
       auditoriaService as never,
+      { freeze:vi.fn(async()=>({version_id:10,sha256:"b".repeat(64),imagen_key:"versiones/frozen.png"})) } as never,
     );
 
     const emitted = await service.emitir(
@@ -93,8 +94,10 @@ describe('CotizacionesService.emitir', () => {
 
     expect(emitted.fecha_emision).toBeInstanceOf(Date);
     expect(emitted.version_formato_id).toBe(14);
+    expect(emitted.sello_icontec_version_id).toBe(10);
+    expect(quote.snapshot_datos?.sellos).toMatchObject({icontec:{version_id:10,sha256:'b'.repeat(64)}});
     expect(emitted.pdf_url).toBe('cotizaciones/COT-LAV-007.pdf');
-    expect(emitted.pdf_renderer_version).toBe('react-playwright-v1');
+    expect(emitted.pdf_renderer_version).toBe('react-playwright-v2');
     expect(quote.snapshot_datos?.cliente).toMatchObject({
       cargo: 'Compras',
       ciudad: 'Bogotá',
@@ -113,6 +116,7 @@ describe('CotizacionesService.emitir', () => {
         cliente: expect.objectContaining({ ciudad: 'Bogotá' }),
       }),
       'cotizaciones/COT-LAV-007.pdf',
+      manager,
     );
     expect(auditoriaService.create).toHaveBeenCalledWith(
       expect.objectContaining({

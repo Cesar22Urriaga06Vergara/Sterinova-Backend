@@ -1,3 +1,8 @@
+import { CotizacionItem } from '../cotizaciones/entities/cotizacion-item.entity.js';
+import { prepararMateriales, metodoOrden } from './materiales-orden.js';
+import { UpdateMaterialesOrdenDto } from './dto/update-materiales-orden.dto.js';
+import { OrdenServicioMaterial } from '../ordenes-servicio/entities/orden-servicio-material.entity.js';
+import { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
 import {
   BadRequestException,
   ConflictException,
@@ -13,6 +18,8 @@ import { CreateOrdenDto } from './dto/create-orden.dto.js';
 import { UpdateEstadoOrdenDto } from './dto/update-estado-orden.dto.js';
 import { InjectDataSource } from '@nestjs/typeorm';
 import type { DataSource } from 'typeorm';
+import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecutivos.entity.js';
+import { siguienteConsecutivo } from '../documentos/consecutivo.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
 
@@ -27,77 +34,160 @@ export class LogisticaService {
     private readonly auditoriaService: AuditoriaService,
   ) {}
 
-  private async generateConsecutivo(): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `OS-${year}-`;
-
-    const last = await this.ordenesRepository
-      .createQueryBuilder('orden')
-      .where('orden.consecutivo LIKE :prefix', { prefix: `${prefix}%` })
-      .orderBy('orden.id', 'DESC')
-      .getOne();
-
-    let next = 1;
-    if (last?.consecutivo) {
-      const parts = last.consecutivo.split('-');
-      const parsed = Number.parseInt(parts[parts.length - 1] ?? '0', 10);
-      if (!Number.isNaN(parsed)) {
-        next = parsed + 1;
+  async createOrden(dto: CreateOrdenDto): Promise<OrdenServicio> {
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const quotes = manager.getRepository(Cotizacion);
+      const orders = manager.getRepository(OrdenServicio);
+      const cotizacion = await quotes.findOne({
+        where: { id: dto.cotizacion_id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!cotizacion) throw new NotFoundException('Cotización no encontrada');
+      if (cotizacion.estado !== 'APROBADA') {
+        throw new BadRequestException(
+          'Solo se pueden generar órdenes desde cotizaciones APROBADAS',
+        );
       }
-    }
-
-    return `${prefix}${String(next).padStart(4, '0')}`;
+      if (
+        await orders.findOne({ where: { cotizacion_id: dto.cotizacion_id } })
+      ) {
+        throw new ConflictException(
+          'La cotización ya tiene una orden de servicio',
+        );
+      }
+      if (!dto.fecha_programada)
+        throw new BadRequestException('La fecha programada es obligatoria');
+      const year = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        timeZone: 'America/Bogota',
+      }).format(new Date());
+      const name = `orden_servicio:${year}`;
+      // Atomic initialization also serializes the first requests of a new year.
+      await manager.query(
+        'INSERT INTO secuencias_consecutivos (nombre, ultimo_valor) VALUES (?, 0) ON DUPLICATE KEY UPDATE nombre = VALUES(nombre)',
+        [name],
+      );
+      const sequences = manager.getRepository(SecuenciaConsecutivos);
+      const sequence = await sequences.findOne({
+        where: { nombre: name },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!sequence)
+        throw new Error('No se pudo inicializar la secuencia de órdenes');
+      // Preserve the existing four-digit minimum for OS. COT/CER retain three.
+      const { valor, numero } = siguienteConsecutivo(sequence.ultimo_valor, 4);
+      // Explicit UPDATE avoids save() deciding to INSERT from an older
+      // REPEATABLE READ snapshot during the first concurrent allocations.
+      await manager.query(
+        'UPDATE secuencias_consecutivos SET ultimo_valor = ? WHERE nombre = ?',
+        [valor.toString(), name],
+      );
+      const items = await manager
+        .getRepository(CotizacionItem)
+        .find({ where: { cotizacion_id: dto.cotizacion_id } });
+      const materiales = prepararMateriales(dto.materiales ?? [], items);
+      const savedOrder = await orders.save(
+        orders.create({
+          metodo_esterilizacion: metodoOrden(
+            cotizacion.tipo_servicio,
+            dto.metodo_esterilizacion,
+          ),
+          consecutivo: `OS-${year}-${numero}`,
+          cotizacion_id: dto.cotizacion_id,
+          fecha_programada: dto.fecha_programada,
+          estado: EstadoOrdenServicio.PENDIENTE,
+          conductor_asignado: dto.conductor_asignado ?? null,
+          vehiculo_placa: dto.vehiculo_placa ?? null,
+          observaciones: dto.observaciones ?? null,
+        }),
+      );
+      if (materiales.length)
+        await manager
+          .getRepository(OrdenServicioMaterial)
+          .insert(
+            materiales.map((material) => ({
+              ...material,
+              orden_id: savedOrder.id,
+            })),
+          );
+      return savedOrder;
+    });
+    return this.findOne(saved.id);
   }
 
-  async createOrden(dto: CreateOrdenDto): Promise<OrdenServicio> {
-    const cotizacion = await this.cotizacionesRepository.findOne({
-      where: { id: dto.cotizacion_id },
-      relations: ['cliente', 'items'],
-    });
-
-    if (!cotizacion) {
-      throw new NotFoundException(
-        `Cotización #${dto.cotizacion_id} no encontrada`,
+  async updateMateriales(
+    id: number,
+    dto: UpdateMaterialesOrdenDto,
+    usuarioId: number,
+  ) {
+    await this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(OrdenServicio);
+      const orden = await repository.findOne({
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!orden) throw new NotFoundException('Orden no encontrada');
+      if (orden.version !== dto.version)
+        throw new ConflictException(
+          'La orden cambió; recargue antes de guardar',
+        );
+      if (
+        [EstadoOrdenServicio.PROCESADO, EstadoOrdenServicio.CANCELADO].includes(
+          orden.estado,
+        ) ||
+        (await manager
+          .getRepository(CicloEsterilizacion)
+          .existsBy({ orden_id: id }))
+      ) {
+        throw new ConflictException(
+          'Los materiales están bloqueados después del registro del ciclo',
+        );
+      }
+      const quote = await manager
+        .getRepository(Cotizacion)
+        .findOneByOrFail({ id: orden.cotizacion_id });
+      const items = await manager
+        .getRepository(CotizacionItem)
+        .find({ where: { cotizacion_id: orden.cotizacion_id } });
+      const materiales = prepararMateriales(dto.materiales, items);
+      orden.metodo_esterilizacion = metodoOrden(
+        quote.tipo_servicio,
+        dto.metodo_esterilizacion ?? orden.metodo_esterilizacion ?? undefined,
       );
-    }
-
-    if (cotizacion.estado !== 'APROBADA') {
-      throw new BadRequestException(
-        'Solo se pueden generar órdenes desde cotizaciones APROBADAS',
+      await manager
+        .getRepository(OrdenServicioMaterial)
+        .delete({ orden_id: id });
+      await manager
+        .getRepository(OrdenServicioMaterial)
+        .insert(materiales.map((m) => ({ ...m, orden_id: id })));
+      // Child-only edits must also invalidate optimistic versions of the header.
+      orden.version = dto.version + 1;
+      await repository.save(orden);
+      await this.auditoriaService.create(
+        {
+          usuario_id: usuarioId,
+          entidad: 'orden_servicio',
+          entidad_id: id,
+          accion: AccionAuditoria.EDITAR,
+          detalle: {
+            version_anterior: dto.version,
+            materiales: materiales.length,
+          },
+        },
+        manager,
       );
-    }
-
-    const existing = await this.ordenesRepository.findOne({
-      where: { cotizacion_id: dto.cotizacion_id },
     });
-    if (existing) {
-      throw new ConflictException(
-        `La cotización ${cotizacion.consecutivo} ya tiene la orden ${existing.consecutivo}`,
-      );
-    }
-
-    if (!dto.fecha_programada) {
-      throw new BadRequestException('La fecha programada es obligatoria');
-    }
-
-    const consecutivo = await this.generateConsecutivo();
-    const orden = this.ordenesRepository.create({
-      consecutivo,
-      cotizacion_id: dto.cotizacion_id,
-      fecha_programada: dto.fecha_programada,
-      estado: EstadoOrdenServicio.PENDIENTE,
-      conductor_asignado: dto.conductor_asignado ?? null,
-      vehiculo_placa: dto.vehiculo_placa ?? null,
-      observaciones: dto.observaciones ?? null,
-    });
-
-    const saved = await this.ordenesRepository.save(orden);
-    return this.findOne(saved.id);
+    return this.findOne(id);
   }
 
   findAll(): Promise<OrdenServicio[]> {
     return this.ordenesRepository.find({
-      relations: ['cotizacion', 'cotizacion.cliente', 'cotizacion.items'],
+      relations: [
+        'cotizacion',
+        'cotizacion.cliente',
+        'cotizacion.items',
+        'materiales',
+      ],
       order: { id: 'DESC' },
     });
   }
@@ -105,7 +195,12 @@ export class LogisticaService {
   async findOne(id: number): Promise<OrdenServicio> {
     const orden = await this.ordenesRepository.findOne({
       where: { id },
-      relations: ['cotizacion', 'cotizacion.cliente', 'cotizacion.items'],
+      relations: [
+        'cotizacion',
+        'cotizacion.cliente',
+        'cotizacion.items',
+        'materiales',
+      ],
     });
     if (!orden) {
       throw new NotFoundException(`Orden de servicio #${id} no encontrada`);
@@ -124,18 +219,28 @@ export class LogisticaService {
 
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(OrdenServicio);
-      const orden = await repository.findOne({ where: { id } });
-      if (!orden) throw new NotFoundException(`Orden de servicio #${id} no encontrada`);
+      const orden = await repository.findOne({
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!orden)
+        throw new NotFoundException(`Orden de servicio #${id} no encontrada`);
       const estadoAnterior = orden.estado;
       orden.estado = dto.estado;
       const saved = await repository.save(orden);
-      await this.auditoriaService.create({
-        usuario_id: usuarioId,
-        entidad: 'orden_servicio',
-        entidad_id: id,
-        accion: AccionAuditoria.CAMBIAR_ESTADO,
-        detalle: { estado_anterior: estadoAnterior, estado_nuevo: dto.estado },
-      }, manager);
+      await this.auditoriaService.create(
+        {
+          usuario_id: usuarioId,
+          entidad: 'orden_servicio',
+          entidad_id: id,
+          accion: AccionAuditoria.CAMBIAR_ESTADO,
+          detalle: {
+            estado_anterior: estadoAnterior,
+            estado_nuevo: dto.estado,
+          },
+        },
+        manager,
+      );
       return saved;
     });
   }

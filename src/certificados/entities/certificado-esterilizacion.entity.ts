@@ -17,6 +17,12 @@ import { FormatoVersiones } from '../../formatos-documentales/entities/formato-v
 @Entity('certificados_esterilizacion')
 @Index('IDX_certificados_version_formato', ['version_formato_id'])
 export class CertificadoEsterilizacion {
+  @Column({ type: 'date', nullable: true })
+  fecha_esterilizacion: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  fecha_vencimiento: string | null;
+
   @PrimaryGeneratedColumn()
   id: number;
 

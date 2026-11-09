@@ -1,3 +1,12 @@
+import { readFile,mkdir } from 'node:fs/promises';
+import { seedIcontec } from '../src/sellos/seed-icontec.js';
+import { mkdtemp,writeFile,rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import * as bcrypt from 'bcrypt';
+import { SelloSnapshotService } from '../src/sellos/sello-snapshot.service.js';
+import { PlantaModule } from '../src/planta/planta.module.js';
+import { qualityEvaluations } from './fixtures/operational-cycle.js';
 import 'reflect-metadata';
 import { randomBytes, createHash } from 'node:crypto';
 import { createConnection, type Connection } from 'mysql2/promise';
@@ -41,10 +50,13 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
   let quoteOther: Cotizacion;
   let clientId: number;
   let localPlan: LocalRbacPilotPlan;
+  let sealRoot:string;
   const database = `sterinova_pilot_test_${randomBytes(8).toString('hex')}`;
   const files = new Map<string, Buffer>();
+  let realPdf:PdfGeneratorService|undefined;
   const pdf = {
-    generate: vi.fn(async (_snapshot: unknown, key: string) => {
+    generate: vi.fn(async (_snapshot: unknown, key: string, manager?:import('typeorm').EntityManager) => {
+      if(realPdf)return realPdf.generate(_snapshot as Record<string,unknown>,key,manager);
       const bytes = Buffer.from('%PDF-1.7 pilot fixture');
       files.set(key, bytes);
       return {
@@ -187,6 +199,10 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       else if (name === 'B') quoteB = quote;
       else quoteOther = quote;
     }
+    sealRoot=await mkdtemp(path.join(tmpdir(),'sterinova-hito4-pilot-seal-'));
+    await writeFile(path.join(sealRoot,'icontec.png'),Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jWZkAAAAASUVORK5CYII=','base64'));
+    await source.query("INSERT INTO sellos_certificacion (nombre_norma,numero_licencia,imagen_key,activo,orden) VALUES ('ICONTEC','TEST','icontec.png',1,0)");
+    await users.update(records.calidad.id,{password_hash:await bcrypt.hash('quality-test-pass',4)});
     const secret = 'isolated-rbac-pilot-secret-at-least-32-characters';
     const module = await Test.createTestingModule({
       imports: [
@@ -197,6 +213,7 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
         CotizacionesModule,
         RbacModule,
         LogisticaModule,
+        PlantaModule,
         CalidadModule,
         PdfModule,
       ],
@@ -209,6 +226,8 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
           throw new Error('Unexpected test configuration');
         },
       })
+      .overrideProvider(SelloSnapshotService)
+      .useValue(new SelloSnapshotService(source,sealRoot))
       .overrideProvider(PdfGeneratorService)
       .useValue(pdf)
       .compile();
@@ -236,6 +255,7 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
   afterAll(async () => {
     try {
       await app?.close();
+      if(sealRoot) await rm(sealRoot,{recursive:true,force:true});
       if (source?.isInitialized) await source.destroy();
     } finally {
       try {
@@ -764,5 +784,152 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       await source.query('SELECT COUNT(*) AS total FROM rbac_platform_owner'),
     ).toEqual([{ total: '1' }]);
   });
+  async function operationalOrder(tipo:'INDUSTRIAL_ETO'|'INSTITUCIONAL_VAPOR') {
+    const creator=app.get(JwtService).decode(tokens.advisorA.slice(7)).sub;
+    const quote=await source.getRepository(Cotizacion).save({consecutivo:`H4-${randomBytes(8).toString('hex')}`,
+      cliente_id:clientId,tipo_servicio:tipo,estado:'APROBADA',scope_id:10,creador_id:creator});
+    return request(app.getHttpServer()).post('/logistica/ordenes').set('Authorization',tokens.logistica)
+      .send({cotizacion_id:quote.id,fecha_programada:'2026-11-09',materiales:[{descripcion:'Material',referencia:'R1',lote:'L1',empaque:'BOLSA',cantidad:39,muestras_retencion:0,muestras_cliente:null,muestras_laboratorio:1}]}).expect(201);
+  }
+
+  it('captures, edits and locks materials, then emits EtO with leap-day expiry and frozen quality evidence', async()=>{
+    const http=app.getHttpServer();
+    const created=await operationalOrder('INDUSTRIAL_ETO');
+    expect(created.body.materiales[0]).toMatchObject({lote:'L1',cantidad:39,muestras_retencion:0,muestras_cliente:null});
+    expect(created.body.metodo_esterilizacion).toBe('ETO');
+    await request(http).patch(`/logistica/ordenes/${created.body.id}/materiales`).set('Authorization',tokens.advisorA)
+      .send({version:created.body.version,materiales:[{descripcion:'No permitido',cantidad:1}]}).expect(403);
+    const edited=await request(http).patch(`/logistica/ordenes/${created.body.id}/materiales`).set('Authorization',tokens.logistica)
+      .send({version:created.body.version,materiales:[{descripcion:'Material recibido',cantidad:39,lote:'L2',muestras_retencion:0}]}).expect(200);
+    await request(http).patch(`/logistica/ordenes/${created.body.id}/materiales`).set('Authorization',tokens.logistica)
+      .send({version:created.body.version,materiales:[{descripcion:'Obsoleto',cantidad:1}]}).expect(409);
+    await request(http).put(`/logistica/ordenes/${created.body.id}/estado`).set('Authorization',tokens.logistica).send({estado:'EN_PLANTA'}).expect(200);
+    const cycle=await request(http).post('/planta/ciclos').set('Authorization',tokens.root).send({
+      orden_id:created.body.id,equipo:'E03',metodo:'ETO',temperatura:55,humedad:70,presion:-5,
+      tiempo_exposicion:180,tiempo_aireacion:10,fecha_esterilizacion:'2024-02-29',control_biologico:'Negativo',control_quimico:'Cambio de color'}).expect(201);
+    await request(http).patch(`/logistica/ordenes/${created.body.id}/materiales`).set('Authorization',tokens.logistica)
+      .send({version:edited.body.version,materiales:[{descripcion:'Cambio posterior',cantidad:1}]}).expect(409);
+    const cert=await request(http).post('/calidad/aprobar').set('Authorization',tokens.calidad)
+      .send({ciclo_id:cycle.body.id,password:'quality-test-pass',evaluaciones:qualityEvaluations}).expect(201);
+    expect(cert.body.fecha_vencimiento).toBe('2027-02-28');
+    expect(cert.body.snapshot_datos.documento).toMatchObject({fecha_esterilizacion:'2024-02-29',fecha_vencimiento:'2027-02-28'});
+    expect(cert.body.snapshot_datos.materiales[0]).toMatchObject({lote:'L2',cantidad:39});
+    expect(cert.body.snapshot_datos.informacion_tecnica.tablas.VAPOR).toHaveLength(5);
+    expect(cert.body.snapshot_datos.informacion_tecnica.tablas.VAPOR.every((r:any)=>r.resultado==='N/A')).toBe(true);
+    expect(cert.body.snapshot_datos.sellos).toBeUndefined();
+    const evaluations=await source.query('SELECT * FROM ciclos_parametros_evaluaciones WHERE ciclo_id=?',[cycle.body.id]);
+    expect(evaluations).toHaveLength(5);
+  });
+
+  it('uses independent vapor drying data and N/A for EtO, with rollback for rejected quality', async()=>{
+    const http=app.getHttpServer();
+    const created=await operationalOrder('INSTITUCIONAL_VAPOR');
+    await request(http).put(`/logistica/ordenes/${created.body.id}/estado`).set('Authorization',tokens.logistica).send({estado:'EN_PLANTA'}).expect(200);
+    const payload={orden_id:created.body.id,equipo:'V01',metodo:'VAPOR',temperatura:134,tiempo_exposicion:10,tiempo_secado:15,
+      fecha_esterilizacion:'2026-10-30',control_biologico:'Negativo',control_quimico:'Cambio de color'};
+    await request(http).post('/planta/ciclos').set('Authorization',tokens.root).send({...payload,presion:-5}).expect(400);
+    const cycle=await request(http).post('/planta/ciclos').set('Authorization',tokens.root).send(payload).expect(201);
+    const evaluation=['temperatura','tiempo_exposicion','tiempo_secado'].map(parametro=>({parametro,criterio:'CUMPLE',opcion:0}));
+    const before=await source.query("SELECT ultimo_valor FROM secuencias_consecutivos WHERE nombre='certificado_esterilizacion'");
+    await request(http).post('/calidad/aprobar').set('Authorization',tokens.calidad)
+      .send({ciclo_id:cycle.body.id,password:'quality-test-pass',evaluaciones:evaluation.slice(0,1)}).expect(400);
+    expect(await source.query("SELECT ultimo_valor FROM secuencias_consecutivos WHERE nombre='certificado_esterilizacion'")).toEqual(before);
+    const cert=await request(http).post('/calidad/aprobar').set('Authorization',tokens.calidad)
+      .send({ciclo_id:cycle.body.id,password:'quality-test-pass',evaluaciones:evaluation}).expect(201);
+    expect(cert.body.fecha_vencimiento).toBe('2029-10-30');
+    const technical=cert.body.snapshot_datos.informacion_tecnica;
+    expect(technical.tablas.ETO.every((r:any)=>r.resultado==='N/A')).toBe(true);
+    expect(technical.tablas.VAPOR.find((r:any)=>r.parametro==='tiempo_secado')).toMatchObject({resultado:15,criterio:'CUMPLE'});
+    expect(technical.tablas.VAPOR.find((r:any)=>r.parametro==='humedad_presion')).toMatchObject({resultado:'N/A'});
+    expect(cycle.body.tiempo_aireacion).toBeNull();
+  });
+
+  it('rejects fractional material counts through the HTTP DTO',async()=>{
+    const quote=await source.getRepository(Cotizacion).save({consecutivo:`H4-${randomBytes(8).toString('hex')}`,
+      cliente_id:clientId,tipo_servicio:'INDUSTRIAL_ETO',estado:'APROBADA'});
+    await request(app.getHttpServer()).post('/logistica/ordenes').set('Authorization',tokens.logistica)
+      .send({cotizacion_id:quote.id,fecha_programada:'2026-11-09',materiales:[{descripcion:'Fraccion',cantidad:1.5}]}).expect(400);
+    expect(await source.query('SELECT id FROM ordenes_servicio WHERE cotizacion_id=?',[quote.id])).toHaveLength(0);
+  });
+
+
+  it('persists explicit noncompliance and its selected alternative when rejecting a cycle',async()=>{
+    const http=app.getHttpServer();const order=await operationalOrder('INDUSTRIAL_ETO');
+    await request(http).put(`/logistica/ordenes/${order.body.id}/estado`).set('Authorization',tokens.logistica).send({estado:'EN_PLANTA'}).expect(200);
+    const cycle=await request(http).post('/planta/ciclos').set('Authorization',tokens.root).send({
+      orden_id:order.body.id,equipo:'E03',metodo:'ETO',temperatura:55,humedad:70,presion:-5,tiempo_exposicion:180,tiempo_aireacion:10,
+      fecha_esterilizacion:'2026-10-30',control_biologico:'Requiere revision',control_quimico:'Cambio'}).expect(201);
+    const evaluations=[{parametro:'temperatura',criterio:'NO_CUMPLE',opcion:0}];
+    await request(http).post('/calidad/rechazar').set('Authorization',tokens.calidad)
+      .send({ciclo_id:cycle.body.id,motivo:'No conforme por revision de Calidad',evaluaciones:evaluations}).expect(201);
+    const saved=await source.query('SELECT criterio FROM ciclos_parametros_evaluaciones WHERE ciclo_id=?',[cycle.body.id]);
+    expect(saved).toEqual([{criterio:'NO_CUMPLE'}]);
+    const [audit]=await source.query("SELECT detalle FROM auditoria WHERE entidad='ciclo' AND entidad_id=? AND accion='rechazar'",[cycle.body.id]);
+    expect(JSON.parse(audit.detalle).evaluaciones).toEqual(evaluations);
+  });
+
+  it('keeps the original ICONTEC image after catalog changes and rejects tampering',async()=>{
+    const emitted=await source.getRepository(Cotizacion).findOneByOrFail({id:quoteA.id});
+    const first=(emitted.snapshot_datos as any).sellos.icontec;
+    const seals=new SelloSnapshotService(source,sealRoot);
+    const original=await seals.readFrozen(first);
+    await writeFile(path.join(sealRoot,'next.png'),Buffer.concat([original,Buffer.from('next-version')]));
+    await source.query("UPDATE sellos_certificacion SET imagen_key='next.png',numero_licencia='TEST-2' WHERE id=?",[first.sello_id]);
+    const next=await source.transaction(async manager=>{
+      const frozen=await seals.freeze(manager);
+      expect(await seals.readFrozen(frozen,manager)).toEqual(Buffer.concat([original,Buffer.from('next-version')]));
+      return frozen;
+    });
+    expect(next.version_id).not.toBe(first.version_id);
+    expect(await seals.readFrozen(first)).toEqual(original);
+    expect((await source.getRepository(Cotizacion).findOneByOrFail({id:quoteA.id})).snapshot_datos).toEqual(emitted.snapshot_datos);
+    await writeFile(path.join(sealRoot,next.imagen_key),Buffer.from('tampered'));
+    await expect(seals.readFrozen(next)).rejects.toMatchObject({status:409});
+  });
+
+  it.skipIf(!process.env.HITO4_RENDER_BASE_URL||!process.env.HITO4_ICONTEC_SOURCE)('emits real quotation and EtO/Vapor PDFs using React, Chromium and MariaDB',async()=>{
+    const http=app.getHttpServer();
+    const bytes=await readFile(process.env.HITO4_ICONTEC_SOURCE!);
+    await writeFile(path.join(sealRoot,'actual-icontec.jpg'),bytes);
+    await source.query("UPDATE sellos_certificacion SET nombre_norma='ICONTEC ISO 9001 / ISO 13485 e IQNET',numero_licencia='SC-CER814321 / DM-CER814323',imagen_key='actual-icontec.jpg' WHERE id=1");
+    const seeded=await seedIcontec(source,process.env.HITO4_ICONTEC_SOURCE!,sealRoot);
+    expect((await seedIcontec(source,process.env.HITO4_ICONTEC_SOURCE!,sealRoot)).version_id).toBe(seeded.version_id);
+    const previous=process.env.PDF_RENDER_BASE_URL;
+    process.env.PDF_RENDER_BASE_URL=process.env.HITO4_RENDER_BASE_URL;
+    const rootId=app.get(JwtService).decode(tokens.root.slice(7)).sub;
+    const qualityId=app.get(JwtService).decode(tokens.calidad.slice(7)).sub;
+    await source.getRepository(User).update(rootId,{cargo:'Operador de Planta'});
+    await source.getRepository(User).update(qualityId,{cargo:'Coordinador de Calidad'});
+    realPdf=new PdfGeneratorService({saveFile:async(buffer:Buffer,key:string)=>{files.set(key,buffer);}} as never,new SelloSnapshotService(source,sealRoot));
+    const artifacts=path.resolve('storage/backups/hito4-pdfs-smoke');await mkdir(artifacts,{recursive:true});
+    try {
+      const quote=await request(http).post('/cotizaciones').set('Authorization',tokens.advisorA)
+        .send({cliente_id:clientId,tipo_servicio:'INDUSTRIAL_ETO',items:[{descripcion:'Servicio real de prueba',cantidad:1,valor_unitario:100}]}).expect(201);
+      const issued=await request(http).post(`/cotizaciones/${quote.body.id}/emitir`).set('Authorization',tokens.advisorA).expect(201);
+      expect(issued.body.pdf_renderer_version).toBe('react-playwright-v2');
+      expect(issued.body.snapshot_datos.sellos.icontec.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
+      await writeFile(path.join(artifacts,'cotizacion.pdf'),files.get(issued.body.pdf_url)!);
+      for(const tipo of ['INDUSTRIAL_ETO','INSTITUCIONAL_VAPOR'] as const){
+        const order=await operationalOrder(tipo);
+        await request(http).put(`/logistica/ordenes/${order.body.id}/estado`).set('Authorization',tokens.logistica).send({estado:'EN_PLANTA'}).expect(200);
+        const eto=tipo==='INDUSTRIAL_ETO';
+        const payload={orden_id:order.body.id,equipo:eto?'E03':'V01',metodo:eto?'ETO':'VAPOR',temperatura:eto?55:134,
+          fecha_esterilizacion:'2024-02-29',humedad:eto?70:null,presion:eto?-5:null,tiempo_aireacion:eto?10:null,
+          tiempo_secado:eto?null:15,tiempo_exposicion:eto?180:10,control_biologico:'No se observa crecimiento',control_quimico:'Cambio de color'};
+        const cycle=await request(http).post('/planta/ciclos').set('Authorization',tokens.root).send(payload).expect(201);
+        const evaluations=eto?qualityEvaluations:['temperatura','tiempo_exposicion','tiempo_secado'].map(parametro=>({parametro,criterio:'CUMPLE',opcion:0}));
+        const cert=await request(http).post('/calidad/aprobar').set('Authorization',tokens.calidad)
+          .send({ciclo_id:cycle.body.id,password:'quality-test-pass',evaluaciones:evaluations}).expect(201);
+        expect(cert.body.snapshot_datos.elaborado_por.cargo).toBe('Operador de Planta');
+        expect(cert.body.snapshot_datos.aprobador.cargo).toBe('Coordinador de Calidad');
+        expect(cert.body.fecha_vencimiento).toBe('2027-02-28');
+        expect(createHash('sha256').update(files.get(cert.body.pdf_url)!).digest('hex')).toBe(cert.body.hash_pdf);
+        await writeFile(path.join(artifacts,eto?'certificado-eto.pdf':'certificado-vapor.pdf'),files.get(cert.body.pdf_url)!);
+      }
+    } finally {
+      await realPdf.onModuleDestroy();realPdf=undefined;
+      if(previous===undefined)delete process.env.PDF_RENDER_BASE_URL;else process.env.PDF_RENDER_BASE_URL=previous;
+    }
+  },120000);
 
 });

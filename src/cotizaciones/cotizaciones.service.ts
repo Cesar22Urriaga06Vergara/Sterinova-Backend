@@ -1,3 +1,5 @@
+import { SelloSnapshotService } from '../sellos/sello-snapshot.service.js';
+import { siguienteConsecutivo } from '../documentos/consecutivo.js';
 import {
   BadRequestException,
   ConflictException,
@@ -16,6 +18,7 @@ import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecut
 import { FormatoResolverService } from '../formatos-documentales/formato-resolver.service.js';
 import {
   PDF_RENDERER_VERSION,
+  rendererVersionFor,
   PdfGeneratorService,
 } from '../pdf/pdf-generator.service.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
@@ -112,6 +115,7 @@ export class CotizacionesService {
     private readonly formatoResolver: FormatoResolverService,
     private readonly pdfGenerator: PdfGeneratorService,
     private readonly auditoriaService: AuditoriaService,
+    private readonly selloSnapshot: SelloSnapshotService,
   ) {}
 
   private prefix(tipo: TipoServicioCotizacion): string {
@@ -169,8 +173,10 @@ export class CotizacionesService {
             lock: { mode: 'pessimistic_write' },
           })) ?? sequence;
       }
-      const next = BigInt(sequence.ultimo_valor) + 1n;
-      const consecutivo = `${prefix}${next.toString().padStart(3, '0')}`;
+      const { valor: next, numero } = siguienteConsecutivo(
+        sequence.ultimo_valor,
+      );
+      const consecutivo = `${prefix}${numero}`;
       sequence.ultimo_valor = next.toString();
       await sequences.save(sequence);
       const repository = manager.getRepository(Cotizacion);
@@ -277,10 +283,11 @@ export class CotizacionesService {
       if (!current)
         throw new NotFoundException(`Cotización #${id} no encontrada`);
       if (!current.fecha_emision) return current;
+      const rendererVersion = rendererVersionFor(current.snapshot_datos);
       if (
         current.pdf_url &&
         current.hash_pdf &&
-        current.pdf_renderer_version === PDF_RENDERER_VERSION
+        current.pdf_renderer_version === rendererVersion
       ) {
         try {
           await this.pdfGenerator.getFile(current.pdf_url, current.hash_pdf);
@@ -307,13 +314,13 @@ export class CotizacionesService {
       const previousKey =
         current.pdf_url ?? `cotizaciones/${current.consecutivo}.pdf`;
       const storageKey =
-        current.pdf_renderer_version === PDF_RENDERER_VERSION
+        current.pdf_renderer_version === rendererVersion
           ? previousKey
-          : previousKey.replace(/\.pdf$/, `-${PDF_RENDERER_VERSION}.pdf`);
+          : previousKey.replace(/\.pdf$/, `-${rendererVersion}.pdf`);
       const result = await this.pdfGenerator.generate(snapshot, storageKey);
       current.pdf_url = result.storageKey;
       current.hash_pdf = result.hash;
-      current.pdf_renderer_version = PDF_RENDERER_VERSION;
+      current.pdf_renderer_version = rendererVersion;
       try {
         return await repository.save(current);
       } catch (error) {
@@ -350,8 +357,21 @@ export class CotizacionesService {
           current.cliente_id,
           manager,
         );
-        const snapshot = buildPdfSnapshot(current, version, emittedAt);
-        const result = await this.pdfGenerator.generate(snapshot, storageKey);
+        const seal = await this.selloSnapshot.freeze(
+          manager,
+          access.policy.userId,
+        );
+        const snapshot = {
+          ...buildPdfSnapshot(current, version, emittedAt),
+          schema_version: 2,
+          sellos: { icontec: seal },
+        };
+        const result = await this.pdfGenerator.generate(
+          snapshot,
+          storageKey,
+          manager,
+        );
+        current.sello_icontec_version_id = seal.version_id;
         generated = true;
         current.version_formato_id = version.id;
         current.snapshot_datos = snapshot;

@@ -1,17 +1,33 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, Min, Matches } from 'class-validator';
+import { MaterialOrdenDto } from './material-orden.dto.js';
+import { IsArray, ArrayMaxSize, ValidateNested, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
-import {
-  IsDateString,
-  IsNumber,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsDateString, IsOptional, IsString } from 'class-validator';
 
 export class CreateOrdenDto {
+  @ApiPropertyOptional({ enum: ['ETO', 'VAPOR'] })
+  @IsOptional()
+  @IsIn(['ETO', 'VAPOR'])
+  metodo_esterilizacion?: 'ETO' | 'VAPOR';
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: () => [MaterialOrdenDto], maxItems: 200 })
+  @IsArray()
+  @ArrayMaxSize(200)
+  @ValidateNested({ each: true })
+  @Type(() => MaterialOrdenDto)
+  materiales?: MaterialOrdenDto[];
+
   @Type(() => Number)
-  @IsNumber()
+  @ApiProperty({ type: Number, minimum: 1 })
+  @IsInt()
+  @Min(1)
   cotizacion_id: number;
 
-  @IsDateString()
+  @ApiProperty({ type: String, format: 'date' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @IsDateString({ strict: true })
   fecha_programada: string;
 
   @IsOptional()

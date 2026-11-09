@@ -20,6 +20,9 @@ interface AuthenticatedRequest extends Request {
 export class PlantaController {
   constructor(private readonly plantaService: PlantaService) {}
 
+  @Get('protocolos')
+  findProtocolos() { return this.plantaService.findProtocolos(); }
+
   @Get('ordenes')
   findOrdenesEnPlanta() {
     return this.plantaService.findOrdenesEnPlanta();

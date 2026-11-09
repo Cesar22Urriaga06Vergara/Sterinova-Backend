@@ -1,8 +1,11 @@
+import { OrdenServicioMaterial } from './orden-servicio-material.entity.js';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   OneToOne,
+  OneToMany,
+  VersionColumn,
   JoinColumn,
   CreateDateColumn,
   type Relation,
@@ -12,6 +15,15 @@ import { EstadoOrdenServicio } from './estado-orden.enum.js';
 
 @Entity('ordenes_servicio')
 export class OrdenServicio {
+  @Column({ type: 'enum', enum: ['ETO', 'VAPOR'], nullable: true })
+  metodo_esterilizacion: 'ETO' | 'VAPOR' | null;
+
+  @VersionColumn()
+  version: number;
+
+  @OneToMany(() => OrdenServicioMaterial, (material) => material.orden)
+  materiales: Relation<OrdenServicioMaterial[]>;
+
   @PrimaryGeneratedColumn()
   id: number;
 
