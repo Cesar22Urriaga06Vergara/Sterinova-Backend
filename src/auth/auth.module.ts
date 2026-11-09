@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { RbacModule } from '../rbac/rbac.module.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -11,6 +12,7 @@ import { AuditoriaModule } from '../auditoria/auditoria.module.js';
 @Module({
   imports: [
     UsersModule,
+    RbacModule,
     AuditoriaModule,
     PassportModule,
     JwtModule.registerAsync({

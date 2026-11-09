@@ -171,6 +171,43 @@
         ]
       }
     },
+    "/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [
+          {
+            "name": "x-scope-id",
+            "in": "header",
+            "description": "Ámbito autorizado seleccionado; omitir para descubrir ámbitos disponibles.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Identidad pública, permisos, capacidades por ámbito y selección actual"
+          },
+          "401": {
+            "description": "Sesión inválida o usuario inactivo"
+          },
+          "403": {
+            "description": "Ámbito no autorizado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Identidad, capacidades y ámbito de la sesión actual",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/auth/login": {
       "post": {
         "operationId": "AuthController_login",

@@ -15,7 +15,11 @@ import type {
   ResourceAccess,
   RoleAssignment,
 } from './authorization.types.js';
-import { isPermissionCode, type PermissionCode } from './permission-catalog.js';
+import {
+  PERMISSION_CATALOG,
+  isPermissionCode,
+  type PermissionCode,
+} from './permission-catalog.js';
 
 export type PermissionContext = {
   permission: PermissionCode;
@@ -39,18 +43,12 @@ type GrantRow = {
 export class RbacAuthorizationService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
-  async getContext(
-    userId: number,
-    permission: string,
-    scopeHeader?: string | string[],
-  ): Promise<PermissionContext> {
+  private async loadSubject(userId: number) {
     if (!Number.isSafeInteger(userId) || userId < 1)
       throw new UnauthorizedException();
-    if (!isPermissionCode(permission))
-      throw new ForbiddenException('Permiso no reconocido');
     const user = await this.dataSource
       .getRepository(User)
-      .findOne({ where: { id: userId, activo: true }, select: { id: true } });
+      .findOne({ where: { id: userId, activo: true } });
     if (!user)
       throw new UnauthorizedException('Usuario inactivo o inexistente');
     const [scopes, rows] = await Promise.all([
@@ -105,7 +103,15 @@ export class RbacAuthorizationService {
       active: true,
       assignments: [...assignments.values()],
     };
-    const policy = compileAuthorizationPolicy(
+    return { user, subject, scopes };
+  }
+
+  private compile(
+    subject: AuthorizationSubject,
+    permission: string,
+    scopes: RbacScope[],
+  ) {
+    return compileAuthorizationPolicy(
       subject,
       permission,
       scopes.map((scope) => ({
@@ -115,18 +121,89 @@ export class RbacAuthorizationService {
         active: scope.active,
       })),
     );
+  }
+
+  async getSession(userId: number, scopeHeader?: string | string[]) {
+    const { user, subject, scopes } = await this.loadSubject(userId);
+    const policies = PERMISSION_CATALOG.map(({ code }) => ({
+      permission: code,
+      policy: this.compile(subject, code, scopes),
+    }));
+    const allowedIds = new Set(
+      policies.flatMap(({ policy }) => [
+        ...policy.scopeIds,
+        ...policy.ownScopeIds,
+      ]),
+    );
+    const available_scopes = scopes
+      .filter((scope) => allowedIds.has(scope.id))
+      .map(({ id, code, name, kind }) => ({ id, code, name, kind }));
+    const selectedId = this.parseScope(scopeHeader);
+    if (selectedId !== undefined && !allowedIds.has(selectedId))
+      throw new ForbiddenException('Ámbito solicitado no autorizado');
+    const current_scope =
+      selectedId !== undefined
+        ? available_scopes.find((scope) => scope.id === selectedId)!
+        : available_scopes.length === 1
+          ? available_scopes[0]
+          : null;
+    const capabilities = policies
+      .map(({ permission, policy }) => ({
+        permission,
+        scope_ids: policy.scopeIds.filter(
+          (id) => !current_scope || id === current_scope.id,
+        ),
+        own_scope_ids: policy.ownScopeIds.filter(
+          (id) => !current_scope || id === current_scope.id,
+        ),
+      }))
+      .filter(
+        (capability) =>
+          capability.scope_ids.length || capability.own_scope_ids.length,
+      );
+    return {
+      user: {
+        id: user.id,
+        nombre: user.nombre,
+        apellido: user.apellido,
+        email: user.email,
+        rol: user.rol,
+        cargo: user.cargo,
+        celular: user.celular,
+        email_contacto: user.email_contacto,
+      },
+      permissions: capabilities.map(({ permission }) => permission),
+      capabilities,
+      current_scope,
+      available_scopes,
+    };
+  }
+
+  private parseScope(scopeHeader?: string | string[]) {
+    if (scopeHeader === undefined) return undefined;
+    if (
+      typeof scopeHeader !== 'string' ||
+      !/^[1-9]\d*$/.test(scopeHeader) ||
+      !Number.isSafeInteger(Number(scopeHeader))
+    )
+      throw new BadRequestException('x-scope-id debe ser un entero positivo');
+    return Number(scopeHeader);
+  }
+
+  async getContext(
+    userId: number,
+    permission: string,
+    scopeHeader?: string | string[],
+  ): Promise<PermissionContext> {
+    if (!isPermissionCode(permission))
+      throw new ForbiddenException('Permiso no reconocido');
+    const { subject, scopes } = await this.loadSubject(userId);
+    const policy = this.compile(subject, permission, scopes);
     if (!policy.scopeIds.length && !policy.ownScopeIds.length)
       throw new ForbiddenException('Sin permiso en un ámbito activo');
-    let scopeId: number | undefined;
+    const scopeId = this.parseScope(scopeHeader);
     if (scopeHeader !== undefined) {
-      if (
-        typeof scopeHeader !== 'string' ||
-        !/^[1-9]\d*$/.test(scopeHeader) ||
-        !Number.isSafeInteger(Number(scopeHeader))
-      )
-        throw new BadRequestException('x-scope-id debe ser un entero positivo');
-      scopeId = Number(scopeHeader);
-      if (![...policy.scopeIds, ...policy.ownScopeIds].includes(scopeId))
+      if (![...policy.scopeIds, ...policy.ownScopeIds].includes(scopeId!))
         throw new ForbiddenException('Ámbito solicitado no autorizado');
     }
     const resourceScopeIds = scopes
