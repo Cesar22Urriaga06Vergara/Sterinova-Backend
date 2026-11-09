@@ -125,7 +125,7 @@ describe('AppController (e2e)', () => {
           .set('Authorization', authorization)
           .send({
             cliente_id: clienteId,
-            tipo_servicio: 'LAVANDERIA',
+            tipo_servicio: 'INSTITUCIONAL_VAPOR',
             items: [
               {
                 descripcion: 'Instrumental de prueba',
@@ -149,6 +149,16 @@ describe('AppController (e2e)', () => {
           .set('Authorization', authorization)
           .send({
             cotizacion_id: cotizacionId,
+            materiales: Array.from({ length: 5 }, (_, i) => ({
+              descripcion: `Material ${i + 1}`,
+              referencia: `REF-${i + 1}`,
+              lote: `LOTE-${i + 1}`,
+              cantidad: i + 1,
+              empaque: `BOLSA-${i + 1}`,
+              muestras_retencion: 0,
+              muestras_cliente: null,
+              muestras_laboratorio: null,
+            })),
             fecha_programada: new Date(Date.now() + 86_400_000)
               .toISOString()
               .slice(0, 10),
@@ -168,11 +178,10 @@ describe('AppController (e2e)', () => {
             orden_id: ordenId,
             equipo: 'EQUIPO-E2E-01',
             metodo: MetodoEsterilizacion.VAPOR,
-            temperatura: 121,
-            humedad: 70,
-            presion: 15,
-            tiempo_exposicion: 30,
-            tiempo_aireacion: 0,
+            fecha_esterilizacion: '2026-11-09',
+            temperatura: 134,
+            tiempo_exposicion: 10,
+            tiempo_secado: 15,
             control_biologico: 'Negativo',
             control_quimico: 'Conforme',
           })
@@ -181,9 +190,27 @@ describe('AppController (e2e)', () => {
         const approved = await http
           .post('/calidad/aprobar')
           .set('Authorization', authorization)
-          .send({ ciclo_id: cicloId, password })
+          .send({
+            ciclo_id: cicloId,
+            password,
+            evaluaciones: [
+              'temperatura',
+              'tiempo_exposicion',
+              'tiempo_secado',
+            ].map((parametro) => ({
+              parametro,
+              criterio: 'CUMPLE',
+              opcion: 0,
+            })),
+          })
           .expect(201);
         certificadoId = approved.body.id;
+        expect(approved.body.snapshot_datos.materiales).toHaveLength(5);
+        expect(
+          approved.body.snapshot_datos.materiales.map(
+            (m: { lote: string }) => m.lote,
+          ),
+        ).toEqual(['LOTE-1', 'LOTE-2', 'LOTE-3', 'LOTE-4', 'LOTE-5']);
 
         const pdf = await http
           .get(`/certificados/${certificadoId}/descargar`)
@@ -209,16 +236,26 @@ describe('AppController (e2e)', () => {
               'DELETE FROM certificados_esterilizacion WHERE id = ?',
               [certificadoId],
             );
-          if (cicloId)
+          if (cicloId) {
+            await queryRunner.query(
+              'DELETE FROM ciclos_parametros_evaluaciones WHERE ciclo_id = ?',
+              [cicloId],
+            );
             await queryRunner.query(
               'DELETE FROM ciclos_esterilizacion WHERE id = ?',
               [cicloId],
             );
-          if (ordenId)
+          }
+          if (ordenId) {
+            await queryRunner.query(
+              'DELETE FROM ordenes_servicio_materiales WHERE orden_id = ?',
+              [ordenId],
+            );
             await queryRunner.query(
               'DELETE FROM ordenes_servicio WHERE id = ?',
               [ordenId],
             );
+          }
           if (cotizacionId) {
             await queryRunner.query(
               'DELETE FROM cotizacion_items WHERE cotizacion_id = ?',

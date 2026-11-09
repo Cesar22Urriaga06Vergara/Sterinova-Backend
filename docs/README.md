@@ -10,6 +10,7 @@ Revisada contra el código de `backend_sterinova` y `frontend_sterinova` el 6 de
 
 ## Documentos vigentes
 
+- [Cierre de Hito 4 y traspaso a la siguiente fase](estado-proyecto/cierre-hito4-y-traspaso-2026-11-09.md).
 - [Contrato central RBAC y matriz inicial](arquitectura/contrato-autorizacion-rbac.md): piloto activo en Cotizaciones; otros módulos y UI pendientes.
 - [Piloto de Cotizaciones: migración local, respaldo y pruebas](estado-proyecto/piloto-cotizaciones-rbac-2026-11-08.md).
 - [Inicio de Fase 1 RBAC: resultados y límites](estado-proyecto/inicio-fase1-rbac-2026-11-08.md).
