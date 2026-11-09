@@ -36,6 +36,9 @@ export class Cotizacion {
   })
   tipo_servicio: TipoServicioCotizacion;
 
+  @Column({ type: 'int', default: 1 })
+  version: number;
+
   @Column({ default: 'Borrador' })
   estado: string;
 

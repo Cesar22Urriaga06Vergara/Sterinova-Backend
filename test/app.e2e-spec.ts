@@ -139,10 +139,10 @@ describe('AppController (e2e)', () => {
         expect(Number(quote.body.subtotal)).toBe(20000);
         expect(Number(quote.body.iva)).toBe(3800);
         await http
-          .put(`/cotizaciones/${cotizacionId}`)
+          .post(`/cotizaciones/${cotizacionId}/aprobar`)
           .set('Authorization', authorization)
-          .send({ estado: 'APROBADA' })
-          .expect(200);
+          .send({ version: quote.body.version })
+          .expect(201);
 
         const order = await http
           .post('/logistica/ordenes')

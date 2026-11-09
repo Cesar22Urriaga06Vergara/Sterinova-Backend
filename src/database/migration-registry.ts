@@ -1,3 +1,4 @@
+import { AddQuoteEditVersion1794225601000 } from './migrations/1794225601000-AddQuoteEditVersion.js';
 import { InitialSchema1730750400000 } from './migrations/1730750400000-InitialSchema.js';
 import { AddQualityCertificates1730750401000 } from './migrations/1730750401000-AddQualityCertificates.js';
 import { AddCertificateValidationToken1730750402000 } from './migrations/1730750402000-AddCertificateValidationToken.js';
@@ -31,4 +32,5 @@ export const DATABASE_MIGRATIONS = [
   AddScopedRbac1794096000000,
   ScopeQuotePilot1794096001000,
   AddVersionedIva1794225600000,
+  AddQuoteEditVersion1794225601000,
 ];

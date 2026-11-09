@@ -1,0 +1,103 @@
+﻿import { CotizacionesService } from './cotizaciones.service.js';
+import { Cotizacion } from './entities/cotizacion.entity.js';
+import { quotePermission } from '../../test/fixtures/quote-permission.js';
+
+function fixture(overrides = {}) {
+  const quote = {
+    id: 1,
+    estado: 'Borrador',
+    fecha_emision: null,
+    version: 1,
+    iva_tasa: '0.050000',
+    items: [],
+    ...overrides,
+  };
+  const repo = {
+    findOne: vi.fn(async () => quote),
+    save: vi.fn(async (value) => value),
+  };
+  const items = { delete: vi.fn(), create: vi.fn((value) => value) };
+  const manager = {
+    getRepository: (entity) => (entity === Cotizacion ? repo : items),
+  };
+  const service = new CotizacionesService(
+    repo as never,
+    items as never,
+    { findOne: vi.fn() } as never,
+    { transaction: async (work) => work(manager) } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+  return { service, quote, repo, items };
+}
+const access = () => quotePermission('cotizaciones.editar');
+describe('draft editing', () => {
+  it.each([
+    { estado: 'EMITIDA' },
+    { estado: 'APROBADA' },
+    { fecha_emision: new Date() },
+  ])('rejects non drafts %j', async (value) => {
+    const { service, repo } = fixture(value);
+    await expect(
+      service.update(
+        1,
+        { version: 1, condiciones_comerciales: 'Cambio' },
+        access(),
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+  it('rejects a stale version before changing items', async () => {
+    const { service, items } = fixture({ version: 2 });
+    await expect(
+      service.update(
+        1,
+        {
+          version: 1,
+          items: [{ descripcion: 'Nuevo', cantidad: 2, valor_unitario: 100 }],
+        },
+        access(),
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(items.delete).not.toHaveBeenCalled();
+  });
+  it('replaces items and calculates using the stored rate', async () => {
+    const { service, quote } = fixture();
+    await service.update(
+      1,
+      {
+        version: 1,
+        items: [{ descripcion: 'Nuevo', cantidad: 2, valor_unitario: 100 }],
+      },
+      access(),
+    );
+    expect(quote).toMatchObject({
+      version: 2,
+      subtotal: 200,
+      iva: 10,
+      total: 210,
+      items: [
+        {
+          descripcion: 'Nuevo',
+          cantidad: 2,
+          valor_unitario: 100,
+          valor_total: 200,
+        },
+      ],
+    });
+  });
+  it('does not invent a fiscal rate for legacy drafts', async () => {
+    const { service } = fixture({ iva_tasa: null });
+    await expect(
+      service.update(
+        1,
+        {
+          version: 1,
+          items: [{ descripcion: 'Nuevo', cantidad: 1, valor_unitario: 100 }],
+        },
+        access(),
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+});

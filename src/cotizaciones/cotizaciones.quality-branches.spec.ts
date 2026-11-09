@@ -6,7 +6,13 @@ import { CotizacionItem } from './entities/cotizacion-item.entity.js';
 import { CotizacionesService } from './cotizaciones.service.js';
 
 function serviceFor(quote: Partial<Cotizacion>) {
-  const current = { id: 7, fecha_emision: null, ...quote } as Cotizacion;
+  const current = {
+    id: 7,
+    estado: 'Borrador',
+    version: 1,
+    fecha_emision: null,
+    ...quote,
+  } as Cotizacion;
   const repository = {
     findOne: vi.fn(async () => current),
     save: vi.fn(async (value: Cotizacion) => value),
@@ -92,28 +98,16 @@ describe('CotizacionesService critical branch coverage', () => {
     ).resolves.toBe(current);
   });
 
-  it('allows status-only edits to emitted quotes and rejects document edits', async () => {
-    const { service, current, repository } = serviceFor({
-      fecha_emision: new Date(),
-    });
-
-    await service.update(
-      7,
-      { estado: 'APROBADA' },
-      quotePermission('cotizaciones.editar'),
-    );
-    expect(repository.save).toHaveBeenCalledWith(
-      expect.objectContaining({ estado: 'APROBADA' }),
-    );
-
+  it('rejects all edits to emitted quotes', async () => {
+    const { service, repository } = serviceFor({ fecha_emision: new Date() });
     await expect(
       service.update(
         7,
-        { condiciones_comerciales: 'Cambio' },
+        { version: 1, condiciones_comerciales: 'Cambio' },
         quotePermission('cotizaciones.editar'),
       ),
     ).rejects.toBeInstanceOf(ConflictException);
-    expect(current.estado).toBe('APROBADA');
+    expect(repository.save).not.toHaveBeenCalled();
   });
 
   it('validates a replacement client before updating a draft quote', async () => {
@@ -121,7 +115,7 @@ describe('CotizacionesService critical branch coverage', () => {
 
     await service.update(
       7,
-      { cliente_id: 3 },
+      { version: 1, cliente_id: 3 },
       quotePermission('cotizaciones.editar'),
     );
 

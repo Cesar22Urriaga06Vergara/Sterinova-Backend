@@ -283,7 +283,7 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       await request(app.getHttpServer())
         .put(`/cotizaciones/${id}`)
         .set('Authorization', tokens.advisorA)
-        .send({ condiciones_comerciales: 'No permitido' })
+        .send({ version: 1, condiciones_comerciales: 'No permitido' })
         .expect(404);
       await request(app.getHttpServer())
         .delete(`/cotizaciones/${id}`)
@@ -469,6 +469,249 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
     expect(historical.iva_version_id).toBeNull();
   }, 15000);
 
+  it('edits complete drafts atomically, rejects stale writers, IDOR and invalid payloads', async () => {
+    const http = app.getHttpServer();
+    const created = await request(http)
+      .post('/cotizaciones')
+      .set('Authorization', tokens.advisorB)
+      .send({
+        cliente_id: clientId,
+        tipo_servicio: 'LAVANDERIA',
+        items: [{ descripcion: 'Original', cantidad: 1, valor_unitario: 100 }],
+      })
+      .expect(201);
+    const id = created.body.id;
+    const oldItem = created.body.items[0].id;
+    const newClient = await source.getRepository(Cliente).save({
+      razon_social: 'Cliente reemplazo',
+      nit: 'EDIT-002',
+      contacto: 'Contacto',
+      telefono: '000',
+      email: '',
+      direccion: 'Nueva direccion',
+    });
+    const replacement = {
+      version: 1,
+      cliente_id: newClient.id,
+      tipo_servicio: 'INSUMOS',
+      condiciones_comerciales: 'Contado',
+      items: [
+        { descripcion: 'Reemplazo', cantidad: 2, valor_unitario: 100 },
+        { descripcion: 'Extra', cantidad: 1, valor_unitario: 20 },
+      ],
+    };
+    await request(http)
+      .put(`/cotizaciones/${id}`)
+      .set('Authorization', tokens.advisorA)
+      .send(replacement)
+      .expect(404);
+    await request(http)
+      .put(`/cotizaciones/${id}`)
+      .set('Authorization', tokens.legacyAdmin)
+      .send(replacement)
+      .expect(403);
+    for (const payload of [
+      { ...replacement, version: undefined },
+      { ...replacement, items: [] },
+      { ...replacement, items: null },
+      {
+        ...replacement,
+        items: [{ descripcion: 'Negativo', cantidad: -1, valor_unitario: 1 }],
+      },
+      { ...replacement, estado: 'BORRADOR' },
+      { ...replacement, subtotal: 1 },
+      {
+        ...replacement,
+        items: [
+          { id: oldItem, descripcion: 'Hack', cantidad: 1, valor_unitario: 1 },
+        ],
+      },
+    ])
+      await request(http)
+        .put(`/cotizaciones/${id}`)
+        .set('Authorization', tokens.advisorB)
+        .send(payload)
+        .expect(400);
+    const responses = await Promise.all(
+      [replacement, { ...replacement, condiciones_comerciales: 'Cr?dito' }].map(
+        (payload) =>
+          request(http)
+            .put(`/cotizaciones/${id}`)
+            .set('Authorization', tokens.advisorB)
+            .send(payload),
+      ),
+    );
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      200, 409,
+    ]);
+    const saved = await source
+      .getRepository(Cotizacion)
+      .findOneByOrFail({ id });
+    expect(saved).toMatchObject({
+      version: 2,
+      subtotal: '220.00',
+      iva: '11.00',
+      total: '231.00',
+      iva_tasa: '0.050000',
+      tipo_servicio: 'INSUMOS',
+    });
+    expect(saved.cliente_id).toBe(newClient.id);
+    const fetched = await request(http)
+      .get(`/cotizaciones/${id}`)
+      .set('Authorization', tokens.advisorB)
+      .expect(200);
+    expect(fetched.body.cliente.id).toBe(newClient.id);
+    expect(saved.items).toHaveLength(2);
+    expect(saved.items.map((item) => item.id)).not.toContain(oldItem);
+    expect(
+      await source.query('SELECT id FROM cotizacion_items WHERE id=?', [
+        oldItem,
+      ]),
+    ).toEqual([]);
+    await request(http)
+      .put(`/cotizaciones/${id}`)
+      .set('Authorization', tokens.advisorB)
+      .send({ ...replacement, version: 2, cliente_id: 2147483647 })
+      .expect(404);
+    expect(
+      (await source.getRepository(Cotizacion).findOneByOrFail({ id })).version,
+    ).toBe(2);
+    for (const value of [
+      { estado: 'EMITIDA' },
+      { estado: 'APROBADA' },
+      { estado: 'Borrador', fecha_emision: new Date() },
+    ]) {
+      await source.getRepository(Cotizacion).update(id, value);
+      await request(http)
+        .put(`/cotizaciones/${id}`)
+        .set('Authorization', tokens.advisorB)
+        .send({ version: 2, condiciones_comerciales: 'No' })
+        .expect(409);
+      await request(http)
+        .post(`/cotizaciones/${id}/aprobar`)
+        .set('Authorization', tokens.advisorB)
+        .send({ version: 2 })
+        .expect(409);
+    }
+  });
+
+  it('uses the original IVA after a newer rate becomes active and rolls back failed item writes', async () => {
+    const http = app.getHttpServer();
+    await source
+      .getRepository(Cotizacion)
+      .update(quoteB.id, { iva_tasa: '0.190000', iva_version_id: 1 });
+    const updated = await request(http)
+      .put(`/cotizaciones/${quoteB.id}`)
+      .set('Authorization', tokens.advisorB)
+      .send({
+        version: 1,
+        items: [{ descripcion: 'Anterior', cantidad: 2, valor_unitario: 100 }],
+      })
+      .expect(200);
+    expect(updated.body).toMatchObject({
+      iva_tasa: '0.190000',
+      subtotal: '200.00',
+      iva: '38.00',
+      total: '238.00',
+    });
+    const before = await source
+      .getRepository(Cotizacion)
+      .findOneByOrFail({ id: quoteB.id });
+    await source.query(
+      `CREATE TRIGGER test_reject_item BEFORE INSERT ON cotizacion_items FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Simulated item failure'`,
+    );
+    try {
+      await request(http)
+        .put(`/cotizaciones/${quoteB.id}`)
+        .set('Authorization', tokens.advisorB)
+        .send({
+          version: 2,
+          items: [{ descripcion: 'Rollback', cantidad: 1, valor_unitario: 1 }],
+        })
+        .expect(500);
+    } finally {
+      await source.query('DROP TRIGGER test_reject_item');
+    }
+    const after = await source
+      .getRepository(Cotizacion)
+      .findOneByOrFail({ id: quoteB.id });
+    expect(after).toEqual(before);
+  });
+
+  it('approves only authorized current drafts without reopening generic state mutation', async () => {
+    const http = app.getHttpServer();
+    await request(http)
+      .post(`/cotizaciones/${quoteOther.id}/aprobar`)
+      .set('Authorization', tokens.advisorA)
+      .send({ version: 1 })
+      .expect(404);
+    await request(http)
+      .post(`/cotizaciones/${quoteB.id}/aprobar`)
+      .set('Authorization', tokens.legacyAdmin)
+      .send({ version: 2 })
+      .expect(403);
+    await request(http)
+      .post(`/cotizaciones/${quoteB.id}/aprobar`)
+      .set('Authorization', tokens.advisorB)
+      .send({ version: 1 })
+      .expect(409);
+    await request(http)
+      .post(`/cotizaciones/${quoteB.id}/aprobar`)
+      .set('Authorization', tokens.advisorB)
+      .send({ version: 2 })
+      .expect(201);
+    await request(http)
+      .put(`/cotizaciones/${quoteB.id}`)
+      .set('Authorization', tokens.advisorB)
+      .send({ version: 3, condiciones_comerciales: 'No' })
+      .expect(409);
+  });
+
+  it('serializes emission against item editing and keeps the issued snapshot consistent', async () => {
+    const http = app.getHttpServer();
+    const created = await request(http)
+      .post('/cotizaciones')
+      .set('Authorization', tokens.advisorA)
+      .send({
+        cliente_id: clientId,
+        tipo_servicio: 'INSUMOS',
+        items: [{ descripcion: 'Antes', cantidad: 1, valor_unitario: 100 }],
+      })
+      .expect(201);
+    const id = created.body.id;
+    const [edit, emission] = await Promise.all([
+      request(http)
+        .put(`/cotizaciones/${id}`)
+        .set('Authorization', tokens.advisorA)
+        .send({
+          version: 1,
+          items: [{ descripcion: 'Despues', cantidad: 2, valor_unitario: 100 }],
+        }),
+      request(http)
+        .post(`/cotizaciones/${id}/emitir`)
+        .set('Authorization', tokens.advisorA),
+    ]);
+    expect([200, 409]).toContain(edit.status);
+    expect(emission.status).toBe(201);
+    const saved = await source
+      .getRepository(Cotizacion)
+      .findOneByOrFail({ id });
+    expect(saved.fecha_emision).not.toBeNull();
+    const snapshot = saved.snapshot_datos!.cotizacion as Record<
+      string,
+      unknown
+    >;
+    expect(Number(snapshot.total)).toBe(Number(saved.total));
+    expect((snapshot.items as { descripcion: string }[])[0].descripcion).toBe(
+      saved.items[0].descripcion,
+    );
+    await request(http)
+      .put(`/cotizaciones/${id}`)
+      .set('Authorization', tokens.advisorA)
+      .send({ version: saved.version, condiciones_comerciales: 'No' })
+      .expect(409);
+  });
+
   it('applies permission revocation to the next request without legacy fallback', async () => {
     await source.query(
       'UPDATE rbac_user_role_assignments SET active=0 WHERE user_id=?',
@@ -521,4 +764,5 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       await source.query('SELECT COUNT(*) AS total FROM rbac_platform_owner'),
     ).toEqual([{ total: '1' }]);
   });
+
 });

@@ -15,7 +15,10 @@ import type { Response } from 'express';
 import { PdfGeneratorService } from '../pdf/pdf-generator.service.js';
 import { CotizacionesService } from './cotizaciones.service.js';
 import { CreateCotizacionDto } from './dto/create-cotizacion.dto.js';
-import { UpdateCotizacionDto } from './dto/update-cotizacion.dto.js';
+import {
+  UpdateCotizacionDto,
+  QuoteVersionDto,
+} from './dto/update-cotizacion.dto.js';
 import {
   ScopedPermissions,
   RequirePermission,
@@ -128,6 +131,17 @@ export class CotizacionesController {
       `attachment; filename="${quote.consecutivo}.pdf"`,
     );
     return response.send(pdf);
+  }
+
+  @Post(':id/aprobar')
+  @RequirePermission('cotizaciones.editar')
+  @ApiOperation({ summary: 'Aprobar un borrador sin modificar su contenido' })
+  aprobar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: QuoteVersionDto,
+    @Req() request: RbacRequest,
+  ) {
+    return this.cotizacionesService.aprobar(id, dto.version, request.rbac);
   }
 
   @Put(':id')

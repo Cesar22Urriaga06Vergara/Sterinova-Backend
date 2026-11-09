@@ -390,6 +390,33 @@ export class CotizacionesService {
     return emitted;
   }
 
+  async aprobar(
+    id: number,
+    version: number,
+    access: PermissionContext,
+  ): Promise<Cotizacion> {
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(Cotizacion);
+      const quote = await repository.findOne({
+        where: quoteWhere(access, 'cotizaciones.editar', id),
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!quote)
+        throw new NotFoundException(`Cotización #${id} no encontrada`);
+      if (
+        quote.fecha_emision ||
+        quote.estado.toUpperCase() !== 'BORRADOR' ||
+        quote.version !== version
+      )
+        throw new ConflictException(
+          'El borrador cambió o ya no se puede aprobar',
+        );
+      quote.estado = 'APROBADA';
+      quote.version += 1;
+      return repository.save(quote);
+    });
+  }
+
   async update(
     id: number,
     dto: UpdateCotizacionDto,
@@ -404,13 +431,60 @@ export class CotizacionesService {
       });
       if (!cotizacion)
         throw new NotFoundException(`Cotización #${id} no encontrada`);
-      if (cotizacion.fecha_emision) {
-        const keys = Object.keys(dto);
-        if (keys.some((key) => key !== 'estado'))
-          throw new ConflictException('Una cotización emitida es inmutable');
+      if (
+        cotizacion.fecha_emision ||
+        cotizacion.estado.toUpperCase() !== 'BORRADOR'
+      )
+        throw new ConflictException(
+          'Solo se pueden editar cotizaciones en BORRADOR sin fecha de emisión',
+        );
+      if (dto.version !== cotizacion.version)
+        throw new ConflictException(
+          'La cotización cambió. Recargue el borrador antes de guardar.',
+        );
+      if (dto.cliente_id !== undefined) {
+        await this.clientesService.findOne(dto.cliente_id);
+        cotizacion.cliente_id = dto.cliente_id;
+        // Avoid persisting the previous relation over the new foreign key.
+        cotizacion.cliente = undefined as never;
       }
-      if (dto.cliente_id) await this.clientesService.findOne(dto.cliente_id);
-      Object.assign(cotizacion, dto);
+      if (dto.tipo_servicio !== undefined)
+        cotizacion.tipo_servicio = dto.tipo_servicio;
+      if (dto.condiciones_comerciales !== undefined)
+        cotizacion.condiciones_comerciales = dto.condiciones_comerciales;
+      if (dto.items !== undefined) {
+        if (!dto.items.length)
+          throw new BadRequestException('Se requiere al menos un ítem');
+        if (cotizacion.iva_tasa == null)
+          throw new ConflictException(
+            'El borrador histórico no tiene tasa fiscal conciliada',
+          );
+        const itemsRepository = manager.getRepository(CotizacionItem);
+        const items = dto.items.map((item) =>
+          itemsRepository.create({
+            descripcion: item.descripcion,
+            cantidad: item.cantidad,
+            valor_unitario: item.valor_unitario,
+            valor_total: Number(
+              (item.cantidad * item.valor_unitario).toFixed(2),
+            ),
+          }),
+        );
+        cotizacion.subtotal = Number(
+          items
+            .reduce((sum, item) => sum + Number(item.valor_total), 0)
+            .toFixed(2),
+        );
+        cotizacion.iva = ivaAmount(cotizacion.subtotal, cotizacion.iva_tasa);
+        cotizacion.total = Number(
+          (cotizacion.subtotal + cotizacion.iva).toFixed(2),
+        );
+        if (!Number.isFinite(cotizacion.total) || cotizacion.total >= 1e12)
+          throw new BadRequestException('El total supera el importe permitido');
+        await itemsRepository.delete({ cotizacion_id: id });
+        cotizacion.items = items;
+      }
+      cotizacion.version += 1;
       await repository.save(cotizacion);
       return this.loadAuthorized(repository, id, access, 'cotizaciones.editar');
     });
