@@ -7,6 +7,7 @@ import { App } from 'supertest/types';
 import { AuthController } from '../src/auth/auth.controller.js';
 import { AuthService } from '../src/auth/auth.service.js';
 import { AuditoriaService } from '../src/auditoria/auditoria.service.js';
+import { RbacAuthorizationService } from '../src/rbac/rbac-authorization.service.js';
 
 describe('Auth login throttling (e2e)', () => {
   let app: INestApplication<App>;
@@ -16,6 +17,7 @@ describe('Auth login throttling (e2e)', () => {
       imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }])],
       controllers: [AuthController],
       providers: [
+        { provide: RbacAuthorizationService, useValue: {} },
         { provide: AuthService, useValue: { validateUser: vi.fn().mockResolvedValue(null) } },
         { provide: AuditoriaService, useValue: { create: vi.fn().mockResolvedValue(undefined) } },
         { provide: APP_GUARD, useClass: ThrottlerGuard },

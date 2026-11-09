@@ -24,8 +24,9 @@ import { FormatoVersiones } from '../formatos-documentales/entities/formato-vers
 import { User } from '../users/entities/user.entity.js';
 import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 import { quoteWhere, quoteCreationScope } from './quote-access.js';
+import { resolveCurrentIva } from '../tasas-fiscales/tasas-fiscales.service.js';
+import { ivaAmount } from '../tasas-fiscales/iva-amount.js';
 
-const IVA_RATE = 0.19;
 const PREFIXES: Partial<Record<TipoServicioCotizacion, string>> = {
   [TipoServicioCotizacion.INSUMOS]: 'COT-CMI',
   [TipoServicioCotizacion.LAVANDERIA]: 'COT-LAV',
@@ -90,6 +91,8 @@ function buildPdfSnapshot(
       ),
       subtotal: quote.subtotal,
       iva: quote.iva,
+      iva_tasa: quote.iva_tasa ?? null,
+      iva_version_id: quote.iva_version_id ?? null,
       total: quote.total,
       condiciones_comerciales: quote.condiciones_comerciales,
     },
@@ -139,10 +142,18 @@ export class CotizacionesService {
     const subtotal = Number(
       items.reduce((sum, item) => sum + Number(item.valor_total), 0).toFixed(2),
     );
-    const iva = Number((subtotal * IVA_RATE).toFixed(2));
-    const total = Number((subtotal + iva).toFixed(2));
     const prefix = this.prefix(dto.tipo_servicio);
     const saved = await this.dataSource.transaction(async (manager) => {
+      const tax = await resolveCurrentIva(manager);
+      if (
+        dto.iva_version_esperada_id !== undefined &&
+        dto.iva_version_esperada_id !== tax.id
+      )
+        throw new ConflictException(
+          'La tasa de IVA cambió. Revise la previsualización antes de guardar.',
+        );
+      const iva = ivaAmount(subtotal, tax.tasa);
+      const total = Number((subtotal + iva).toFixed(2));
       const sequences = manager.getRepository(SecuenciaConsecutivos);
       const name = `cotizacion:${prefix.slice(0, -1)}`;
       let sequence = await sequences.findOne({
@@ -173,6 +184,8 @@ export class CotizacionesService {
         estado: dto.estado ?? 'Borrador',
         subtotal,
         iva,
+        iva_tasa: tax.tasa,
+        iva_version_id: tax.id,
         total,
         items,
       });
@@ -184,6 +197,10 @@ export class CotizacionesService {
       access,
       'cotizaciones.crear',
     );
+  }
+
+  currentIva() {
+    return resolveCurrentIva(this.dataSource.manager);
   }
 
   async findAll(access: PermissionContext): Promise<CotizacionListItem[]> {

@@ -1,6 +1,11 @@
 /** Action identifiers belong to implemented capabilities; role names are configuration. */
 export const PERMISSION_CATALOG = [
   {
+    code: 'tasas_fiscales.gestionar',
+    module: 'configuracion',
+    label: 'Publicar versiones de tasas fiscales',
+  },
+  {
     code: 'usuarios.ver',
     module: 'accesos',
     label: 'Consultar usuarios del ámbito',

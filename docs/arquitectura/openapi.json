@@ -15,6 +15,54 @@
         ]
       }
     },
+    "/tasas-fiscales/iva": {
+      "get": {
+        "operationId": "TasasFiscalesController_history",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Tasas fiscales"
+        ],
+        "x-required-permission": "tasas_fiscales.gestionar"
+      },
+      "post": {
+        "operationId": "TasasFiscalesController_publish",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishIvaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Tasas fiscales"
+        ],
+        "x-required-permission": "tasas_fiscales.gestionar"
+      }
+    },
     "/users": {
       "get": {
         "operationId": "UsersController_findAll",
@@ -463,6 +511,27 @@
           "Cotizaciones"
         ],
         "x-required-permission": "cotizaciones.ver"
+      }
+    },
+    "/cotizaciones/iva-vigente": {
+      "get": {
+        "operationId": "CotizacionesController_currentIva",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar la versión de IVA vigente para nuevos borradores",
+        "tags": [
+          "Cotizaciones"
+        ],
+        "x-required-permission": "cotizaciones.crear"
       }
     },
     "/cotizaciones/{id}": {
@@ -1599,6 +1668,28 @@
       }
     },
     "schemas": {
+      "PublishIvaDto": {
+        "type": "object",
+        "properties": {
+          "tasa": {
+            "type": "string",
+            "example": "0.190000",
+            "description": "Fracción decimal entre 0 y 1, máximo seis decimales"
+          },
+          "vigente_desde": {
+            "type": "string",
+            "example": "2027-01-01T00:00:00-05:00"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tasa",
+          "vigente_desde",
+          "motivo"
+        ]
+      },
       "CreateUserDto": {
         "type": "object",
         "properties": {}
@@ -1707,6 +1798,10 @@
       "CreateCotizacionDto": {
         "type": "object",
         "properties": {
+          "iva_version_esperada_id": {
+            "type": "number",
+            "description": "Versión vista en el formulario; solo detecta cambios, no selecciona una tasa"
+          },
           "cliente_id": {
             "type": "number",
             "example": 1

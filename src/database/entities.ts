@@ -1,4 +1,5 @@
 import { User } from '../users/entities/user.entity.js';
+import { TasaFiscal } from '../tasas-fiscales/entities/tasa-fiscal.entity.js';
 import { Cliente } from '../clientes/entities/cliente.entity.js';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
 import { CotizacionItem } from '../cotizaciones/entities/cotizacion-item.entity.js';
@@ -16,6 +17,7 @@ import { RbacRole, RbacPermission, RbacRolePermission } from '../rbac/entities/r
 import { RbacUserRoleAssignment, RbacPlatformOwner } from '../rbac/entities/user-role-assignment.entity.js';
 
 export const STERINOVA_ENTITIES = [
+  TasaFiscal,
   User,
   Cliente,
   Cotizacion,

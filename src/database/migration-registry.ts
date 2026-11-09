@@ -12,6 +12,7 @@ import { AddUsersAndCertificationSeals1793813600000 } from './migrations/1793813
 import { ExtendAuditoriaEvents1793813700000 } from './migrations/1793813700000-ExtendAuditoriaEvents.js';
 import { AddScopedRbac1794096000000 } from './migrations/1794096000000-AddScopedRbac.js';
 import { ScopeQuotePilot1794096001000 } from './migrations/1794096001000-ScopeQuotePilot.js';
+import { AddVersionedIva1794225600000 } from './migrations/1794225600000-AddVersionedIva.js';
 
 /** Shared by the CLI and isolated migration rehearsals; does not load environment variables. */
 export const DATABASE_MIGRATIONS = [
@@ -29,4 +30,5 @@ export const DATABASE_MIGRATIONS = [
   ExtendAuditoriaEvents1793813700000,
   AddScopedRbac1794096000000,
   ScopeQuotePilot1794096001000,
+  AddVersionedIva1794225600000,
 ];

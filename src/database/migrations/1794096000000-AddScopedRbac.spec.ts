@@ -15,7 +15,11 @@ describe('additive RBAC migration', () => {
   it('freezes a unique permission catalog and role matrix with known action identifiers', () => {
     const codes = INITIAL_RBAC_PERMISSIONS.map(({ code }) => code);
     expect(new Set(codes).size).toBe(codes.length);
-    expect(codes).toEqual(PERMISSION_CATALOG.map(({ code }) => code));
+    expect(codes).toEqual(
+      PERMISSION_CATALOG.filter(
+        ({ code }) => code !== 'tasas_fiscales.gestionar',
+      ).map(({ code }) => code),
+    );
     expect(new Set(INITIAL_RBAC_ROLES.map(({ code }) => code)).size).toBe(
       INITIAL_RBAC_ROLES.length,
     );

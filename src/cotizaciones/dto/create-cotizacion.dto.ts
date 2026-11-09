@@ -6,6 +6,8 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsInt,
+  Min,
   IsOptional,
   IsString,
   ValidateNested,
@@ -14,6 +16,15 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCotizacionDto {
+  @ApiPropertyOptional({
+    description:
+      'Versión vista en el formulario; solo detecta cambios, no selecciona una tasa',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  iva_version_esperada_id?: number;
+
   @ApiProperty({ example: 1 })
   @Type(() => Number)
   @IsNumber()

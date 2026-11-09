@@ -18,6 +18,7 @@ import { Cotizacion } from '../src/cotizaciones/entities/cotizacion.entity.js';
 import { TipoServicioCotizacion } from '../src/cotizaciones/entities/tipo-servicio.enum.js';
 import { CotizacionesModule } from '../src/cotizaciones/cotizaciones.module.js';
 import { AuthModule } from '../src/auth/auth.module.js';
+import { TasasFiscalesModule } from '../src/tasas-fiscales/tasas-fiscales.module.js';
 import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard.js';
 import { RbacModule } from '../src/rbac/rbac.module.js';
 import { AuthorizationGuard } from '../src/rbac/authorization.guard.js';
@@ -147,16 +148,14 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       },
     };
     await migrateLocalRbacPilot(source, localPlan);
-    const client = await source
-      .getRepository(Cliente)
-      .save({
-        razon_social: 'Cliente piloto',
-        nit: 'PILOT-001',
-        contacto: 'Contacto operativo',
-        telefono: '000',
-        email: '',
-        direccion: 'Dirección de prueba',
-      });
+    const client = await source.getRepository(Cliente).save({
+      razon_social: 'Cliente piloto',
+      nit: 'PILOT-001',
+      contacto: 'Contacto operativo',
+      telefono: '000',
+      email: '',
+      direccion: 'Dirección de prueba',
+    });
     clientId = client.id;
     const quotes = source.getRepository(Cotizacion);
     for (const [name, creator, scope] of [
@@ -194,6 +193,7 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
         TypeOrmModule.forRoot(options),
         ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }),
         AuthModule,
+        TasasFiscalesModule,
         CotizacionesModule,
         RbacModule,
         LogisticaModule,
@@ -361,6 +361,114 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       .expect(200);
     expect(downloaded.headers['content-type']).toMatch(/^application\/pdf/);
   });
+  it('versions IVA by validity, freezes the quote rate, rejects injection and protects configuration by capability', async () => {
+    const payload = {
+      cliente_id: clientId,
+      tipo_servicio: 'LAVANDERIA',
+      items: [{ descripcion: 'Fiscal', cantidad: 1, valor_unitario: 100 }],
+    };
+    const before = await request(app.getHttpServer())
+      .post('/cotizaciones')
+      .set('Authorization', tokens.advisorA)
+      .send(payload)
+      .expect(201);
+    expect(before.body).toMatchObject({ iva_tasa: '0.190000', iva: '19.00' });
+    const next = {
+      tasa: '0.050000',
+      vigente_desde: new Date(Date.now() + 2000).toISOString(),
+      motivo: 'Prueba aislada de cambio de tasa',
+    };
+    for (const token of [
+      tokens.advisorA,
+      tokens.advisorB,
+      tokens.legacyAdmin,
+    ]) {
+      await request(app.getHttpServer())
+        .post('/tasas-fiscales/iva')
+        .set('Authorization', token)
+        .send(next)
+        .expect(403);
+    }
+    const published = await request(app.getHttpServer())
+      .post('/tasas-fiscales/iva')
+      .set('Authorization', tokens.root)
+      .send(next)
+      .expect(201);
+    const current = await request(app.getHttpServer())
+      .get('/cotizaciones/iva-vigente')
+      .set('Authorization', tokens.advisorB)
+      .expect(200);
+    expect(current.body.tasa).toBe('0.190000');
+    await vi.waitFor(
+      async () => {
+        const res = await request(app.getHttpServer())
+          .get('/cotizaciones/iva-vigente')
+          .set('Authorization', tokens.advisorB)
+          .expect(200);
+        expect(res.body.id).toBe(published.body.id);
+      },
+      { timeout: 6000, interval: 100 },
+    );
+    const after = await request(app.getHttpServer())
+      .post('/cotizaciones')
+      .set('Authorization', tokens.advisorB)
+      .send(payload)
+      .expect(201);
+    expect(after.body).toMatchObject({
+      iva_tasa: '0.050000',
+      iva_version_id: published.body.id,
+      iva: '5.00',
+      total: '105.00',
+    });
+    await request(app.getHttpServer())
+      .post('/cotizaciones')
+      .set('Authorization', tokens.advisorB)
+      .send({ ...payload, iva_version_esperada_id: before.body.iva_version_id })
+      .expect(409);
+    for (const field of [
+      'iva',
+      'total',
+      'subtotal',
+      'iva_tasa',
+      'iva_version_id',
+    ]) {
+      await request(app.getHttpServer())
+        .post('/cotizaciones')
+        .set('Authorization', tokens.advisorB)
+        .send({ ...payload, [field]: 0 })
+        .expect(400);
+      await request(app.getHttpServer())
+        .put(`/cotizaciones/${after.body.id}`)
+        .set('Authorization', tokens.advisorB)
+        .send({ [field]: 0 })
+        .expect(400);
+    }
+    const emitted = await request(app.getHttpServer())
+      .post(`/cotizaciones/${before.body.id}/emitir`)
+      .set('Authorization', tokens.advisorA)
+      .expect(201);
+    expect(emitted.body.snapshot_datos.cotizacion).toMatchObject({
+      iva_tasa: '0.190000',
+      iva_version_id: before.body.iva_version_id,
+      iva: '19.00',
+    });
+    await expect(
+      source.query('UPDATE tasas_fiscales SET tasa=0 WHERE id=?', [
+        published.body.id,
+      ]),
+    ).rejects.toMatchObject({ driverError: { errno: 1644 } });
+    await expect(
+      source.query('DELETE FROM tasas_fiscales WHERE id=?', [
+        published.body.id,
+      ]),
+    ).rejects.toMatchObject({ driverError: { errno: 1644 } });
+    const historical = await source
+      .getRepository(Cotizacion)
+      .findOneByOrFail({ id: quoteB.id });
+    expect(historical.iva_tasa).toBeNull();
+    expect(historical.iva_version_id).toBeNull();
+  }, 15000);
+
   it('applies permission revocation to the next request without legacy fallback', async () => {
     await source.query(
       'UPDATE rbac_user_role_assignments SET active=0 WHERE user_id=?',

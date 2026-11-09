@@ -74,7 +74,7 @@ describe('complete migration chain and backup restoration', () => {
       const count = await source.query(
         'SELECT COUNT(*) AS total FROM rbac_permissions',
       );
-      expect(Number(count[0].total)).toBe(42);
+      expect(Number(count[0].total)).toBe(43);
     } finally {
       await source.destroy();
     }
@@ -127,7 +127,7 @@ describe('complete migration chain and backup restoration', () => {
         );
         const applied = await source.runMigrations();
         expect(
-          applied.some(({ name }) => name === 'AddScopedRbac1794096000000'),
+          applied.some(({ name }) => name === 'AddVersionedIva1794225600000'),
         ).toBe(true);
         expect(await source.showMigrations()).toBe(false);
         const after = await source.query(

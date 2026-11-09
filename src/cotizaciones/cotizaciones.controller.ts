@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   ParseIntPipe,
   Post,
@@ -56,6 +57,16 @@ export class CotizacionesController {
   @ApiResponse({ status: 200, description: 'Lista de cotizaciones' })
   findAll(@Req() request: RbacRequest) {
     return this.cotizacionesService.findAll(request.rbac);
+  }
+
+  @Get('iva-vigente')
+  @Header('Cache-Control', 'private, no-store')
+  @RequirePermission('cotizaciones.crear')
+  @ApiOperation({
+    summary: 'Consultar la versión de IVA vigente para nuevos borradores',
+  })
+  currentIva() {
+    return this.cotizacionesService.currentIva();
   }
 
   @Get(':id')

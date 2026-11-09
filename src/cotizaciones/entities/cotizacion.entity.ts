@@ -15,6 +15,7 @@ import { TipoServicioCotizacion } from './tipo-servicio.enum.js';
 import { FormatoVersiones } from '../../formatos-documentales/entities/formato-versiones.entity.js';
 import { User } from '../../users/entities/user.entity.js';
 import { RbacScope } from '../../rbac/entities/scope.entity.js';
+import { TasaFiscal } from '../../tasas-fiscales/entities/tasa-fiscal.entity.js';
 
 @Entity('cotizaciones')
 @Index('IDX_cotizaciones_version_formato', ['version_formato_id'])
@@ -43,6 +44,16 @@ export class Cotizacion {
 
   @Column({ type: 'decimal', precision: 14, scale: 2, default: 0 })
   iva: number;
+
+  @Column({ type: 'decimal', precision: 7, scale: 6, nullable: true })
+  iva_tasa: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  iva_version_id: number | null;
+
+  @ManyToOne(() => TasaFiscal, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'iva_version_id' })
+  iva_version: Relation<TasaFiscal> | null;
 
   @Column({ type: 'decimal', precision: 14, scale: 2, default: 0 })
   total: number;

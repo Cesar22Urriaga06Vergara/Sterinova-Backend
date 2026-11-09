@@ -52,6 +52,7 @@ describe('CotizacionesService consecutivos', () => {
       }),
     };
     const manager = {
+      query: vi.fn(async () => [{ id: 1, version: 1, tasa: '0.190000' }]),
       getRepository: vi.fn((entity: unknown) =>
         entity === SecuenciaConsecutivos
           ? sequenceRepository

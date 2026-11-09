@@ -36,6 +36,8 @@ describe('CotizacionesService.emitir', () => {
       ],
       subtotal: 100,
       iva: 19,
+      iva_tasa: '0.190000',
+      iva_version_id: 1,
       total: 119,
       condiciones_comerciales: 'Oferta de prueba',
     } as unknown as Cotizacion;
@@ -97,6 +99,7 @@ describe('CotizacionesService.emitir', () => {
       cargo: 'Compras',
       ciudad: 'Bogotá',
     });
+    expect(quote.snapshot_datos?.cotizacion).toMatchObject({ iva_tasa: '0.190000', iva_version_id: 1 });
     expect(pdfGenerator.generate).toHaveBeenCalledWith(
       expect.objectContaining({
         formato: expect.objectContaining({

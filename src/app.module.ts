@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { TasasFiscalesModule } from './tasas-fiscales/tasas-fiscales.module.js';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -28,6 +29,7 @@ import { HealthModule } from './health/health.module.js';
 
 @Module({
   imports: [
+    TasasFiscalesModule,
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
