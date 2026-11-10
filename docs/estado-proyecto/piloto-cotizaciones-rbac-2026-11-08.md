@@ -82,7 +82,9 @@ Las reglas completas de transición de estados y la corrección de datos fijos d
 
 El ensayo completo detectó un fixture antiguo que enviaba fecha/hora a `ordenes_servicio.fecha_programada`
 (DATE). Se corrigió el dato del test a YYYY-MM-DD, conservando el flujo probado. El contrato del DTO de
-Logística sigue admitiendo timestamps: revisar su validación/normalización en la fase de limpieza.
+Logística quedó revisado el 10 de noviembre de 2026: DTO y servicio rechazan timestamps y fechas
+inexistentes; conservan el día YYYY-MM-DD sin conversiones en la columna DATE. OpenAPI y pruebas
+específicas reflejan esta regla. No se modificó el esquema ni se aplicaron migraciones.
 
 El contrato OpenAPI se regeneró con autenticación bearer, permiso por operación y header de creación.
 Se conserva la descripción preexistente. Su copia original `storage/backups/openapi-before-quote-pilot.json`

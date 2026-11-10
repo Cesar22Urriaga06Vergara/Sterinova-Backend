@@ -33,6 +33,7 @@ export class OrdenServicio {
   @Column({ type: 'int', unique: true })
   cotizacion_id: number;
 
+  // Civil date (YYYY-MM-DD), not an instant; keep DATE and string semantics.
   @Column({ type: 'date' })
   fecha_programada: string;
 

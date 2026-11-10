@@ -22,6 +22,7 @@ import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecut
 import { siguienteConsecutivo } from '../documentos/consecutivo.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
+import { isDateString } from 'class-validator';
 
 @Injectable()
 export class LogisticaService {
@@ -35,6 +36,16 @@ export class LogisticaService {
   ) {}
 
   async createOrden(dto: CreateOrdenDto): Promise<OrdenServicio> {
+    // DATE stores a civil day: never truncate timestamps or shift time zones.
+    if (
+      typeof dto.fecha_programada !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(dto.fecha_programada) ||
+      !isDateString(dto.fecha_programada, { strict: true })
+    ) {
+      throw new BadRequestException(
+        'La fecha programada debe ser una fecha válida en formato YYYY-MM-DD, sin hora ni zona horaria',
+      );
+    }
     const saved = await this.dataSource.transaction(async (manager) => {
       const quotes = manager.getRepository(Cotizacion);
       const orders = manager.getRepository(OrdenServicio);
@@ -55,8 +66,6 @@ export class LogisticaService {
           'La cotización ya tiene una orden de servicio',
         );
       }
-      if (!dto.fecha_programada)
-        throw new BadRequestException('La fecha programada es obligatoria');
       const year = new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
         timeZone: 'America/Bogota',
@@ -102,14 +111,12 @@ export class LogisticaService {
         }),
       );
       if (materiales.length)
-        await manager
-          .getRepository(OrdenServicioMaterial)
-          .insert(
-            materiales.map((material) => ({
-              ...material,
-              orden_id: savedOrder.id,
-            })),
-          );
+        await manager.getRepository(OrdenServicioMaterial).insert(
+          materiales.map((material) => ({
+            ...material,
+            orden_id: savedOrder.id,
+          })),
+        );
       return savedOrder;
     });
     return this.findOne(saved.id);

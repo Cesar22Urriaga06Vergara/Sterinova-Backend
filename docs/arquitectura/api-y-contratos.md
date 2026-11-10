@@ -28,6 +28,12 @@ La API REST NestJS no configura prefijo global en `src/main.ts`; las rutas sigui
 
 ## Validación y errores
 
+En Logística, `CreateOrdenDto.fecha_programada` es una fecha civil obligatoria `YYYY-MM-DD`
+(OpenAPI `string`, `format: date`). DTO y servicio rechazan fechas inexistentes, horas y zonas
+horarias con HTTP 400. Se persiste y devuelve el mismo texto en `ordenes_servicio.fecha_programada`
+(`DATE`), sin truncar timestamps ni convertir a UTC. Revisión del 10 de noviembre de 2026:
+se conserva el esquema y los datos existentes; no requiere migración.
+
 `src/main.ts` instala `ValidationPipe` global con `whitelist: true`, `forbidNonWhitelisted: true` y `transform: true`; DTOs definen reglas `class-validator`. Servicios usan excepciones NestJS para errores como `400`, `401`, `403`, `404` y `409`. Los códigos exactos por caso, mensajes, cuerpo de respuesta y paginación no están formalizados en un OpenAPI ni probados aquí; confirmar en controlador/servicio antes de depender de ellos como contrato externo.
 
 No se identificó soporte general de idempotency keys. La creación de orden previene duplicar la orden por cotización mediante unicidad/consulta. No se observó política común de paginación o filtros para todos los listados.
