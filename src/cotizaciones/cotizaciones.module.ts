@@ -9,17 +9,27 @@ import { ClientesModule } from '../clientes/clientes.module.js';
 import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecutivos.entity.js';
 import { FormatosDocumentalesModule } from '../formatos-documentales/formatos-documentales.module.js';
 import { AuditoriaModule } from '../auditoria/auditoria.module.js';
+import { RbacModule } from '../rbac/rbac.module.js';
+import { SolicitudAnulacion } from './entities/solicitud-anulacion.entity.js';
+import { SolicitudAnulacionService } from './solicitud-anulacion.service.js';
+import { SolicitudAnulacionController } from './solicitud-anulacion.controller.js';
 
 @Module({
   imports: [
     SelloSnapshotModule,
-    TypeOrmModule.forFeature([Cotizacion, CotizacionItem, SecuenciaConsecutivos]),
+    RbacModule,
+    TypeOrmModule.forFeature([
+      Cotizacion,
+      CotizacionItem,
+      SecuenciaConsecutivos,
+      SolicitudAnulacion,
+    ]),
     ClientesModule,
     FormatosDocumentalesModule,
     AuditoriaModule,
   ],
-  controllers: [CotizacionesController],
-  providers: [CotizacionesService],
-  exports: [CotizacionesService],
+  controllers: [CotizacionesController, SolicitudAnulacionController],
+  providers: [CotizacionesService, SolicitudAnulacionService],
+  exports: [CotizacionesService, SolicitudAnulacionService],
 })
 export class CotizacionesModule {}

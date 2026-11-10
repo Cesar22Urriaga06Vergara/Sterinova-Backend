@@ -760,6 +760,138 @@
         "x-required-permission": "cotizaciones.editar"
       }
     },
+    "/cotizaciones/{id}/solicitud-anulacion": {
+      "post": {
+        "operationId": "SolicitudAnulacionController_crear",
+        "parameters": [
+          {
+            "name": "x-scope-id",
+            "in": "header",
+            "description": "Restringe la operación al ámbito autorizado seleccionado",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearSolicitudAnulacionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Solicitar anulación de una cotización aprobada o emitida",
+        "tags": [
+          "Solicitudes de anulación"
+        ],
+        "x-required-permission": "solicitudes_anulacion.crear"
+      }
+    },
+    "/solicitudes-anulacion/pendientes": {
+      "get": {
+        "operationId": "SolicitudAnulacionController_pendientes",
+        "parameters": [
+          {
+            "name": "x-scope-id",
+            "in": "header",
+            "description": "Restringe la operación al ámbito autorizado seleccionado",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar solicitudes pendientes de los ámbitos administrados",
+        "tags": [
+          "Solicitudes de anulación"
+        ],
+        "x-required-permission": "solicitudes_anulacion.ver"
+      }
+    },
+    "/solicitudes-anulacion/{id}/resolver": {
+      "patch": {
+        "operationId": "SolicitudAnulacionController_resolver",
+        "parameters": [
+          {
+            "name": "x-scope-id",
+            "in": "header",
+            "description": "Restringe la operación al ámbito autorizado seleccionado",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolverSolicitudAnulacionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Aprobar o rechazar una solicitud de anulación",
+        "tags": [
+          "Solicitudes de anulación"
+        ],
+        "x-required-permission": "solicitudes_anulacion.aprobar"
+      }
+    },
     "/formatos-documentales": {
       "get": {
         "operationId": "FormatosDocumentalesController_findAll",
@@ -1996,6 +2128,38 @@
         },
         "required": [
           "version"
+        ]
+      },
+      "CrearSolicitudAnulacionDto": {
+        "type": "object",
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "description": "Motivo de la solicitud de anulación"
+          }
+        },
+        "required": [
+          "motivo"
+        ]
+      },
+      "ResolverSolicitudAnulacionDto": {
+        "type": "object",
+        "properties": {
+          "estado": {
+            "type": "string",
+            "enum": [
+              "APROBADA",
+              "RECHAZADA"
+            ]
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación de la resolución; admite texto vacío"
+          }
+        },
+        "required": [
+          "estado",
+          "observacion"
         ]
       },
       "CreateFormatoDocumentalDto": {

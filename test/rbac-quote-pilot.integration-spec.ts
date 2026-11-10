@@ -865,7 +865,8 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
     const saved=await source.query('SELECT criterio FROM ciclos_parametros_evaluaciones WHERE ciclo_id=?',[cycle.body.id]);
     expect(saved).toEqual([{criterio:'NO_CUMPLE'}]);
     const [audit]=await source.query("SELECT detalle FROM auditoria WHERE entidad='ciclo' AND entidad_id=? AND accion='rechazar'",[cycle.body.id]);
-    expect(JSON.parse(audit.detalle).evaluaciones).toEqual(evaluations);
+    const detail = typeof audit.detalle === 'string' ? JSON.parse(audit.detalle) : audit.detalle;
+    expect(detail.evaluaciones).toEqual(evaluations);
   });
 
   it('keeps the original ICONTEC image after catalog changes and rejects tampering',async()=>{

@@ -1,4 +1,6 @@
 import { AddOperationalDocumentData1794225602000 } from './migrations/1794225602000-AddOperationalDocumentData.js';
+import { AddCancellationRequests1794225603000 } from './migrations/1794225603000-AddCancellationRequests.js';
+import { AddCancellationPermissions1794225604000 } from './migrations/1794225604000-AddCancellationPermissions.js';
 import { AddQuoteEditVersion1794225601000 } from './migrations/1794225601000-AddQuoteEditVersion.js';
 import { InitialSchema1730750400000 } from './migrations/1730750400000-InitialSchema.js';
 import { AddQualityCertificates1730750401000 } from './migrations/1730750401000-AddQualityCertificates.js';
@@ -35,4 +37,6 @@ export const DATABASE_MIGRATIONS = [
   AddVersionedIva1794225600000,
   AddQuoteEditVersion1794225601000,
   AddOperationalDocumentData1794225602000,
+  AddCancellationRequests1794225603000,
+  AddCancellationPermissions1794225604000,
 ];

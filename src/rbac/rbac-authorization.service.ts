@@ -8,6 +8,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { User } from '../users/entities/user.entity.js';
 import { RbacScope } from './entities/scope.entity.js';
+import { RbacRole } from './entities/role.entity.js';
 import { compileAuthorizationPolicy } from './authorization-policy.js';
 import type {
   AuthorizationPolicy,
@@ -188,6 +189,58 @@ export class RbacAuthorizationService {
     )
       throw new BadRequestException('x-scope-id debe ser un entero positivo');
     return Number(scopeHeader);
+  }
+
+  /** Exact assignment scope only; never infer approval from legacy usuarios.rol. */
+  async getCancellationApprovalScopeIds(userId: number): Promise<number[]> {
+    const { subject, scopes } = await this.loadSubject(userId);
+    const roles = await this.dataSource.getRepository(RbacRole).find({
+      where: { active: true },
+    });
+    const nodes = new Map(scopes.map((scope) => [scope.id, scope]));
+    const isActivePath = (id: number): boolean => {
+      const seen = new Set<number>();
+      let node = nodes.get(id);
+      while (node) {
+        if (!node.active || seen.has(node.id)) return false;
+        seen.add(node.id);
+        if (node.parent_id === null) return node.kind === 'GLOBAL';
+        if (node.kind === 'GLOBAL') return false;
+        node = nodes.get(node.parent_id);
+      }
+      return false;
+    };
+    const allowed = new Set<number>();
+    for (const assignment of subject.assignments) {
+      if (
+        !assignment.active ||
+        !assignment.roleActive ||
+        !isActivePath(assignment.scopeId)
+      )
+        continue;
+      const role = roles.find(
+        ({ id, active }) => id === assignment.roleId && active,
+      );
+      const scope = nodes.get(assignment.scopeId)!;
+      // PLATFORM assignments originate exclusively from rbac_platform_owner in loadSubject.
+      if (
+        role?.code === 'superadmin' &&
+        role.kind === 'PLATFORM' &&
+        scope.kind === 'GLOBAL'
+      ) {
+        for (const candidate of scopes) {
+          if (candidate.kind !== 'GLOBAL' && isActivePath(candidate.id))
+            allowed.add(candidate.id);
+        }
+      } else if (
+        role?.code === 'admin_area' &&
+        role.kind === 'STANDARD' &&
+        scope.kind !== 'GLOBAL'
+      ) {
+        allowed.add(scope.id);
+      }
+    }
+    return [...allowed].sort((a, b) => a - b);
   }
 
   async getContext(

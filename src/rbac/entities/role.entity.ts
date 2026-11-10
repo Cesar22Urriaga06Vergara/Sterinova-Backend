@@ -49,6 +49,9 @@ export class RbacPermission {
 
   @Column({ type: 'boolean', default: true })
   active: boolean;
+
+  @Column({ name: 'is_dynamic', type: 'boolean', default: false })
+  isDynamic: boolean;
 }
 
 @Entity('rbac_role_permissions')

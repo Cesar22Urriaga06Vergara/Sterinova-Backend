@@ -6,6 +6,7 @@ import { User } from '../users/entities/user.entity.js';
 import { TasaFiscal } from '../tasas-fiscales/entities/tasa-fiscal.entity.js';
 import { Cliente } from '../clientes/entities/cliente.entity.js';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
+import { SolicitudAnulacion } from '../cotizaciones/entities/solicitud-anulacion.entity.js';
 import { CotizacionItem } from '../cotizaciones/entities/cotizacion-item.entity.js';
 import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
 import { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
@@ -30,6 +31,7 @@ export const STERINOVA_ENTITIES = [
   User,
   Cliente,
   Cotizacion,
+  SolicitudAnulacion,
   CotizacionItem,
   OrdenServicio,
   CicloEsterilizacion,

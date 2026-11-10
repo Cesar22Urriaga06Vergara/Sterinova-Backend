@@ -69,6 +69,35 @@ autoriza por sí solo a conceder roles. Desactivar una pertenencia no equivale a
 
 ## Migración y activación
 
+### Solicitudes de anulación (Módulo 1)
+
+La migración `AddCancellationPermissions1794225604000` agrega los permisos
+`solicitudes_anulacion.crear`, `solicitudes_anulacion.aprobar` y
+`solicitudes_anulacion.ver`, con `is_dynamic = true`. Otorga los tres a
+`superadmin` y `admin_area` mediante concesiones explícitas; no introduce herencia
+entre roles. `comercial` recibe únicamente `crear`, con acceso OWN.
+
+Los endpoints requieren JWT y el permiso de cada operación:
+
+| Método | Ruta | Permiso |
+| --- | --- | --- |
+| POST | `/cotizaciones/:id/solicitud-anulacion` | `solicitudes_anulacion.crear` |
+| GET | `/solicitudes-anulacion/pendientes` | `solicitudes_anulacion.ver` |
+| PATCH | `/solicitudes-anulacion/:id/resolver` | `solicitudes_anulacion.aprobar` |
+
+El creador y el aprobador se toman del JWT, nunca del body. La creación acepta
+`motivo`; la resolución acepta `estado` (APROBADA o RECHAZADA) y `observacion`.
+Resolver y consultar pendientes requieren además una asignación activa de
+`admin_area` en el ámbito exacto de la cotización, o ser el titular SuperAdmin de
+plataforma. Se comprueban ámbitos y ancestros activos. `x-scope-id` limita el
+ámbito seleccionado y nunca amplía el acceso. Asignar un permiso a otro rol no
+elimina esta restricción de negocio.
+
+La aprobación actualiza solicitud y cotización en una transacción con bloqueos;
+la cotización queda ANULADA y no puede emitirse. El rechazo conserva su estado.
+Una solicitud resuelta no admite una segunda resolución. Solo se solicita la
+anulación de cotizaciones APROBADAS o EMITIDAS.
+
 `AddScopedRbac1794096000000` agrega únicamente las siete tablas RBAC, el ámbito global, su cierre reflexivo y la matriz inicial.
 No modifica tablas de negocio, no migra el enum `usuarios.rol`, no crea usuarios ni convierte Admin en SuperAdmin.
 Las semillas están congeladas dentro de la migración; el código de ejecución no importa migraciones.

@@ -337,6 +337,8 @@ export class CotizacionesService {
       access,
       'cotizaciones.emitir',
     );
+    if (quote.estado === 'ANULADA')
+      throw new ConflictException('No se puede emitir una cotización anulada');
     if (quote.fecha_emision) return quote;
     const storageKey = `cotizaciones/${quote.consecutivo.replace(/[^\w.-]/g, '_')}.pdf`;
     let generated = false;
@@ -350,6 +352,8 @@ export class CotizacionesService {
         });
         if (!current)
           throw new NotFoundException(`Cotización #${id} no encontrada`);
+        if (current.estado === 'ANULADA')
+          throw new ConflictException('No se puede emitir una cotización anulada');
         if (current.fecha_emision) return;
         const emittedAt = new Date();
         const version = await this.formatoResolver.resolveCotizacion(

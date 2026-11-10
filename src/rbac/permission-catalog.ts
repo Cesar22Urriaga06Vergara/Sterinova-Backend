@@ -1,6 +1,24 @@
 /** Action identifiers belong to implemented capabilities; role names are configuration. */
 export const PERMISSION_CATALOG = [
   {
+    code: 'solicitudes_anulacion.crear',
+    module: 'comercial',
+    label: 'Crear solicitudes de anulación de cotizaciones',
+    isDynamic: true,
+  },
+  {
+    code: 'solicitudes_anulacion.aprobar',
+    module: 'comercial',
+    label: 'Resolver solicitudes de anulación de cotizaciones',
+    isDynamic: true,
+  },
+  {
+    code: 'solicitudes_anulacion.ver',
+    module: 'comercial',
+    label: 'Consultar solicitudes de anulación pendientes',
+    isDynamic: true,
+  },
+  {
     code: 'tasas_fiscales.gestionar',
     module: 'configuracion',
     label: 'Publicar versiones de tasas fiscales',
