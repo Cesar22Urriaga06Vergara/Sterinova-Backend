@@ -165,6 +165,14 @@ describe.skipIf(process.env.RUN_E2E_FULL_FLOW !== '1')(
         .auth(adminToken, { type: 'bearer' })
         .expect(200);
       expect(list.body.map((s) => s.id)).toContain(created.body.id);
+      const listed = list.body.find((s) => s.id === created.body.id);
+      expect(listed).toMatchObject({
+        creador: { nombre: 'asesor' },
+        cotizacion: { cliente: { razon_social: 'Cliente anulación' } },
+      });
+      expect(Object.keys(listed.creador).sort()).toEqual(['apellido', 'id', 'nombre']);
+      expect(Object.keys(listed.cotizacion.cliente).sort()).toEqual(['id', 'razon_social']);
+      expect(listed.cotizacion).not.toHaveProperty('items');
       expect(list.body.map((s) => s.id)).not.toContain(foreignRequest.id);
       const approved = await request(app.getHttpServer())
         .patch(`/solicitudes-anulacion/${created.body.id}/resolver`)
