@@ -23,7 +23,7 @@ Las pruebas separan decisiones de política, metadatos y DDL real en un servidor
 Cotizaciones usa el nuevo guard mediante despacho explícito por controlador y permiso por endpoint;
 los otros módulos conservan los guards actuales. Las lecturas comerciales requieren creador y ámbito.
 La base local fue respaldada, migrada y conciliada con autorización expresa; la migración general no
-contiene IDs de usuarios. Véase el [reporte del piloto](../../estado-proyecto/piloto-cotizaciones-rbac-2026-11-08.md).
+contiene IDs de usuarios. Véase el [reporte del piloto](../../archivo/2026-11-10/estado-proyecto/piloto-cotizaciones-rbac-2026-11-08.md).
 La Fase 1 no se considera completada hasta
 integrar carga de asignaciones, conciliación de ámbitos, filtros SQL, proyecciones operativas y frontend por capacidades.
 No se habilitará un fallback que conceda acceso por el rol antiguo cuando falle la política nueva.

@@ -1,3 +1,5 @@
+> **Referencia del piloto, no matriz organizacional definitiva.** El [estado implementado](estado-implementado.md) precisa las extensiones a anulación/tasas y la restricción especial por código de rol. El [diseño objetivo](roles-y-permisos.md) reconcilia los ocho módulos. Las afirmaciones de ejecución local siguientes son reportes históricos, no verificaciones de esta entrega.
+
 # Contrato central de autorización RBAC
 
 Fecha: 8 de noviembre de 2026. Decisiones aprobadas durante la auditoría de Sterinova.
@@ -11,7 +13,7 @@ el resto mantiene `RolesGuard`. Una denegación RBAC nunca se reintenta con el g
 Las dos migraciones RBAC y la conciliación autorizada se aplicaron únicamente a la base local de desarrollo.
 `synchronize` y `migrationsRun` permanecen desactivados. La Fase 1 completa sigue pendiente:
 proyecciones operativas, otros módulos, gestión de accesos y frontend por capacidades.
-Véase el [reporte del piloto](../estado-proyecto/piloto-cotizaciones-rbac-2026-11-08.md).
+Véase el [reporte del piloto](../archivo/2026-11-10/estado-proyecto/piloto-cotizaciones-rbac-2026-11-08.md).
 
 ## Decisión de acceso
 

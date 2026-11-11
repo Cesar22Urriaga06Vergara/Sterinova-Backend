@@ -1,0 +1,705 @@
+[
+  {
+    "ruta": "docs/arquitectura/adr/001-evidencias-y-firmas.md",
+    "sha256": "569b2e1cdbd231883651c90e87383dfa6481afa2ccd67142a70324ffd3434011",
+    "titulos": [
+      "# ADR 001: Evidencias y firmas en ciclos de esterilización",
+      "## Decisión propuesta",
+      "## Diseño propuesto para la fase futura",
+      "## Consecuencias"
+    ]
+  },
+  {
+    "ruta": "docs/arquitectura/adr/002-pdf-playwright-nextjs.md",
+    "sha256": "38d23db18d976281766c53c348d9e646e401515a767106776bcbab370e21bfcd",
+    "titulos": [
+      "# ADR-002: Renderizado de PDFs con Playwright y Next.js",
+      "## Contexto",
+      "## Decisión",
+      "## Consecuencias",
+      "## Evidencia en el repositorio"
+    ]
+  },
+  {
+    "ruta": "docs/arquitectura/adr/003-consecutivos-transaccionales.md",
+    "sha256": "5c08ee602b988a3a2f38cb38501d9b14834570642a78f5414eb8ce70b769e86b",
+    "titulos": [
+      "# ADR-003: Consecutivos transaccionales con bloqueo pesimista en base de datos",
+      "## Contexto",
+      "## Decisión",
+      "## Consecuencias",
+      "## Evidencia en el repositorio"
+    ]
+  },
+  {
+    "ruta": "docs/arquitectura/adr/004-rbac-con-ambitos.md",
+    "sha256": "6cf1c91154210fe44cbc1f0eef144025cee5c0e5aa43a905e0b242f67a7162d6",
+    "titulos": [
+      "# ADR-004: Permisos centrales con asignaciones por ámbito",
+      "## Contexto y decisión",
+      "## Consecuencias"
+    ]
+  },
+  {
+    "ruta": "docs/arquitectura/adr/README.md",
+    "sha256": "efa4adb1ebebfa5d4a187e3c60926ec71b3c839f06775c918367d24db1d99bbc",
+    "titulos": [
+      "# Decisiones de arquitectura (ADR)"
+    ]
+  },
+  {
+    "ruta": "docs/arquitectura/api-y-contratos.md",
+    "sha256": "b2bb75f19512b3754b8ddb96bac2f797842676b07a49e03f627e3815ae281da2",
+    "titulos": [
+      "# API y contratos observados",
+      "## Rutas",
+      "## Validación y errores",
+      "## Evidencia principal"
+    ]
+  },
+  {
+    "ruta": "docs/arquitectura/arquitectura-y-stack.md",
+    "sha256": "1df0d5eb5526e2feed4de65afb2209627ae6b9b2f1a6cebce8d94631312bc7b1",
+    "titulos": [
+      "# Arquitectura, autenticación y seguridad",
+      "## Componentes",
+      "## Autenticación y autorización",
+      "## Alcance y riesgos de seguridad observables"
+    ]
+  },
+  {
+    "ruta": "docs/arquitectura/auditoria-dependencias.md",
+    "sha256": "4eb009c40b61f46b94a7749abddb77ac28d44a34f96a91aca554572ee12ec522",
+    "titulos": [
+      "# Auditoría de dependencias — Fase 1",
+      "## Resultado",
+      "## Hallazgos pendientes",
+      "## Comandos ejecutados"
+    ]
+  },
+  {
+    "ruta": "docs/arquitectura/contrato-autorizacion-rbac.md",
+    "sha256": "a80498e7b9e1408d431670c00b0ba5674284e95a994583ac35814ddd10999c67",
+    "titulos": [
+      "# Contrato central de autorización RBAC",
+      "## Estado de esta entrega",
+      "## Decisión de acceso",
+      "## Modelo relacional",
+      "## Matriz inicial",
+      "## Migración y activación",
+      "### Solicitudes de anulación (Módulo 1)",
+      "## Contrato HTTP del piloto",
+      "## Fronteras y casos de abuso",
+      "## Verificación"
+    ]
+  },
+  {
+    "ruta": "docs/base-de-datos/esquema-y-migraciones.md",
+    "sha256": "733f658726f75d597994f28f0816d7fb42e057b7f4f17783e0c88007f13e7532",
+    "titulos": [
+      "# Esquema y migraciones de base de datos",
+      "## Configuración",
+      "## Entidades registradas",
+      "## Migraciones registradas en el código",
+      "## Consecutivo de certificados y 55388",
+      "## Inmutabilidad y documentos"
+    ]
+  },
+  {
+    "ruta": "docs/base-de-datos/respaldos-y-operacion.md",
+    "sha256": "10932cff99ca27e68843f00b4090517a0e9cb8c112bfb0b77837736a5d68b6a5",
+    "titulos": [
+      "# Runbook: respaldos, restauración y migraciones",
+      "## Alcance y condiciones",
+      "## Respaldo antes de una migración",
+      "## Estado de migraciones y despliegue",
+      "## Verificar consecutivos",
+      "## Restauración desde un respaldo",
+      "## Pruebas de integridad con MariaDB",
+      "## PDFs"
+    ]
+  },
+  {
+    "ruta": "docs/calidad-y-pruebas/aceptacion-visual-pdfs.md",
+    "sha256": "e48155a3f041f5340095dbdf62afb035fbe99a1b87941162153a8f27e9d363a8",
+    "titulos": [
+      "# Aceptación visual de PDFs oficiales"
+    ]
+  },
+  {
+    "ruta": "docs/calidad-y-pruebas/calidad-de-datos.md",
+    "sha256": "7d2622175209b04458d858b9a37d204cdcb5bb290b89c31569276aa05a150a06",
+    "titulos": [
+      "# Calidad e invariantes de datos observadas",
+      "## Invariantes visibles",
+      "## Retención y alcance de auditoría"
+    ]
+  },
+  {
+    "ruta": "docs/calidad-y-pruebas/checklist-verificacion-operativa.md",
+    "sha256": "088b7a543d522dc171260262f90b70e4a1111734b289cb084c5a9291715155b4",
+    "titulos": [
+      "# Checklist de verificación operativa — Sterinova ERP",
+      "## 1. Base de datos",
+      "## 2. Pruebas",
+      "## 3. Autenticación y autorización",
+      "## 4. PDFs y certificados",
+      "## 5. Frontend",
+      "## 6. Despliegue",
+      "## 7. Documentación"
+    ]
+  },
+  {
+    "ruta": "docs/calidad-y-pruebas/pruebas.md",
+    "sha256": "8f007c29ba5d24b0c12da5577f39454573fd8b64f8a81bc8f64c5f97f302cbe7",
+    "titulos": [
+      "# Pruebas backend",
+      "## Comandos declarados"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/auth.md",
+    "sha256": "494d854a0c61d287ea70b7af213f6dd8b7884b4490bff3855bd759c09318818a",
+    "titulos": [
+      "# Autenticación JWT – Sterinova-Backend",
+      "## Flujo actual",
+      "## Payload JWT",
+      "## Propagación a los servicios",
+      "## Expiración y revocación",
+      "## Variables de entorno relevantes",
+      "## Persistencia en frontend"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/cobertura-tests.md",
+    "sha256": "8ac0d63fb21ef9ccc61a497946dc86b021e5fe8b80e179863b1f7d0c4fa1b336",
+    "titulos": [
+      "# Cobertura y tests – Sterinova-Backend",
+      "## 1) Inventario de pruebas unitarias y de dominio",
+      "## 2) Pruebas de migración y RBAC",
+      "## 3) Pruebas E2E / integración",
+      "## 4) Ejecutores observados",
+      "## 5) Gaps observados"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/deuda-tecnica.md",
+    "sha256": "2fea598d25c693e4cfa75eba313538faea216d7834dbb9f050b8d322ac6bafc2",
+    "titulos": [
+      "# Deuda técnica – Sterinova-Backend",
+      "## 1) Elementos observados",
+      "## 2) Interpretación",
+      "## 3) Estado operativo"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/endpoints.md",
+    "sha256": "077447322261332fef307269d0052cf27d1591c9563cfe8558c3755797d30f7d",
+    "titulos": [
+      "# Endpoints HTTP – Sterinova-Backend",
+      "## Inventario real",
+      "## Observaciones clave"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/estados-entidades.md",
+    "sha256": "6fc35d0b35b9fc90e9394db83be808cf2bb31b2b4559c5da240f87ec2b6d060c",
+    "titulos": [
+      "# Estados de entidades – Sterinova-Backend",
+      "## 1) Cotización",
+      "## 2) Orden de servicio",
+      "## 3) Ciclo de esterilización",
+      "## 4) Formatos documentales",
+      "## 5) Observación"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/INDEX.md",
+    "sha256": "300e59ac4c7ce7c19e87c5470815c2eb84490f23e536cffc1556c3ae40206f24",
+    "titulos": [
+      "# Índice de contexto – Sterinova-Backend",
+      "## Bloques",
+      "## Reglas y aclaraciones"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/INSTRUCCIONES_CONTEXTO_TANDA2.md",
+    "sha256": "2d14e03c09eb8f84f45588061b76502809abcab327cdae6535ba5c0124d611bf",
+    "titulos": [
+      "# Instrucciones para la segunda tanda de contexto — Sterinova ERP",
+      "## Objetivo",
+      "## Reglas generales",
+      "## Tanda 2A — Desbloquear los P0 parciales (máxima prioridad)",
+      "### 2A-1. Volcado real de endpoints",
+      "### 2A-2. Esquema real de BD",
+      "### 2A-3. Matriz RBAC real",
+      "## Tanda 2B — Bloques P1 restantes",
+      "### 2B-1. Migraciones y seeds (`migraciones.md`)",
+      "### 2B-2. Inventario de tests (`cobertura-tests.md`)",
+      "### 2B-3. Deuda técnica (`deuda-tecnica.md`)",
+      "### 2B-4. Máquina de estados por entidad (`estados-entidades.md`)",
+      "### 2B-5. Patrones frontend (`patrones-frontend.md`)",
+      "### 2B-6. Dependencias directas (`dependencias-directas.md`)",
+      "### 2B-7. Reglas de negocio tabuladas (`reglas-negocio.md`)",
+      "## Tanda 2C — Bloques P2 (menor prioridad)",
+      "### 2C-1. Contrato HTTP (`contrato-http.md`)",
+      "### 2C-2. Configuración Next.js (`config-nextjs.md`)",
+      "### 2C-3. Auditoría (`auditoria.md`)",
+      "### 2C-4. Catálogos (`catalogos.md`)",
+      "### 2C-5. Despliegue (`despliegue.md`)",
+      "## Verificación al cerrar la tanda",
+      "## Notas de alcance"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/migraciones.md",
+    "sha256": "3672e86b0d64e5bc78fcf227307249f1eb8f79389bd560dd41dc54f7a617e288",
+    "titulos": [
+      "# Migraciones y seeds – Sterinova-Backend",
+      "## 1) Serie histórica observada",
+      "## 2) Patrón observable",
+      "## 3) Seeds y carga de datos",
+      "## 4) Observación importante"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/modelo-datos.md",
+    "sha256": "9691aafd0216bf4b7885b140bc639e7efdf4a19cd0d6edf59d8772d8cd31514a",
+    "titulos": [
+      "# Modelo de datos – Sterinova-Backend",
+      "## Entidades principales",
+      "### 1) `usuarios`",
+      "### 2) `rbac_scopes`",
+      "### 3) `rbac_scope_closure`",
+      "### 4) `rbac_roles`",
+      "### 5) `rbac_permissions`",
+      "### 6) Entidades de negocio core",
+      "## Nota de completitud"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/modulos-backend.md",
+    "sha256": "663662bf2922481ed06fc3babcd099424d24ab2922b1b0d7e709814ec7cf9d76",
+    "titulos": [
+      "# Módulos backend – Sterinova-Backend",
+      "## Observación"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/pdf-render.md",
+    "sha256": "2e57d8f8bc00ab66414ebcc1074ca81546e2d1a8185a54a50afa38781879022c",
+    "titulos": [
+      "# Contrato de render PDF – Sterinova-Backend",
+      "## Diagrama de secuencia",
+      "## Flujo detallado",
+      "## Variables relevantes",
+      "## Almacenamiento final",
+      "## Manejo de errores"
+    ]
+  },
+  {
+    "ruta": "docs/contexto/rbac.md",
+    "sha256": "a25335fa13760bc8c08f67a60a6ed456be87a0187a0089052105ea3bb2c0daa1",
+    "titulos": [
+      "# RBAC y permisos – Sterinova-Backend",
+      "## 1) Roles legacy de la app",
+      "## 2) RBAC nuevo",
+      "## 3) Catálogo de permisos",
+      "## 4) Matriz rol → permisos",
+      "## 5) Scope y contexto",
+      "## 6) Cómo se usa en cotizaciones",
+      "## 7) Estado del piloto"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/auditoria-docs-2026-11-06.md",
+    "sha256": "efdd7098c6bb2652a75cfce93770c170e5743f488dd08ecf8e697613d9ab7578",
+    "titulos": [
+      "# Fase 5 — Informe estructurado de auditoría documental Sterinova ERP",
+      "## 1. Inventario documental final",
+      "### Backend — `backend_sterinova/docs`",
+      "### Frontend — `frontend_sterinova/docs`",
+      "## 2. Verdades verificadas",
+      "### 2.1 Entidades TypeORM registradas y columnas",
+      "### 2.2 Migraciones de código y pruebas asociadas",
+      "## 3. Contradicciones resueltas",
+      "## 4. Hallazgos UI/UX",
+      "## 5. Pendientes no verificables",
+      "## 6. Cambios por archivo",
+      "## 7. Riesgos abiertos",
+      "## 8. Próximos pasos recomendados",
+      "## 9. Checklist de calidad documental",
+      "## 10. Atribución de cambios locales"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/baseline-fase0.md",
+    "sha256": "531bd328ea1fb1a7ae9e25a1e89dad6add70085834ededca915f4d177757d817",
+    "titulos": [
+      "## 1. Entorno",
+      "## 2. Base de Datos y Migraciones",
+      "## 3. Pruebas Automatizadas",
+      "## 4. Configuración TypeORM y Seguridad",
+      "## 5. Estado de Git",
+      "## 6. Conclusión de la Fase 0"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/cierre-hito4-y-traspaso-2026-11-09.md",
+    "sha256": "8456e8cf092ac3c8d3175d33165ebe3debad7feb034ad8f3bfd462e1695209a6",
+    "titulos": [
+      "# Cierre de Hito 4 y traspaso a la siguiente fase",
+      "## Ajuste final del certificado",
+      "## Validación de cierre",
+      "## Arranque en la siguiente sesión",
+      "## Siguiente análisis de formatos diligenciados"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/contexto-producto.md",
+    "sha256": "947aa63e96d09c47c2fa348a2361826f521ccd45495b18199f7f4516de5aedb2",
+    "titulos": [
+      "# Contexto del producto"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/historico/analisis-estado-2026-11-03.md",
+    "sha256": "b9c54de5ffa4dc9bb7efa4344b9950df8f645732b9cd7ed2c18242a145ec84c9",
+    "titulos": [
+      "# Análisis del estado actual — Sterinova ERP",
+      "## 1. Resumen ejecutivo",
+      "## 2. Base de datos — esquema actual",
+      "## 3. Backend — API REST disponible",
+      "## 4. Frontend — estructura, rutas e integración",
+      "## 5. Reglas de negocio implementadas",
+      "### Consecutivos",
+      "### Importación de Excel",
+      "### Totales e IVA",
+      "## 6. Dependencias clave",
+      "## 7. Deuda técnica y pendientes",
+      "## 8. Recomendaciones y próximos pasos — orden para Planta y Calidad"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/historico/analisis-estado-2026-11-04.md",
+    "sha256": "4d27a7e423c32afc29d50941a7438dee0cfa54052daaa36bc4de61d814214c71",
+    "titulos": [
+      "# Análisis de Estado Actual - Sterinova ERP (V2)",
+      "## 1. Resumen Ejecutivo",
+      "## 2. Estado de los Módulos (Completados vs Pendientes)",
+      "### Reglas de negocio que sí se aplican",
+      "## 3. Base de Datos (Esquema Actual)",
+      "## 4. Backend (API REST)",
+      "## 5. Frontend (Rutas y Vistas)",
+      "## 6. Estado del Generador de PDFs",
+      "## 7. Deuda Técnica y Pendientes (TODOs)",
+      "## 8. Próximos Pasos Recomendados"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/hito1-iva-dinamico-2026-11-09.md",
+    "sha256": "3a555fc5c1493084f2eeefbf30d7a4057050fc93fd333f2049e71d55ef830e7c",
+    "titulos": [
+      "# Hito 1: IVA dinámico",
+      "## Puntos de restauración",
+      "## Datos y contrato",
+      "## Cálculo y frontend",
+      "## Aplicación local y conservación",
+      "## Verificación",
+      "## Límite de esta entrega"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/hito2-edicion-borradores-2026-11-09.md",
+    "sha256": "63c79aa2afccc4af27ad8e984bcc738240e324f7391e23b7acdfa8a24b058d9a",
+    "titulos": [
+      "# Hito 2 - Punto A: edición de borradores",
+      "## Consolidación del Hito 1",
+      "## Contrato y comportamiento",
+      "## Frontend",
+      "## Migración local y conservación",
+      "## Verificación",
+      "## Límites de la entrega"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/hito4-paso1-datos-operativos-2026-11-09.md",
+    "sha256": "cdc9c56e79c8610570748ac23c171c62a2fd7a8fb26bfa751a75db47b4981526",
+    "titulos": [
+      "# Hito 4: Paso 1, datos operativos y consecutivos",
+      "## Alcance",
+      "## Protocolos de referencia",
+      "## Consecutivos",
+      "## Verificación",
+      "## Aplicación y pausa"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/hito4-paso2-backend-2026-11-09.md",
+    "sha256": "687157adf75426521dc5eea54a813a586929232e2f946e6c1b3ee1dac8f8aa0a",
+    "titulos": [
+      "# Hito 4: Paso 2, Backend",
+      "## Migración local aprobada",
+      "## Material recibido",
+      "## Ciclo y evaluación técnica",
+      "## Certificado y vencimiento",
+      "## ICONTEC congelado",
+      "## Frontera con el Paso 3",
+      "## Pruebas y revisión"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/hito4-paso3-frontend-2026-11-09.md",
+    "sha256": "e3640d749ede3ad7dac683ac1060c885ddabdecfeb688ca2704e64b7d378cf5b",
+    "titulos": [
+      "# Hito 4: formularios y PDFs listos para prueba real",
+      "## Inicialización local de ICONTEC",
+      "## Formularios",
+      "## Renderizadores",
+      "## Validación",
+      "## Prueba manual"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/inicio-fase1-rbac-2026-11-08.md",
+    "sha256": "743a9a987d25cc086eab495bd09f95c3b744acabebe6218ee183b38647b891f7",
+    "titulos": [
+      "# Inicio de Fase 1 — Fundamentos RBAC",
+      "## Entrega solicitada",
+      "## Pruebas ejecutadas",
+      "## Revisión y límites"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/modulos.md",
+    "sha256": "43d39975e42aefa970dca8cb1c1c21c1d126c7535aa43f32e0e82bfdfb05500a",
+    "titulos": [
+      "# Estado funcional y pendientes",
+      "## Módulos",
+      "## Tipos de cotización, prefijos y disponibilidad",
+      "## Calidad y certificado 55388",
+      "## PDF oficial y documentos",
+      "## Pendientes y límites verificados"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/piloto-cotizaciones-rbac-2026-11-08.md",
+    "sha256": "b424f4ad278885eb7ec3553542b0656d818f78b99d1a4fcd8b0adecb79ae0272",
+    "titulos": [
+      "# Piloto RBAC de Cotizaciones: migración y resultados",
+      "## Respaldo y esquema",
+      "## Conciliación local autorizada",
+      "## Integración del piloto",
+      "## Verificación",
+      "## Alcance pendiente"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/plan-accion-backend-2026-11-06.md",
+    "sha256": "aa7ed5345cfa46df691781c00bc8fb583d8065e503befd88b219b3736b9b84b9",
+    "titulos": [
+      "# Plan de acción — Backend Sterinova ERP",
+      "## 1. Contexto y estado de partida",
+      "## 2. Objetivo del plan",
+      "## 3. Roles y responsabilidades",
+      "## 4. Principios de ejecución",
+      "## 5. Fases",
+      "### Fase 0 — Baseline y verificación operativa",
+      "### Fase 1 — Seguridad y contrato API",
+      "### Fase 2 — Datos, migraciones y consecutivos",
+      "### Fase 3 — Dominio regulatorio: evidencias, firmas, auditoría",
+      "### Fase 4 — PDFs y documentos oficiales",
+      "### Fase 5 — Calidad y pruebas",
+      "### Fase 6 — Observabilidad y despliegue",
+      "### Fase 7 — Documentación viva",
+      "## 6. Orden de ejecución y dependencias",
+      "## 7. Riesgos y mitigaciones",
+      "## 8. Métricas de éxito",
+      "## 9. Anexos"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/reporte-fase1.md",
+    "sha256": "3f3feeaf9107949de38bd341fe4b51fab02cae11a9e599a7a07da9ab059d46a8",
+    "titulos": [
+      "# Reporte de cierre — Fase 1: Seguridad y contrato API",
+      "## Seguridad e infraestructura",
+      "## DTOs y contrato",
+      "## Dependencias",
+      "## Validación"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/reporte-fase2.md",
+    "sha256": "1a006f9c7bd7e87ad8cf62d97e56fc5c93920141c5c3a5d0b66e32e81d81f1e5",
+    "titulos": [
+      "# Reporte de ejecución — Fase 2: Datos, migraciones y consecutivos",
+      "## Consecutivos bajo concurrencia",
+      "## Trigger de inmutabilidad",
+      "## Migraciones y runbook",
+      "## Quality gate",
+      "## Cierre oficial"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/reporte-fase3.md",
+    "sha256": "7411c943dba86ead3f42547b3ad66a02f89f10dd2bfef9d594865bc5a951d766",
+    "titulos": [
+      "# Reporte Fase 3 — Dominio regulatorio",
+      "## Decisión de evidencias y firmas",
+      "## Auditoría",
+      "## Consulta `GET /auditoria`",
+      "## Retención",
+      "## Pruebas y validación"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/reporte-fase4.md",
+    "sha256": "a8f9dec7bff1e432a73a065d3986dfd9b54d4171925ae234f40657047be3d7ed",
+    "titulos": [
+      "# Reporte Fase 4 — PDFs y documentos oficiales",
+      "## Implementación",
+      "## Documentación operativa",
+      "## Validación"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/reporte-fase5.md",
+    "sha256": "2918bf8a75cc5c7b063aee7cd73cf645f9bdcfcc51d96483ed3e0165481765d2",
+    "titulos": [
+      "# Reporte Fase 5 — Calidad, pruebas y CI",
+      "## Pipeline de CI",
+      "## Flujo E2E y contrato OpenAPI",
+      "## Cobertura",
+      "## Runbook PDF y validaciones"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/reporte-fase6.md",
+    "sha256": "b3a63b4bade8fbefefca9d8b53ed1965878e1dc476abe4df7a8c7e5d617fad1a",
+    "titulos": [
+      "# Reporte Fase 6 — Observabilidad y despliegue",
+      "## Implementación",
+      "## Verificación local",
+      "## Runbooks",
+      "## Alcance operativo pendiente de ambiente"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/reporte-fase7.md",
+    "sha256": "6d2b8efaa98305edde9861a800a9d2aa5bf62ac8990b87cc1965f22cf70f6718",
+    "titulos": [
+      "# Reporte Fase 7 — Documentación viva y cierre",
+      "## Gobernanza y mantenimiento",
+      "## Decisiones de arquitectura",
+      "## OpenAPI",
+      "## Quality gate local",
+      "## Estado de cierre"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/resumen-cierre-auditoria-2026-11-06.md",
+    "sha256": "e8684a85d76c7dcf7bfab822617d9df4b5d0a8ee4f0db42bb44d55d8d0711edf",
+    "titulos": [
+      "# Resumen ejecutivo — Cierre de auditoría documental",
+      "## 1. Qué se auditó",
+      "## 2. Qué se encontró",
+      "## 3. Qué se creó / actualizó",
+      "## 4. Qué NO se verificó",
+      "## 5. Riesgos residuales",
+      "## 6. Próximos pasos operativos",
+      "## 7. Responsables y fechas"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/revision-calidad-documental.md",
+    "sha256": "1fdee45dc83ea174326481cd29ef6af43ef60c8b93debd436ff5cb5676bdc689",
+    "titulos": [
+      "# Revisión de calidad documental — cierre de auditoría",
+      "## Resultado",
+      "## Inventario y clasificación",
+      "## Fuentes canónicas por tema",
+      "## Cabeceras",
+      "## Validación de enlaces locales"
+    ]
+  },
+  {
+    "ruta": "docs/estado-proyecto/transicion-frontend-y-reglas-2026-11-09.md",
+    "sha256": "8d320c3c6aa5fb309ea8002ea65ee63ae1cdddcf45267bc0110a782a4a49b0e5",
+    "titulos": [
+      "# Sesión RBAC, frontend y propuesta de reglas de negocio",
+      "## Entrega autorizada",
+      "## Cambio local de JUAN",
+      "## Propuesta A: editar únicamente borradores",
+      "## Propuesta B: IVA configurable y congelado por documento",
+      "## Propuesta C: versiones de sellos ICONTEC",
+      "## Propuesta D: cuadro para estampado físico completamente blanco",
+      "## Orden propuesto y alcance"
+    ]
+  },
+  {
+    "ruta": "docs/manuales/configuracion-local.md",
+    "sha256": "ee03fc391972a660d29904a81082c21e72175bf78af42908eadd348dc5868e22",
+    "titulos": [
+      "# Configuración local del backend",
+      "## Requisitos",
+      "## Variables",
+      "## Arranque",
+      "## Comandos útiles"
+    ]
+  },
+  {
+    "ruta": "docs/manuales/despliegue.md",
+    "sha256": "d6f7c6e861c19ed42f42c7d564f198efeb9aeb82c3f78e5894bc2f3b3ada8b14",
+    "titulos": [
+      "# Runbook de despliegue",
+      "## Prerrequisitos",
+      "## Variables de entorno",
+      "## Secuencia de despliegue",
+      "## Estrategia recomendada: Blue/Green",
+      "## Rollback",
+      "## Persistencia de PDFs",
+      "## Rotación de secretos"
+    ]
+  },
+  {
+    "ruta": "docs/manuales/runbook-incidentes.md",
+    "sha256": "7bd15b86b059884fe1d9fe1af3158ad8ff525aab47fe4a79773c591de0ca30eb",
+    "titulos": [
+      "# Runbook de respuesta a incidentes",
+      "## Reglas para cualquier incidente",
+      "## Base de datos MariaDB/PostgreSQL no disponible",
+      "## Playwright falla o agota memoria al generar PDF",
+      "## Disco `storage/pdfs` lleno",
+      "## Migración TypeORM falla a mitad",
+      "## Cierre"
+    ]
+  },
+  {
+    "ruta": "docs/manuales/runbook-pdfs.md",
+    "sha256": "286bed45cbaf77cc57835e43739b8920b8e40e685375b9afcad6d4c699c23c63",
+    "titulos": [
+      "# Runbook de PDFs oficiales",
+      "## Flujo de emisión",
+      "## Diagnóstico de integridad",
+      "## Recuperación de un PDF huérfano"
+    ]
+  },
+  {
+    "ruta": "docs/README.md",
+    "sha256": "25d9030d4cc36c419c1eab26a6191e36a52d0b99a2d6ad70538f083296507bbd",
+    "titulos": [
+      "# Documentación del backend",
+      "## Documentos vigentes",
+      "## Documentos históricos",
+      "## Formatos de referencia"
+    ]
+  },
+  {
+    "ruta": "docs/ui-ux/correspondencia-ui-api.md",
+    "sha256": "d87978b322194167c0450e21842944083fc7b2538a5ef55f6837e790a0d42539",
+    "titulos": [
+      "# Correspondencia UI–API"
+    ]
+  }
+]

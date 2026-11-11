@@ -68,4 +68,4 @@ Referencias principales: `src/database/migrations/1730750401000-AddQualityCertif
 
 El trigger `trg_certificados_esterilizacion_inmutables` bloquea cambios a los datos de negocio de certificados aprobados. La migración `AddPdfRendererVersion` preserva esa regla permitiendo únicamente actualizar campos técnicos del PDF, como ruta/hash/versión según la definición vigente del trigger. La entidad de cotización y la de certificado incluyen `pdf_url`, `hash_pdf` y `pdf_renderer_version`; las dos primeras columnas aparecen en entidades/migraciones de versionado y la versión del renderizador la agrega la migración `1793813500000-AddPdfRendererVersion`.
 
-Consulta [arquitectura y seguridad](../arquitectura/arquitectura-y-stack.md) y [estado funcional](../estado-proyecto/modulos.md).
+Consulta [arquitectura y seguridad](../arquitectura/arquitectura-y-stack.md) y [estado funcional](../archivo/2026-11-10/estado-proyecto/modulos.md).

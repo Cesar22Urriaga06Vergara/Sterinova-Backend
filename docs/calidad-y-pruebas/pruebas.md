@@ -19,7 +19,7 @@
 
 El backend contiene especificaciones `*.spec.ts` en módulos y migraciones y `test/app.e2e-spec.ts`. Las áreas incluyen auth/guards, Calidad, certificados, clientes, cotizaciones, migraciones, formatos, PDF, Planta, sellos, usuarios y controlador raíz.
 
-En frontend existen cuatro pruebas `.mjs` puntuales y no hay script `test` en `package.json`. El detalle por repositorio está en [pruebas frontend](../../../frontend_sterinova/docs/calidad-y-pruebas/pruebas-frontend.md); esta página es la fuente canónica del inventario y estado general de verificación de pruebas de ambos repositorios.
+En frontend existen cuatro pruebas `.mjs` puntuales y no hay script `test` en `package.json`. El detalle por repositorio está en [pruebas frontend](../../../SterinovaFrontend/docs/calidad-y-pruebas/pruebas-frontend.md); esta página es la fuente canónica del inventario y estado general de verificación de pruebas de ambos repositorios.
 
 La auditoría inventarió los archivos; no ejecutó pruebas, lint ni build.
 

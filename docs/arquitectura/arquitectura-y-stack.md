@@ -9,8 +9,8 @@
 
 - API REST: NestJS 12 y TypeScript; puerto predeterminado 3001, sin prefijo global. La configuración de CORS permite `http://localhost:3000` (`src/main.ts`).
 - Persistencia: MariaDB mediante TypeORM 0.3; migraciones explícitas, `synchronize: false` y `migrationsRun: false` (`src/app.module.ts`, `src/database/data-source.ts`).
-- Web: Next.js 16.4.5, React 19.3 y TypeScript; el detalle de rutas e integración está en [documentación del frontend](../../../frontend_sterinova/docs/README.md).
-- PDF: Playwright en el backend renderiza componentes React servidos por páginas internas del frontend. El flujo, QR y hash se documentan en la [fuente canónica funcional](../estado-proyecto/modulos.md#pdf-oficial-y-documentos).
+- Web: Next.js 16.4.5, React 19.3 y TypeScript; el detalle de rutas e integración está en [documentación del frontend](../../../SterinovaFrontend/docs/README.md).
+- PDF: Playwright en el backend renderiza componentes React servidos por páginas internas del frontend. El flujo, QR y hash se documentan en la [fuente canónica funcional](../archivo/2026-11-10/estado-proyecto/modulos.md#pdf-oficial-y-documentos).
 - Caché: `CacheModule` en memoria; el módulo contiene un TODO de Redis, que no está configurado como almacén activo (`src/app.module.ts`).
 - Pruebas: hay especificaciones Vitest en `src/`; existen configuraciones separadas para pruebas unitarias e E2E. Esta auditoría no ejecutó pruebas.
 

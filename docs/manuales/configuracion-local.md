@@ -26,7 +26,7 @@ No publiques secretos ni uses una variable `NEXT_PUBLIC_*` para `PDF_RENDER_SECR
 
 ## Arranque
 
-Primero inicia el frontend según su [manual local](../../../frontend_sterinova/docs/manuales/desarrollo-local.md), y luego en el backend:
+Primero inicia el frontend según su [manual local](../../../SterinovaFrontend/docs/manuales/desarrollo-local.md), y luego en el backend:
 
 ```powershell
 npm install

@@ -42,4 +42,4 @@ No se identificó soporte general de idempotency keys. La creación de orden pre
 
 Controladores en `src/auth/`, `src/users/`, `src/clientes/`, `src/cotizaciones/`, `src/logistica/`, `src/planta/`, `src/calidad/`, `src/certificados/`, `src/formatos-documentales/` y `src/sellos/`; guards en `src/auth/guards/` y `src/common/guards/`; validación global en `src/main.ts`.
 
-Consulta [arquitectura y seguridad](arquitectura-y-stack.md), [módulos funcionales](../estado-proyecto/modulos.md) e [índice frontend](../../../frontend_sterinova/docs/README.md).
+Consulta [arquitectura y seguridad](arquitectura-y-stack.md), [módulos funcionales](../archivo/2026-11-10/estado-proyecto/modulos.md) e [índice frontend](../../../SterinovaFrontend/docs/README.md).

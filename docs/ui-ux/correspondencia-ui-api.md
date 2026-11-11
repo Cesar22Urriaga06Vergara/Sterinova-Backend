@@ -16,6 +16,6 @@
 | Dashboard | No hay endpoint de métricas identificado para esos contadores. | Cuatro contadores son valores estáticos. | No representar como datos actuales. |
 | Descargas | Certificados y cotizaciones tienen endpoints autenticados de descarga. | La interfaz consume esos endpoints con cliente bearer. | La descarga requiere sesión válida; disponibilidad de archivo depende de storage/configuración. |
 
-> **Fuentes canónicas:** rutas API en [API y contratos](../arquitectura/api-y-contratos.md), rutas visibles en [módulos frontend](../../../frontend_sterinova/docs/estado-proyecto/modulos.md), tipos/prefijos y flujo PDF en [módulos backend](../estado-proyecto/modulos.md). Esta tabla conserva solo las diferencias entre capas.
+> **Fuentes canónicas:** rutas API en [API y contratos](../arquitectura/api-y-contratos.md), rutas visibles en [módulos frontend](../../../SterinovaFrontend/docs/estado-proyecto/modulos.md), tipos/prefijos y flujo PDF en [módulos backend](../archivo/2026-11-10/estado-proyecto/modulos.md). Esta tabla conserva solo las diferencias entre capas.
 
 Fuentes: `backend_sterinova/src/*/*.controller.ts`, `src/cotizaciones/entities/tipo-servicio.enum.ts`, `frontend_sterinova/src/lib/cotizacion-types.ts`, `src/lib/navigation.ts`, `src/lib/api.ts` y páginas de cotización/Calidad. Para rutas, access control y validación completos, consultar [API y contratos](../arquitectura/api-y-contratos.md).

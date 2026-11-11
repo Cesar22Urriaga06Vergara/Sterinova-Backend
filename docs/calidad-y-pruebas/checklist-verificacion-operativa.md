@@ -61,6 +61,6 @@
 ## 7. Documentación
 
 - [ ] Actualizar fuente canónica cuando cambien rutas, migraciones, roles, tipos de cotización o contratos PDF.
-- [ ] Mantener una sola fuente canónica por tema según la [revisión de calidad documental](../estado-proyecto/revision-calidad-documental.md).
+- [ ] Mantener una sola fuente canónica por tema según la [revisión de calidad documental](../archivo/2026-11-10/estado-proyecto/revision-calidad-documental.md).
 - [ ] Archivar evidencia de cada ambiente sin secretos, datos personales innecesarios ni tokens.
 - [ ] Revisar históricos y enlaces cruzados al menos una vez por release.
