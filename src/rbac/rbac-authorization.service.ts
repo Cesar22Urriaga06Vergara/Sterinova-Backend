@@ -259,18 +259,15 @@ export class RbacAuthorizationService {
       if (![...policy.scopeIds, ...policy.ownScopeIds].includes(scopeId!))
         throw new ForbiddenException('Ámbito solicitado no autorizado');
     }
-    const resourceScopeIds = scopes
-      .filter(
-        ({ id, kind }) =>
-          kind !== 'GLOBAL' &&
-          [...policy.scopeIds, ...policy.ownScopeIds].includes(id),
-      )
-      .map(({ id }) => id);
     // Selecting a context narrows access; it never adds scope to another assignment.
     if (scopeId !== undefined) {
       policy.scopeIds = policy.scopeIds.filter((id) => id === scopeId);
       policy.ownScopeIds = policy.ownScopeIds.filter((id) => id === scopeId);
     }
+    const allowedIds = new Set([...policy.scopeIds, ...policy.ownScopeIds]);
+    const resourceScopeIds = scopes
+      .filter(({ id, kind }) => kind !== 'GLOBAL' && allowedIds.has(id))
+      .map(({ id }) => id);
     return { permission, policy, scopeId, resourceScopeIds };
   }
 }

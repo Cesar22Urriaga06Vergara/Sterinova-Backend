@@ -1,3 +1,6 @@
+import { IS_PUBLIC_KEY } from '../auth/decorators/public.decorator.js';
+import { ROLES_KEY } from '../common/decorators/roles.decorator.js';
+import { SESSION_REQUIRED_KEY } from './require-session.decorator.js';
 import {
   ForbiddenException,
   Injectable,
@@ -37,7 +40,8 @@ export class PermissionGuard implements CanActivate {
     if (!permission)
       throw new ForbiddenException('Ruta RBAC sin permiso explícito');
     const request = context.switchToHttp().getRequest<RbacRequest>();
-    if (!request.user?.id) throw new UnauthorizedException();
+    if (!Number.isSafeInteger(request.user?.id) || request.user.id < 1)
+      throw new UnauthorizedException();
     request.rbac = await this.authorization.getContext(
       request.user.id,
       permission,
@@ -67,6 +71,28 @@ export class AuthorizationGuard implements CanActivate {
       undefined
     )
       throw new ForbiddenException('Ruta RBAC sin controlador migrado');
+    const targets = [context.getHandler(), context.getClass()];
+    if (
+      this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, targets) === true
+    )
+      return true;
+    if (
+      this.reflector.getAllAndOverride<boolean>(
+        SESSION_REQUIRED_KEY,
+        targets,
+      ) === true
+    ) {
+      const { user } = context.switchToHttp().getRequest<RbacRequest>();
+      if (!Number.isSafeInteger(user?.id) || user.id < 1)
+        throw new UnauthorizedException();
+      return true;
+    }
+    const roles = this.reflector.getAllAndOverride<unknown[]>(
+      ROLES_KEY,
+      targets,
+    );
+    if (!roles?.length)
+      throw new ForbiddenException('Ruta sin política explícita');
     return this.legacy.canActivate(context);
   }
 }

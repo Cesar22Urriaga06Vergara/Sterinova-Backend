@@ -1,4 +1,4 @@
-/** Action identifiers belong to implemented capabilities; role names are configuration. */
+/** Recognized action identifiers. Recognition never activates a persisted grant or implements an endpoint. */
 export const PERMISSION_CATALOG = [
   {
     code: 'solicitudes_anulacion.crear',
@@ -220,6 +220,163 @@ export const PERMISSION_CATALOG = [
     code: 'sellos.desactivar',
     module: 'documentos',
     label: 'Desactivar sellos de certificación',
+  },
+  // Phase 1 identifiers: activation remains controlled in the database, per capability.
+  {
+    code: 'usuarios.area.invitar',
+    module: 'accesos',
+    label: 'usuarios area invitar',
+  },
+  {
+    code: 'usuarios.area.restablecimiento.iniciar',
+    module: 'accesos',
+    label: 'usuarios area restablecimiento iniciar',
+  },
+  { code: 'clientes.activar', module: 'comercial', label: 'clientes activar' },
+  {
+    code: 'clientes.inactivar',
+    module: 'comercial',
+    label: 'clientes inactivar',
+  },
+  {
+    code: 'cotizaciones.aprobar_interna',
+    module: 'comercial',
+    label: 'cotizaciones aprobar_interna',
+  },
+  {
+    code: 'cotizaciones.enviar',
+    module: 'comercial',
+    label: 'cotizaciones enviar',
+  },
+  {
+    code: 'cotizaciones.reasignar',
+    module: 'comercial',
+    label: 'cotizaciones reasignar',
+  },
+  {
+    code: 'cotizaciones.exportar',
+    module: 'comercial',
+    label: 'cotizaciones exportar',
+  },
+  {
+    code: 'logistica.recepciones.registrar',
+    module: 'logistica',
+    label: 'logistica recepciones registrar',
+  },
+  {
+    code: 'logistica.reempaque.autorizar',
+    module: 'logistica',
+    label: 'logistica reempaque autorizar',
+  },
+  {
+    code: 'logistica.despacho.ejecutar',
+    module: 'logistica',
+    label: 'logistica despacho ejecutar',
+  },
+  {
+    code: 'planta.protocolos.ver',
+    module: 'planta',
+    label: 'planta protocolos ver',
+  },
+  {
+    code: 'planta.equipos.gestionar',
+    module: 'planta',
+    label: 'planta equipos gestionar',
+  },
+  {
+    code: 'planta.equipos.reactivar',
+    module: 'planta',
+    label: 'planta equipos reactivar',
+  },
+  {
+    code: 'planta.retroactividad.autorizar',
+    module: 'planta',
+    label: 'planta retroactividad autorizar',
+  },
+  {
+    code: 'planta.reprocesos.registrar',
+    module: 'planta',
+    label: 'planta reprocesos registrar',
+  },
+  {
+    code: 'calidad.protocolos.gestionar',
+    module: 'calidad',
+    label: 'calidad protocolos gestionar',
+  },
+  {
+    code: 'calidad.desviaciones.verificar',
+    module: 'calidad',
+    label: 'calidad desviaciones verificar',
+  },
+  {
+    code: 'calidad.desviaciones.aprobar',
+    module: 'calidad',
+    label: 'calidad desviaciones aprobar',
+  },
+  {
+    code: 'calidad.liberacion_condicionada.autorizar',
+    module: 'calidad',
+    label: 'calidad liberacion_condicionada autorizar',
+  },
+  {
+    code: 'calidad.liberacion_desviacion.autorizar',
+    module: 'calidad',
+    label: 'calidad liberacion_desviacion autorizar',
+  },
+  {
+    code: 'certificados.elaborar',
+    module: 'calidad',
+    label: 'certificados elaborar',
+  },
+  {
+    code: 'certificados.verificar',
+    module: 'calidad',
+    label: 'certificados verificar',
+  },
+  {
+    code: 'certificados.aprobar',
+    module: 'calidad',
+    label: 'certificados aprobar',
+  },
+  {
+    code: 'certificados.exportar',
+    module: 'calidad',
+    label: 'certificados exportar',
+  },
+  {
+    code: 'certificados.restaurar',
+    module: 'calidad',
+    label: 'certificados restaurar',
+  },
+  {
+    code: 'certificados.anular',
+    module: 'calidad',
+    label: 'certificados anular',
+  },
+  {
+    code: 'formatos.versiones.aprobar',
+    module: 'documentos',
+    label: 'formatos versiones aprobar',
+  },
+  {
+    code: 'formatos.excepcion.autorizar',
+    module: 'documentos',
+    label: 'formatos excepcion autorizar',
+  },
+  {
+    code: 'sellos.licencias.gestionar',
+    module: 'documentos',
+    label: 'sellos licencias gestionar',
+  },
+  {
+    code: 'lavanderia.ordenes.ver',
+    module: 'lavanderia',
+    label: 'lavanderia ordenes ver',
+  },
+  {
+    code: 'lavanderia.proceso.registrar',
+    module: 'lavanderia',
+    label: 'lavanderia proceso registrar',
   },
 ] as const;
 

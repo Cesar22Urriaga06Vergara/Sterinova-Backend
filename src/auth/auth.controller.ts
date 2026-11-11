@@ -1,3 +1,4 @@
+import { RequireSession } from '../rbac/require-session.decorator.js';
 import {
   Body,
   Controller,
@@ -35,6 +36,7 @@ export class AuthController {
   ) {}
 
   @Get('me')
+  @RequireSession()
   @ApiBearerAuth()
   @ApiHeader({
     name: 'x-scope-id',
