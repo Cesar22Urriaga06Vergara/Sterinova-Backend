@@ -17,18 +17,21 @@ await AppDataSource.initialize();
 try {
   const users = AppDataSource.getRepository(User);
   if (await users.findOneBy({ email })) {
-    throw new Error(`Ya existe un usuario con email ${email}. No se modificó ninguna cuenta.`);
+    if (!process.argv.includes('--if-missing')) {
+      throw new Error(`Ya existe un usuario con email ${email}. No se modificó ninguna cuenta.`);
+    }
+    process.stdout.write('La cuenta inicial ya existe; no se modificó.\n');
+  } else {
+    const password_hash = await bcrypt.hash(password, 12);
+    const user = users.create({
+      nombre,
+      email,
+      password_hash,
+      rol: UserRole.ADMIN,
+    });
+    await users.save(user);
+    process.stdout.write(`Admin inicial creado (id=${user.id}).\n`);
   }
-
-  const password_hash = await bcrypt.hash(password, 12);
-  const user = users.create({
-    nombre,
-    email,
-    password_hash,
-    rol: UserRole.ADMIN,
-  });
-  await users.save(user);
-  process.stdout.write(`Admin inicial creado (id=${user.id}).\n`);
 } finally {
   await AppDataSource.destroy();
 }

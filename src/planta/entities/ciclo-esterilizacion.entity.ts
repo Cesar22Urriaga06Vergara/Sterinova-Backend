@@ -1,3 +1,5 @@
+import { Index } from 'typeorm';
+import { RbacScope } from '../../rbac/entities/scope.entity.js';
 import { ProtocoloEsterilizacionVersion } from './protocolo-esterilizacion-version.entity.js';
 import { CicloParametroEvaluacion } from './ciclo-parametro-evaluacion.entity.js';
 import {
@@ -28,7 +30,18 @@ export enum EstadoCicloEsterilizacion {
 }
 
 @Entity('ciclos_esterilizacion')
+@Index('IDX_ciclos_esterilizacion_scope_id', ['scope_id'])
 export class CicloEsterilizacion {
+  @Column({ type: 'int', nullable: true })
+  scope_id: number | null;
+
+  @ManyToOne(() => RbacScope, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'scope_id',
+    foreignKeyConstraintName: 'FK_ciclos_esterilizacion_scope_id',
+  })
+  rbac_scope_id_ref: Relation<RbacScope> | null;
+
   @Column({ type: 'date', nullable: true })
   fecha_esterilizacion: string | null;
 
@@ -38,7 +51,10 @@ export class CicloEsterilizacion {
   @Column({ type: 'int', nullable: true })
   protocolo_version_id: number | null;
 
-  @ManyToOne(() => ProtocoloEsterilizacionVersion, { nullable: true, onDelete: 'RESTRICT' })
+  @ManyToOne(() => ProtocoloEsterilizacionVersion, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'protocolo_version_id' })
   protocolo_version: Relation<ProtocoloEsterilizacionVersion> | null;
 
@@ -115,7 +131,10 @@ export class CicloEsterilizacion {
   @Column({ type: 'int', nullable: true })
   ciclo_correccion_de_id: number | null;
 
-  @ManyToOne(() => CicloEsterilizacion, { nullable: true, onDelete: 'RESTRICT' })
+  @ManyToOne(() => CicloEsterilizacion, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'ciclo_correccion_de_id' })
   cicloOriginal: Relation<CicloEsterilizacion> | null;
 

@@ -1,3 +1,7 @@
+import { AddBackendRoleSchema1794312000000 } from './migrations/1794312000000-AddBackendRoleSchema.js';
+import { BridgeLegacyUserAdministration1794398400000 } from './migrations/1794398400000-BridgeLegacyUserAdministration.js';
+import { UnifyUserRoleAssignments1794312002000 } from './migrations/1794312002000-UnifyUserRoleAssignments.js';
+import { SeedBackendRoles1794312001000 } from './migrations/1794312001000-SeedBackendRoles.js';
 import { AddOperationalDocumentData1794225602000 } from './migrations/1794225602000-AddOperationalDocumentData.js';
 import { AddCancellationRequests1794225603000 } from './migrations/1794225603000-AddCancellationRequests.js';
 import { AddCancellationPermissions1794225604000 } from './migrations/1794225604000-AddCancellationPermissions.js';
@@ -17,6 +21,8 @@ import { ExtendAuditoriaEvents1793813700000 } from './migrations/1793813700000-E
 import { AddScopedRbac1794096000000 } from './migrations/1794096000000-AddScopedRbac.js';
 import { ScopeQuotePilot1794096001000 } from './migrations/1794096001000-ScopeQuotePilot.js';
 import { AddVersionedIva1794225600000 } from './migrations/1794225600000-AddVersionedIva.js';
+import { AddPasswordVersion1794413600000 } from './migrations/1794413600000-AddPasswordVersion.js';
+import { CreatePasswordResetTokens1794413660000 } from './migrations/1794413660000-CreatePasswordResetTokens.js';
 
 /** Shared by the CLI and isolated migration rehearsals; does not load environment variables. */
 export const DATABASE_MIGRATIONS = [
@@ -39,4 +45,10 @@ export const DATABASE_MIGRATIONS = [
   AddOperationalDocumentData1794225602000,
   AddCancellationRequests1794225603000,
   AddCancellationPermissions1794225604000,
+  AddBackendRoleSchema1794312000000,
+  SeedBackendRoles1794312001000,
+  UnifyUserRoleAssignments1794312002000,
+  BridgeLegacyUserAdministration1794398400000,
+  AddPasswordVersion1794413600000,
+  CreatePasswordResetTokens1794413660000,
 ];

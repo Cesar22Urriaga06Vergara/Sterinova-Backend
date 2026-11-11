@@ -98,7 +98,9 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       password: process.env.RBAC_TEST_PASSWORD ?? '',
       database,
       entities: STERINOVA_ENTITIES,
-      migrations: DATABASE_MIGRATIONS,
+      // Historical quote pilot fixtures deliberately exercise pre-unification direct provisioning.
+      // Current procedure/guards are covered by scripts/verify-rbac-unification.mjs.
+      migrations: DATABASE_MIGRATIONS.filter(migration => !['UnifyUserRoleAssignments1794312002000', 'BridgeLegacyUserAdministration1794398400000'].includes(migration.name)),
       migrationsTableName: 'typeorm_migrations',
       migrationsTransactionMode: 'each' as const,
       synchronize: false,
@@ -106,6 +108,7 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
     };
     source = await new DataSource(options).initialize();
     await source.runMigrations();
+    await source.query('ALTER TABLE usuarios ADD COLUMN rbac_version INT NOT NULL DEFAULT 0');
     await source.query(
       "INSERT INTO rbac_scopes (id,code,name,kind,parent_id) VALUES (10,'ventas','Ventas','DEPARTMENT',1),(20,'otra-area','Otra área','DEPARTMENT',1)",
     );
@@ -311,11 +314,11 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
         .expect(404);
     }
   });
-  it('keeps other modules under legacy protection while denying their access to the pilot', async () => {
+  it('requires global RBAC for users while keeping other unmigrated modules under legacy protection', async () => {
     await request(app.getHttpServer())
       .get('/users')
       .set('Authorization', tokens.legacyAdmin)
-      .expect(200);
+      .expect(403);
     await request(app.getHttpServer())
       .get('/logistica/ordenes')
       .set('Authorization', tokens.logistica)

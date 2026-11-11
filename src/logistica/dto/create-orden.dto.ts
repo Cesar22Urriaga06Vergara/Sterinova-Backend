@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, Min, Matches } from 'class-validator';
 import { MaterialOrdenDto } from './material-orden.dto.js';
-import { IsArray, ArrayMaxSize, ValidateNested, IsIn } from 'class-validator';
+import { IsArray, ValidateNested, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsDateString, IsOptional, IsString } from 'class-validator';
 
@@ -12,9 +12,8 @@ export class CreateOrdenDto {
   metodo_esterilizacion?: 'ETO' | 'VAPOR';
 
   @IsOptional()
-  @ApiPropertyOptional({ type: () => [MaterialOrdenDto], maxItems: 200 })
+  @ApiPropertyOptional({ type: () => [MaterialOrdenDto] })
   @IsArray()
-  @ArrayMaxSize(200)
   @ValidateNested({ each: true })
   @Type(() => MaterialOrdenDto)
   materiales?: MaterialOrdenDto[];

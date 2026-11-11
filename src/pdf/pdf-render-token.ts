@@ -1,6 +1,10 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
-export type PdfRenderDocumentType = 'cotizacion' | 'certificado';
+export type PdfRenderDocumentType =
+  | 'cotizacion'
+  | 'certificado'
+  | 'orden_servicio'
+  | 'acta_servicio';
 
 type PdfRenderPayload = {
   audience: 'sterinova-pdf-render';
@@ -69,7 +73,13 @@ export function readPdfRenderToken(
   if (!Number.isFinite(payload.expiresAt) || payload.expiresAt <= now) {
     throw new Error('PDF render token expired');
   }
-  const expectedDocumentType = expectedType === 'cotizacion' ? 'COTIZACION' : 'CERTIFICADO';
+  const map: Record<PdfRenderDocumentType, string> = {
+    cotizacion: 'COTIZACION',
+    certificado: 'CERTIFICADO',
+    orden_servicio: 'ORDEN_SERVICIO',
+    acta_servicio: 'ACTA_SERVICIO',
+  };
+  const expectedDocumentType = map[expectedType];
   const snapshotType = (payload.snapshot.documento as Record<string, unknown> | undefined)?.tipo;
   if (snapshotType !== expectedDocumentType) {
     throw new Error('PDF render snapshot type mismatch');

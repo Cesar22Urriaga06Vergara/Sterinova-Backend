@@ -23,7 +23,7 @@ export class LocalStorageService extends StorageService {
   }
 
   private resolveKey(key: string): string {
-    if (!/^(cotizaciones|certificados)\/[\w.-]+\.pdf$/.test(key)) {
+    if (!/^(cotizaciones|certificados|logistica)\/[\w.-]+\.pdf$/.test(key)) {
       throw new Error('Clave de almacenamiento PDF inválida');
     }
     const result = path.resolve(this.root, key);

@@ -34,8 +34,13 @@ export class AuthService {
     return user ? bcrypt.compare(password, user.password_hash) : false;
   }
 
-  login(user: Pick<User, 'id' | 'nombre' | 'apellido' | 'email' | 'rol' | 'cargo' | 'celular' | 'email_contacto'>) {
-    const payload = { sub: user.id, email: user.email, rol: user.rol };
+  login(user: Pick<User, 'id' | 'nombre' | 'apellido' | 'email' | 'rol' | 'cargo' | 'celular' | 'email_contacto' | 'password_version'>) {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      rol: user.rol,
+      password_version: user.password_version ?? 1,
+    };
 
     return {
       access_token: this.jwtService.sign(payload),

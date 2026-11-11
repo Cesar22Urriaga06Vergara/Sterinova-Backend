@@ -3,21 +3,34 @@ node_modules/
 
 # Build output and coverage
 /dist/
+/build/
+/out/
+/.next/
+/.nuxt/
+/.output/
+/.turbo/
 /coverage/
+/.cache/
+/.tmp/
+/.temp/
 *.tsbuildinfo
 
 # Local environment and secrets
 .env
 .env.*
 !.env.example
+*.pem
+*.key
 /CREDENCIALES-LOCALES.md
+/docs/local/CREDENCIALES_PRUEBAS_LOCAL.md
 
 # Runtime files and generated documents
 /storage/
 /tmp/
+/temp/
+*.tmp
+*.temp
+*.log
 /.playwright-mcp/
 /test-results/
 /playwright-report/
-
-# Local agent instructions may contain machine-specific context
-/AGENTS.md

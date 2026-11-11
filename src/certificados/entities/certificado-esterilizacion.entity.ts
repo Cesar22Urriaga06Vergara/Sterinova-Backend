@@ -16,7 +16,38 @@ import { FormatoVersiones } from '../../formatos-documentales/entities/formato-v
 
 @Entity('certificados_esterilizacion')
 @Index('IDX_certificados_version_formato', ['version_formato_id'])
+@Index('IDX_certificados_esterilizacion_elaborado_por_id', ['elaborado_por_id'])
+@Index('IDX_certificados_esterilizacion_verificado_por_id', [
+  'verificado_por_id',
+])
 export class CertificadoEsterilizacion {
+  @Column({ type: 'int', nullable: true })
+  elaborado_por_id: number | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'elaborado_por_id',
+    foreignKeyConstraintName: 'FK_certificados_esterilizacion_elaborado_por_id',
+  })
+  rbac_elaborado_por_id_ref: Relation<User> | null;
+
+  @Column({ type: 'int', nullable: true })
+  verificado_por_id: number | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'verificado_por_id',
+    foreignKeyConstraintName:
+      'FK_certificados_esterilizacion_verificado_por_id',
+  })
+  rbac_verificado_por_id_ref: Relation<User> | null;
+
+  @Column({ type: 'datetime', precision: 6, nullable: true })
+  elaborado_at: Date | null;
+
+  @Column({ type: 'datetime', precision: 6, nullable: true })
+  verificado_at: Date | null;
+
   @Column({ type: 'date', nullable: true })
   fecha_esterilizacion: string | null;
 

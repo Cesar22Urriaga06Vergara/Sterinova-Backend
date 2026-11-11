@@ -32,8 +32,14 @@ export class User {
   @Column({ select: false })
   password_hash: string;
 
+  @Column({ type: 'int', default: 1 })
+  password_version: number;
+
   @Column({ type: 'enum', enum: UserRole, default: UserRole.ADMIN })
   rol: UserRole;
+
+  @Column({ type: 'int', default: 0, update: false, insert: false })
+  rbac_version: number;
 
   @Column({ type: 'boolean', default: true })
   activo: boolean;

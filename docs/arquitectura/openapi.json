@@ -72,9 +72,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Users"
-        ]
+        ],
+        "x-required-permission": "usuarios.ver"
       },
       "post": {
         "operationId": "UsersController_create",
@@ -94,9 +100,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Users"
-        ]
+        ],
+        "x-required-permission": "usuarios.identidad.gestionar"
       }
     },
     "/users/{id}": {
@@ -127,9 +139,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Users"
-        ]
+        ],
+        "x-required-permission": "usuarios.identidad.gestionar"
       },
       "delete": {
         "operationId": "UsersController_deactivate",
@@ -144,8 +162,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": ""
+          "403": {
+            "description": "Eliminación de identidades denegada. Usar PATCH /users/:id/status para desactivar."
           }
         },
         "tags": [
@@ -156,6 +174,26 @@
     "/users/{id}/password": {
       "patch": {
         "operationId": "UsersController_changePassword",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Users"
+        ],
+        "x-required-permission": "usuarios.identidad.gestionar"
+      }
+    },
+    "/users/{id}/password/reset": {
+      "patch": {
+        "operationId": "UsersController_resetPassword",
         "parameters": [
           {
             "name": "id",
@@ -166,24 +204,20 @@
             }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChangeUserPasswordDto"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Users"
-        ]
+        ],
+        "x-required-permission": "usuarios.identidad.gestionar"
       }
     },
     "/users/{id}/status": {
@@ -214,8 +248,145 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Users"
+        ],
+        "x-required-permission": "usuarios.identidad.gestionar"
+      }
+    },
+    "/users/role-catalog": {
+      "get": {
+        "operationId": "UserRolesController_catalog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "UserRoles"
+        ],
+        "x-required-permission": "asignaciones.gestionar"
+      }
+    },
+    "/users/role-assignments": {
+      "get": {
+        "operationId": "UserRolesController_assignments",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "UserRoles"
+        ],
+        "x-required-permission": "asignaciones.gestionar"
+      }
+    },
+    "/users/{id}/role-assignments": {
+      "post": {
+        "operationId": "UserRolesController_assign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignUserRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "UserRoles"
+        ],
+        "x-required-permission": "asignaciones.gestionar"
+      }
+    },
+    "/users/{id}/role-assignments/{assignmentId}": {
+      "delete": {
+        "operationId": "UserRolesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "assignmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "UserRoles"
+        ],
+        "x-required-permission": "asignaciones.gestionar"
+      }
+    },
+    "/auditoria": {
+      "get": {
+        "operationId": "AuditoriaController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Consultar auditoría paginada (solo Admin)",
+        "tags": [
+          "Auditoría"
         ]
       }
     },
@@ -287,18 +458,31 @@
         ]
       }
     },
-    "/auditoria": {
-      "get": {
-        "operationId": "AuditoriaController_findAll",
+    "/auth/password/reset": {
+      "post": {
+        "operationId": "AuthController_completePasswordReset",
         "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletePasswordResetDto"
+              }
+            }
           }
         },
-        "summary": "Consultar auditoría paginada (solo Admin)",
+        "responses": {
+          "200": {
+            "description": "Contraseña actualizada"
+          },
+          "401": {
+            "description": "Enlace inválido o expirado"
+          }
+        },
+        "summary": "Completar restablecimiento con token de un solo uso",
         "tags": [
-          "Auditoría"
+          "Auth"
         ]
       }
     },
@@ -1224,6 +1408,43 @@
         ]
       }
     },
+    "/logistica/ordenes/{id}/pdf": {
+      "get": {
+        "operationId": "LogisticaController_descargarPdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "tipo",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Logistica"
+        ],
+        "x-required-permission": "logistica.ordenes.ver"
+      }
+    },
     "/logistica/ordenes/{id}/estado": {
       "put": {
         "operationId": "LogisticaController_updateEstado",
@@ -1917,11 +2138,11 @@
         "type": "object",
         "properties": {}
       },
-      "ChangeUserPasswordDto": {
+      "SetUserStatusDto": {
         "type": "object",
         "properties": {}
       },
-      "SetUserStatusDto": {
+      "AssignUserRoleDto": {
         "type": "object",
         "properties": {}
       },
@@ -1942,6 +2163,10 @@
           "email",
           "password"
         ]
+      },
+      "CompletePasswordResetDto": {
+        "type": "object",
+        "properties": {}
       },
       "CreateClienteDto": {
         "type": "object",
@@ -2239,7 +2464,6 @@
             ]
           },
           "materiales": {
-            "maxItems": 200,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MaterialOrdenDto"
@@ -2278,7 +2502,6 @@
           },
           "materiales": {
             "minItems": 1,
-            "maxItems": 200,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MaterialOrdenDto"

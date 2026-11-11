@@ -15,8 +15,14 @@ export type RoleKind = 'STANDARD' | 'PLATFORM';
 
 @Entity('rbac_roles')
 @Index('UQ_rbac_roles_code', ['code'], { unique: true })
+@Index('UQ_rbac_roles_global_eligibility', ['id', 'global_assignable'], {
+  unique: true,
+})
 @Index('UQ_rbac_roles_id_kind', ['id', 'kind'], { unique: true })
 export class RbacRole {
+  @Column({ type: 'boolean', default: false })
+  global_assignable: boolean;
+
   @PrimaryGeneratedColumn()
   id: number;
 

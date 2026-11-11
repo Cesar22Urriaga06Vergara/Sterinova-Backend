@@ -9,6 +9,7 @@ interface JwtPayload {
   sub: number;
   email: string;
   rol: string;
+  password_version?: number;
 }
 
 @Injectable()
@@ -32,10 +33,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     const user = await this.usersService.findActiveById(payload.sub);
     if (!user) throw new UnauthorizedException('Usuario inactivo o inexistente');
+    if (
+      !Number.isSafeInteger(payload.password_version) ||
+      payload.password_version !== user.password_version
+    ) {
+      throw new UnauthorizedException('Credenciales actualizadas; inicia sesión nuevamente');
+    }
     return {
       id: user.id,
       email: user.email,
       rol: user.rol,
+      password_version: user.password_version,
     };
   }
 }

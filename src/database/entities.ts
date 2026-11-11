@@ -3,6 +3,7 @@ import { ProtocoloEsterilizacionVersion } from '../planta/entities/protocolo-est
 import { CicloParametroEvaluacion } from '../planta/entities/ciclo-parametro-evaluacion.entity.js';
 import { SelloCertificacionVersion } from '../sellos/entities/sello-certificacion-version.entity.js';
 import { User } from '../users/entities/user.entity.js';
+import { PasswordResetToken } from '../users/entities/password-reset-token.entity.js';
 import { TasaFiscal } from '../tasas-fiscales/entities/tasa-fiscal.entity.js';
 import { Cliente } from '../clientes/entities/cliente.entity.js';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
@@ -29,6 +30,7 @@ export const STERINOVA_ENTITIES = [
 
   TasaFiscal,
   User,
+  PasswordResetToken,
   Cliente,
   Cotizacion,
   SolicitudAnulacion,

@@ -6,6 +6,8 @@ import { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.ent
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
+  InternalServerErrorException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -23,6 +25,46 @@ import { siguienteConsecutivo } from '../documentos/consecutivo.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
 import { isDateString } from 'class-validator';
+import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
+import { canAccessResource } from '../rbac/authorization-policy.js';
+
+const TRANSICIONES_ESTADO: Record<
+  EstadoOrdenServicio,
+  EstadoOrdenServicio[]
+> = {
+  [EstadoOrdenServicio.PENDIENTE]: [
+    EstadoOrdenServicio.EN_RUTA,
+    EstadoOrdenServicio.CANCELADO,
+  ],
+  [EstadoOrdenServicio.EN_RUTA]: [
+    EstadoOrdenServicio.RECOGIDO,
+    EstadoOrdenServicio.CANCELADO,
+  ],
+  [EstadoOrdenServicio.RECOGIDO]: [
+    EstadoOrdenServicio.EN_PLANTA,
+    EstadoOrdenServicio.CANCELADO,
+  ],
+  [EstadoOrdenServicio.EN_PLANTA]: [
+    EstadoOrdenServicio.PROCESADO,
+    EstadoOrdenServicio.CANCELADO,
+  ],
+  [EstadoOrdenServicio.PROCESADO]: [],
+  [EstadoOrdenServicio.CANCELADO]: [],
+};
+
+function validarTransicionEstado(
+  estadoActual: EstadoOrdenServicio,
+  nuevoEstado: EstadoOrdenServicio,
+) {
+  if (estadoActual === nuevoEstado) return;
+
+  const permitidos = TRANSICIONES_ESTADO[estadoActual] ?? [];
+  if (!permitidos.includes(nuevoEstado)) {
+    throw new BadRequestException(
+      `Transición de estado no permitida: ${estadoActual} -> ${nuevoEstado}`,
+    );
+  }
+}
 
 @Injectable()
 export class LogisticaService {
@@ -103,6 +145,8 @@ export class LogisticaService {
           ),
           consecutivo: `OS-${year}-${numero}`,
           cotizacion_id: dto.cotizacion_id,
+          scope_id: cotizacion.scope_id,
+          creador_id: cotizacion.creador_id,
           fecha_programada: dto.fecha_programada,
           estado: EstadoOrdenServicio.PENDIENTE,
           conductor_asignado: dto.conductor_asignado ?? null,
@@ -215,6 +259,36 @@ export class LogisticaService {
     return orden;
   }
 
+  async findOneForPdf(
+    id: number,
+    access: PermissionContext,
+  ): Promise<OrdenServicio> {
+    if (access?.permission !== 'logistica.ordenes.ver') {
+      throw new ForbiddenException(
+        'Falta contexto autorizado para consultar órdenes logísticas',
+      );
+    }
+
+    const orden = await this.findOne(id);
+    const quoteScopeId = orden.cotizacion?.scope_id ?? null;
+    const scopeMismatch =
+      orden.scope_id !== null &&
+      quoteScopeId !== null &&
+      orden.scope_id !== quoteScopeId;
+    const scopeId = orden.scope_id ?? quoteScopeId;
+    const creatorId =
+      orden.creador_id ?? orden.cotizacion?.creador_id ?? null;
+
+    if (
+      scopeMismatch ||
+      !canAccessResource(access.policy, { scopeId, creatorId })
+    ) {
+      throw new NotFoundException(`Orden de servicio #${id} no encontrada`);
+    }
+
+    return orden;
+  }
+
   async updateEstado(
     id: number,
     dto: UpdateEstadoOrdenDto,
@@ -233,6 +307,7 @@ export class LogisticaService {
       if (!orden)
         throw new NotFoundException(`Orden de servicio #${id} no encontrada`);
       const estadoAnterior = orden.estado;
+      validarTransicionEstado(estadoAnterior, dto.estado);
       orden.estado = dto.estado;
       const saved = await repository.save(orden);
       await this.auditoriaService.create(
@@ -250,6 +325,58 @@ export class LogisticaService {
       );
       return saved;
     });
+  }
+
+  buildPdfSnapshot(
+    orden: OrdenServicio,
+    tipo: 'ORDEN_SERVICIO' | 'ACTA_SERVICIO',
+  ): Record<string, any> {
+    const cliente = orden.cotizacion?.cliente;
+    if (!cliente) {
+      throw new InternalServerErrorException(
+        'La orden no tiene un cliente asociado para generar el documento',
+      );
+    }
+
+    return {
+      documento: {
+        tipo,
+        consecutivo: orden.consecutivo,
+        fecha_programada: orden.fecha_programada,
+        observaciones: orden.observaciones ?? null,
+      },
+      cliente: {
+        razon_social: cliente.razon_social,
+        direccion: cliente.direccion,
+        nit: cliente.nit,
+        telefono: cliente.telefono,
+        email: cliente.email,
+      },
+      cotizacion: {
+        tipo_servicio: orden.cotizacion?.tipo_servicio,
+        subtotal: orden.cotizacion?.subtotal,
+        iva: orden.cotizacion?.iva,
+        total: orden.cotizacion?.total,
+        items: (orden.cotizacion?.items ?? []).map((item) => ({
+          id: item.id,
+          valor_unitario: item.valor_unitario,
+        })),
+      },
+      orden: {
+        consecutivo: orden.consecutivo,
+        fecha_programada: orden.fecha_programada,
+        metodo_esterilizacion: orden.metodo_esterilizacion,
+        observaciones: orden.observaciones ?? null,
+      },
+      materiales: (orden.materiales ?? []).map((material) => ({
+        descripcion: material.descripcion,
+        referencia: material.referencia ?? null,
+        lote: material.lote ?? null,
+        cantidad: material.cantidad,
+        cotizacion_item_id: material.cotizacion_item_id,
+        posicion: material.posicion,
+      })),
+    };
   }
 
   async findCotizacionesAprobadasSinOrden(): Promise<Cotizacion[]> {

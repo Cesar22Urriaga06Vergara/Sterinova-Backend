@@ -17,7 +17,13 @@ export function prepararMateriales(
   materiales: MaterialOrdenDto[],
   items: Pick<CotizacionItem, 'id'>[],
 ) {
+  if (!Array.isArray(materiales)) {
+    throw new BadRequestException('Debe indicar materiales válidos para la orden');
+  }
+
   const ids = new Set(items.map((item) => item.id));
+  const vistos = new Set<string>();
+
   return materiales.map((m, index) => {
     if (m.cotizacion_item_id != null && !ids.has(m.cotizacion_item_id))
       throw new BadRequestException(
@@ -45,9 +51,21 @@ export function prepararMateriales(
           'Muestras deben ser enteros no negativos',
         );
     }
+
+    const descripcion = m.descripcion.trim();
+    const lote = (m.lote ?? '').trim().toLowerCase();
+    const referencia = (m.referencia ?? '').trim().toLowerCase();
+    const clave = `${m.cotizacion_item_id ?? 'manual'}|${descripcion.toLowerCase()}|${lote}|${referencia}`;
+    if (vistos.has(clave)) {
+      throw new BadRequestException(
+        'No se permiten materiales duplicados dentro de la misma orden',
+      );
+    }
+    vistos.add(clave);
+
     return {
       posicion: index + 1,
-      descripcion: m.descripcion.trim(),
+      descripcion,
       cotizacion_item_id: m.cotizacion_item_id ?? null,
       referencia: m.referencia?.trim() || null,
       lote: m.lote?.trim() || null,

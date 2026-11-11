@@ -3,7 +3,6 @@ import type { Repository } from 'typeorm';
 import { User } from './entities/user.entity.js';
 import { UsersService } from './users.service.js';
 import { UserRole } from './entities/user-role.enum.js';
-import { UsersController } from './users.controller.js';
 
 describe('UsersService', () => {
   const createService = (users: Partial<User>[] = []) => {
@@ -37,14 +36,13 @@ describe('UsersService', () => {
     return { service: new UsersService(repository as unknown as Repository<User>), repository, transaction };
   };
 
-  it('lists users without exposing password hashes', async () => {
+  it('rejects listing without an explicit permission context before querying users', async () => {
     const user = { id: 1, nombre: 'Ana', password_hash: 'secret' } as User;
     const { service, repository } = createService([user]);
 
-    const result = await service.findAll();
-
-    expect(repository.find).toHaveBeenCalledWith({ order: { id: 'ASC' } });
-    expect(result[0]).not.toHaveProperty('password_hash');
+    await expect(service.findAll(undefined as never)).rejects.toMatchObject({ status: 403 });
+    expect(repository.find).not.toHaveBeenCalled();
+    expect(repository.createQueryBuilder).not.toHaveBeenCalled();
   });
 
   it('creates a user with contact details and hashes the password', async () => {
@@ -88,11 +86,5 @@ describe('UsersService', () => {
     const { service } = createService();
 
     await expect(service.setActive(8, false, 1)).rejects.toBeInstanceOf(NotFoundException);
-  });
-});
-
-describe('UsersController authorization', () => {
-  it('restricts user administration to Admin', () => {
-    expect(Reflect.getMetadata('roles', UsersController)).toEqual([UserRole.ADMIN]);
   });
 });

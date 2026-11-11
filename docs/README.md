@@ -2,6 +2,10 @@
 
 Reorganización: 10 de noviembre de 2026. Separar requisitos confirmados, diseño objetivo y comportamiento implementado. La documentación no acredita despliegue ni certificación normativa.
 
+## Lectura progresiva
+
+Empieza por [contexto rápido](CONTEXTO_RAPIDO.md) y consulta el [mapa completo](ESTRUCTURA_BACKEND.md) solo para localizar rutas. Abre únicamente el módulo y las referencias directas de la tarea. `archivo/`, los planes, las auditorías y los formatos institucionales se consultan por tema, no como contexto inicial.
+
 ## Lectura principal
 
 1. [Contexto del producto](negocio/contexto-producto.md).

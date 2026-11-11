@@ -10,6 +10,7 @@ import { User } from '../src/users/entities/user.entity.js';
 import { UserRole } from '../src/users/entities/user-role.enum.js';
 import { MetodoEsterilizacion } from '../src/planta/entities/ciclo-esterilizacion.entity.js';
 import { EstadoOrdenServicio } from '../src/ordenes-servicio/entities/estado-orden.enum.js';
+import { withRbacFixtureWrite } from './fixtures/rbac-fixture-write.js';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -88,10 +89,10 @@ describe('AppController (e2e)', () => {
         'SELECT id FROM rbac_scopes WHERE code=?',
         [pilotScopeCode],
       )) as Array<{ id: number }>;
-      await dataSource.query(
+      await withRbacFixtureWrite(dataSource, admin.id, runner => runner.query(
         "INSERT INTO rbac_user_role_assignments (user_id,role_id,scope_id,scope_kind) SELECT ?,id,?,'DEPARTMENT' FROM rbac_roles WHERE code IN ('comercial','emisor_comercial')",
         [admin.id, pilotScope.id],
-      );
+      ));
       let clienteId: number | undefined;
       let cotizacionId: number | undefined;
       let ordenId: number | undefined;
@@ -269,10 +270,10 @@ describe('AppController (e2e)', () => {
             await queryRunner.query('DELETE FROM clientes WHERE id = ?', [
               clienteId,
             ]);
-          await queryRunner.query(
+          await withRbacFixtureWrite(dataSource, admin.id, runner => runner.query(
             'DELETE FROM rbac_user_role_assignments WHERE user_id = ?',
             [admin.id],
-          );
+          ));
           await queryRunner.query('DELETE FROM rbac_scopes WHERE id = ?', [
             pilotScope.id,
           ]);

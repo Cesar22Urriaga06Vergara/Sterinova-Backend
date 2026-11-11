@@ -30,6 +30,17 @@ La semilla comercial contiene lectura SCOPE, pero la migración posterior del pi
 
 La anulación añade una restricción especial: `getCancellationApprovalScopeIds()` acepta admin_area STANDARD en el ámbito exacto o superadmin PLATFORM GLOBAL y ámbitos activos. Esta ruta sí comprueba códigos de roles: la afirmación genérica «ninguna decisión depende de nombres» no describe toda la implementación. Cambiar el nombre visible de un rol no equivale a cambiar su código. Asignar el permiso de aprobar a otro código no elimina esa restricción.
 
+## Protección operativa integrada en logística
+
+El módulo de logística ya incorpora controles de negocio adicionales para evitar errores operativos no triviales:
+
+- validación estricta de `fecha_programada` en formato civil `YYYY-MM-DD` sin hora ni zona horaria,
+- bloqueo de transiciones de estado fuera del flujo permitido (`PENDIENTE -> EN_RUTA -> RECOGIDO -> EN_PLANTA -> PROCESADO`, con cancelación solo en pasos no concluidos),
+- detección de materiales duplicados dentro de la misma orden (misma referencia, descripción y lote),
+- y eliminación del límite artificial de 200 filas por material para permitir cargas dinámicas reales sin forzar un tamaño fijo.
+
+Estas protecciones se aplican en la capa de servicio y en la validación de DTO para que el frontend reciba errores claros y de negocio, no solo errores de persistencia.
+
 ## Síntesis funcional frente a negocio
 
 Hay módulos de autenticación/usuarios, clientes, cotizaciones, logística, planta, calidad, certificados, formatos/sellos, auditoría y tasas fiscales. Existen PDF con snapshot, almacenamiento/hash y flujo de Calidad. Su existencia no demuestra los ocho módulos de negocio completos.

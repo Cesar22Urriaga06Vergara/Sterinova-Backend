@@ -11,6 +11,7 @@ import { User } from './entities/user.entity.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UserRole } from './entities/user-role.enum.js';
+import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 
 export type PublicUser = Omit<User, 'password_hash'>;
 
@@ -31,8 +32,25 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
   ) {}
 
-  async findAll(): Promise<PublicUser[]> {
-    const users = await this.usersRepository.find({ order: { id: 'ASC' } });
+  async findAll(context: PermissionContext): Promise<PublicUser[]> {
+    if (context?.permission !== 'usuarios.ver' || !context.policy.userId || !context.policy.scopeIds.length)
+      throw new ForbiddenException('La consulta de usuarios requiere permiso SCOPE explícito');
+    const scopeIds = context.policy.scopeIds;
+    const users = await this.usersRepository.createQueryBuilder('usuario')
+      .where(`(
+        EXISTS (SELECT 1 FROM rbac_scopes global_scope
+          WHERE global_scope.id IN (:...scopeIds) AND global_scope.kind='GLOBAL' AND global_scope.active=1)
+        OR EXISTS (SELECT 1 FROM rbac_user_role_assignments membership
+          JOIN rbac_roles member_role ON member_role.id=membership.role_id AND member_role.active=1
+          JOIN rbac_scopes member_scope ON member_scope.id=membership.scope_id AND member_scope.active=1
+          WHERE membership.user_id=usuario.id AND membership.active=1 AND membership.scope_id IN (:...scopeIds))
+        OR EXISTS (SELECT 1 FROM rbac_platform_owner owner
+          JOIN rbac_roles owner_role ON owner_role.id=owner.role_id AND owner_role.active=1
+          JOIN rbac_scopes owner_scope ON owner_scope.id=owner.scope_id AND owner_scope.active=1
+          WHERE owner.user_id=usuario.id AND owner.scope_id IN (:...scopeIds))
+      )`, { scopeIds })
+      .orderBy('usuario.id', 'ASC')
+      .getMany();
     return users.map(toPublicUser);
   }
 
@@ -56,7 +74,7 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { id, activo: true } });
   }
 
-  async create(createUserDto: CreateUserDto): Promise<PublicUser> {
+  async create(createUserDto: CreateUserDto, initialActive = true): Promise<PublicUser> {
     const email = createUserDto.email.trim().toLowerCase();
     if (await this.usersRepository.findOne({ where: { email } })) {
       throw new ConflictException('Ya existe un usuario con ese correo');
@@ -70,8 +88,9 @@ export class UsersService {
       cargo: createUserDto.cargo?.trim() || null,
       celular: createUserDto.celular?.trim() || null,
       password_hash,
+      password_version: 1,
       rol: createUserDto.rol,
-      activo: true,
+      activo: initialActive,
     });
     try {
       return toPublicUser(await this.usersRepository.save(user as User));
@@ -109,14 +128,6 @@ export class UsersService {
         throw error;
       }
     });
-  }
-
-  async changePassword(id: number, password: string): Promise<{ id: number; actualizado: true }> {
-    const user = await this.usersRepository.findOne({ where: { id } });
-    if (!user) throw new NotFoundException(`Usuario #${id} no encontrado`);
-    user.password_hash = await bcrypt.hash(password, 10);
-    await this.usersRepository.save(user);
-    return { id, actualizado: true };
   }
 
   async setActive(id: number, activo: boolean, actorId: number): Promise<PublicUser> {

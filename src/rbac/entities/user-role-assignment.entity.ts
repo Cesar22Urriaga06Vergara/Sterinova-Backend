@@ -28,8 +28,28 @@ import { RbacScope } from './scope.entity.js';
   'role_id',
 ])
 @Check('CHK_rbac_assignment_role', "role_kind = 'STANDARD'")
-@Check('CHK_rbac_assignment_scope', "scope_kind <> 'GLOBAL'")
+@Check(
+  'CHK_rbac_assignment_scope',
+  "scope_kind <> 'GLOBAL' OR role_global_assignable = 1",
+)
 export class RbacUserRoleAssignment {
+  @Column({ type: 'boolean', default: false })
+  role_global_assignable: boolean;
+  @ManyToOne(() => RbacRole, { onDelete: 'RESTRICT' })
+  @JoinColumn([
+    {
+      name: 'role_id',
+      referencedColumnName: 'id',
+      foreignKeyConstraintName: 'FK_rbac_assignment_global_eligibility',
+    },
+    {
+      name: 'role_global_assignable',
+      referencedColumnName: 'global_assignable',
+      foreignKeyConstraintName: 'FK_rbac_assignment_global_eligibility',
+    },
+  ])
+  global_eligibility_role: Relation<RbacRole>;
+
   @PrimaryGeneratedColumn()
   id: number;
 

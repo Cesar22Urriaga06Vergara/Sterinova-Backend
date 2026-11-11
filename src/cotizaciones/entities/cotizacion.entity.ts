@@ -21,11 +21,44 @@ import { TasaFiscal } from '../../tasas-fiscales/entities/tasa-fiscal.entity.js'
 @Entity('cotizaciones')
 @Index('IDX_cotizaciones_version_formato', ['version_formato_id'])
 @Index('IDX_cotizaciones_scope_creator', ['scope_id', 'creador_id', 'id'])
+@Index('IDX_cotizaciones_aprobador_interno_id', ['aprobador_interno_id'])
+@Index('IDX_cotizaciones_aceptacion_registrada_por_id', [
+  'aceptacion_registrada_por_id',
+])
 export class Cotizacion {
+  @Column({ type: 'int', nullable: true })
+  aprobador_interno_id: number | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'aprobador_interno_id',
+    foreignKeyConstraintName: 'FK_cotizaciones_aprobador_interno_id',
+  })
+  rbac_aprobador_interno_id_ref: Relation<User> | null;
+
+  @Column({ type: 'int', nullable: true })
+  aceptacion_registrada_por_id: number | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'aceptacion_registrada_por_id',
+    foreignKeyConstraintName: 'FK_cotizaciones_aceptacion_registrada_por_id',
+  })
+  rbac_aceptacion_registrada_por_id_ref: Relation<User> | null;
+
+  @Column({ type: 'datetime', precision: 6, nullable: true })
+  aprobado_internamente_at: Date | null;
+
+  @Column({ type: 'datetime', precision: 6, nullable: true })
+  aceptacion_registrada_at: Date | null;
+
   @Column({ type: 'int', nullable: true })
   sello_icontec_version_id: number | null;
 
-  @ManyToOne(() => SelloCertificacionVersion, { nullable: true, onDelete: 'RESTRICT' })
+  @ManyToOne(() => SelloCertificacionVersion, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'sello_icontec_version_id' })
   sello_icontec_version: Relation<SelloCertificacionVersion> | null;
 

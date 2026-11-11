@@ -9,7 +9,7 @@ import { JwtStrategy } from './jwt.strategy.js';
 import { UserRole } from '../users/entities/user-role.enum.js';
 
 describe('JWT authentication guard', () => {
-  it.each(['login'] as const)(
+  it.each(['login', 'completePasswordReset'] as const)(
     'allows the public auth route %s',
     (route) => {
       const guard = new JwtAuthGuard(new Reflector());
@@ -53,14 +53,44 @@ describe('JWT authentication guard', () => {
 
   it('rejects JWTs for deactivated users and uses the current database role', async () => {
     const usersService = { findActiveById: vi.fn(async (id: number) => id === 7 ? {
-      id, email: 'admin@example.com', rol: UserRole.ADMIN, activo: true,
+      id, email: 'admin@example.com', rol: UserRole.ADMIN, activo: true, password_version: 1,
     } : null) };
     const configService = { get: vi.fn(() => 'jwt-secret-for-test-at-least-32-chars') };
     const strategy = new JwtStrategy(configService as never, usersService as never);
 
-    await expect(strategy.validate({ sub: 7, email: 'stale@example.com', rol: UserRole.COMERCIAL }))
-      .resolves.toMatchObject({ id: 7, email: 'admin@example.com', rol: UserRole.ADMIN });
-    await expect(strategy.validate({ sub: 8, email: 'off@example.com', rol: UserRole.ADMIN }))
+    await expect(strategy.validate({ sub: 7, email: 'stale@example.com', rol: UserRole.COMERCIAL, password_version: 1 }))
+      .resolves.toMatchObject({ id: 7, email: 'admin@example.com', rol: UserRole.ADMIN, password_version: 1 });
+    await expect(strategy.validate({ sub: 8, email: 'off@example.com', rol: UserRole.ADMIN, password_version: 1 }))
+      .rejects.toMatchObject({ status: 401 });
+  });
+
+  it('rejects JWTs after a password change invalidates the previous version', async () => {
+    const usersService = { findActiveById: vi.fn(async () => ({
+      id: 7,
+      email: 'admin@example.com',
+      rol: UserRole.ADMIN,
+      activo: true,
+      password_version: 2,
+    })) };
+    const configService = { get: vi.fn(() => 'jwt-secret-for-test-at-least-32-chars') };
+    const strategy = new JwtStrategy(configService as never, usersService as never);
+
+    await expect(strategy.validate({ sub: 7, email: 'admin@example.com', rol: UserRole.ADMIN, password_version: 1 }))
+      .rejects.toMatchObject({ status: 401 });
+  });
+
+  it('rejects pre-version JWTs after the password-version migration rollout', async () => {
+    const usersService = { findActiveById: vi.fn(async () => ({
+      id: 7,
+      email: 'admin@example.com',
+      rol: UserRole.ADMIN,
+      activo: true,
+      password_version: 1,
+    })) };
+    const configService = { get: vi.fn(() => 'jwt-secret-for-test-at-least-32-chars') };
+    const strategy = new JwtStrategy(configService as never, usersService as never);
+
+    await expect(strategy.validate({ sub: 7, email: 'admin@example.com', rol: UserRole.ADMIN }))
       .rejects.toMatchObject({ status: 401 });
   });
 

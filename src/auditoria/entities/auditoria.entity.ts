@@ -1,3 +1,4 @@
+import { RbacScope } from '../../rbac/entities/scope.entity.js';
 import {
   Column,
   CreateDateColumn,
@@ -21,13 +22,25 @@ export enum AccionAuditoria {
   APROBAR = 'aprobar',
   RECHAZAR = 'rechazar',
   CAMBIAR_ESTADO = 'cambiar_estado',
+  RESETEAR_PASSWORD = 'resetear_password',
   DESCARGAR = 'descargar',
 }
 
 @Entity('auditoria')
 @Index('IDX_auditoria_entidad_registro', ['entidad', 'entidad_id'])
 @Index('IDX_auditoria_created_at', ['created_at'])
+@Index('IDX_auditoria_scope_id', ['scope_id'])
 export class Auditoria {
+  @Column({ type: 'int', nullable: true })
+  scope_id: number | null;
+
+  @ManyToOne(() => RbacScope, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'scope_id',
+    foreignKeyConstraintName: 'FK_auditoria_scope_id',
+  })
+  rbac_scope_id_ref: Relation<RbacScope> | null;
+
   @PrimaryGeneratedColumn()
   id: number;
 

@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { AppModule } from '../src/app.module.js';
 import { User } from '../src/users/entities/user.entity.js';
 import { UserRole } from '../src/users/entities/user-role.enum.js';
+import { withRbacFixtureWrite } from './fixtures/rbac-fixture-write.js';
 import { Cliente } from '../src/clientes/entities/cliente.entity.js';
 import { Cotizacion } from '../src/cotizaciones/entities/cotizacion.entity.js';
 import { TipoServicioCotizacion } from '../src/cotizaciones/entities/tipo-servicio.enum.js';
@@ -87,11 +88,11 @@ describe.skipIf(process.env.RUN_E2E_FULL_FLOW !== '1')(
         [admin, 'admin_area', scopeId],
         [otherAdmin, 'admin_area', otherScopeId],
       ] as const) {
-        await db.query(
+        await withRbacFixtureWrite(db, user.id, runner => runner.query(
           `INSERT INTO rbac_user_role_assignments (user_id, role_id, scope_id, scope_kind)
         SELECT ?, id, ?, 'DEPARTMENT' FROM rbac_roles WHERE code = ?`,
           [user.id, scope, role],
-        );
+        ));
       }
       const client = await db.getRepository(Cliente).save({
         razon_social: 'Cliente anulación',

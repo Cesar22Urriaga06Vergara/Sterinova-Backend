@@ -63,6 +63,13 @@ describe('RBAC schema on an isolated disposable MariaDB server', () => {
     const runner = dataSource.createQueryRunner();
     try {
       await new AddScopedRbac1794096000000().up(runner);
+      // Historical constraint tests retain their original DDL; current ORM defaults need these additive columns.
+      await runner.query(
+        'ALTER TABLE rbac_roles ADD COLUMN global_assignable TINYINT(1) NOT NULL DEFAULT 0',
+      );
+      await runner.query(
+        'ALTER TABLE rbac_user_role_assignments ADD COLUMN role_global_assignable TINYINT(1) NOT NULL DEFAULT 0',
+      );
     } finally {
       await runner.release();
     }

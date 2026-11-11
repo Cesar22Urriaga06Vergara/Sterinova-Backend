@@ -1,3 +1,7 @@
+import { Index } from 'typeorm';
+import { ManyToOne } from 'typeorm';
+import { User } from '../../users/entities/user.entity.js';
+import { RbacScope } from '../../rbac/entities/scope.entity.js';
 import { OrdenServicioMaterial } from './orden-servicio-material.entity.js';
 import {
   Entity,
@@ -14,7 +18,29 @@ import { Cotizacion } from '../../cotizaciones/entities/cotizacion.entity.js';
 import { EstadoOrdenServicio } from './estado-orden.enum.js';
 
 @Entity('ordenes_servicio')
+@Index('IDX_ordenes_servicio_scope_id', ['scope_id'])
+@Index('IDX_ordenes_servicio_creador_id', ['creador_id'])
 export class OrdenServicio {
+  @Column({ type: 'int', nullable: true })
+  scope_id: number | null;
+
+  @ManyToOne(() => RbacScope, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'scope_id',
+    foreignKeyConstraintName: 'FK_ordenes_servicio_scope_id',
+  })
+  rbac_scope_id_ref: Relation<RbacScope> | null;
+
+  @Column({ type: 'int', nullable: true })
+  creador_id: number | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'creador_id',
+    foreignKeyConstraintName: 'FK_ordenes_servicio_creador_id',
+  })
+  rbac_creador_id_ref: Relation<User> | null;
+
   @Column({ type: 'enum', enum: ['ETO', 'VAPOR'], nullable: true })
   metodo_esterilizacion: 'ETO' | 'VAPOR' | null;
 

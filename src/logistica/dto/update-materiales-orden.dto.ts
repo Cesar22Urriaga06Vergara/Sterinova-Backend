@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsIn,
@@ -21,10 +20,9 @@ export class UpdateMaterialesOrdenDto {
   @IsOptional()
   @IsIn(['ETO', 'VAPOR'])
   metodo_esterilizacion?: 'ETO' | 'VAPOR';
-  @ApiProperty({ type: () => [MaterialOrdenDto], minItems: 1, maxItems: 200 })
+  @ApiProperty({ type: () => [MaterialOrdenDto], minItems: 1 })
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(200)
   @ValidateNested({ each: true })
   @Type(() => MaterialOrdenDto)
   materiales: MaterialOrdenDto[];

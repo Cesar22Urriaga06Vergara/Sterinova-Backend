@@ -23,6 +23,8 @@ import {
 import type { Request } from 'express';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
+import { PasswordResetService } from '../users/password-reset.service.js';
+import { CompletePasswordResetDto } from '../users/dto/complete-password-reset.dto.js';
 
 type LoginRequest = Request & { ip: string };
 
@@ -33,6 +35,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly auditoriaService: AuditoriaService,
     private readonly authorization: RbacAuthorizationService,
+    private readonly passwordReset: PasswordResetService,
   ) {}
 
   @Get('me')
@@ -105,6 +108,17 @@ export class AuthController {
       },
     });
     return result;
+  }
+
+  @Post('password/reset')
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({ summary: 'Completar restablecimiento con token de un solo uso' })
+  @ApiResponse({ status: 200, description: 'Contraseña actualizada' })
+  @ApiResponse({ status: 401, description: 'Enlace inválido o expirado' })
+  completePasswordReset(@Body() dto: CompletePasswordResetDto) {
+    return this.passwordReset.completeReset(dto.token, dto.password);
   }
 
   private async recordLogin(entry: Parameters<AuditoriaService['create']>[0]) {

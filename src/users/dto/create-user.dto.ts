@@ -1,7 +1,16 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsInt, Min, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { UserRole } from '../entities/user-role.enum.js';
 
 export class CreateUserDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  role_id?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  scope_id?: number;
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
