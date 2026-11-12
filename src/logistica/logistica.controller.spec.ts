@@ -6,6 +6,33 @@ import type { LogisticaService } from './logistica.service.js';
 import type { PdfGeneratorService } from '../pdf/pdf-generator.service.js';
 
 describe('LogisticaController PDF route', () => {
+  it('passes the authenticated creator to order creation for discrepancy auditing', async () => {
+    const dto = { cotizacion_id: 1, fecha_programada: '2026-11-10' };
+    const request = {
+      user: { id: 8 },
+      rbac: {
+        permission: 'logistica.ordenes.crear',
+        policy: { userId: 8, scopeIds: [3], ownScopeIds: [] },
+        resourceScopeIds: [3],
+      },
+    };
+    const logisticaService = {
+      createOrden: vi.fn().mockResolvedValue({ id: 12 }),
+    } as unknown as LogisticaService;
+    const controller = new LogisticaController(
+      logisticaService,
+      {} as PdfGeneratorService,
+    );
+
+    await controller.createOrden(dto, request as never);
+
+    expect(logisticaService.createOrden).toHaveBeenCalledWith(
+      dto,
+      8,
+      request.rbac,
+    );
+  });
+
   it('renders the requested document without writing a stored PDF', async () => {
     const orden = { consecutivo: 'OS-2026-0012' };
     const snapshot = { documento: { tipo: 'ACTA_SERVICIO' } };

@@ -1,5 +1,4 @@
 import { IS_PUBLIC_KEY } from '../auth/decorators/public.decorator.js';
-import { ROLES_KEY } from '../common/decorators/roles.decorator.js';
 import { SESSION_REQUIRED_KEY } from './require-session.decorator.js';
 import {
   ForbiddenException,
@@ -9,7 +8,6 @@ import {
   type ExecutionContext,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { RolesGuard } from '../common/guards/roles.guard.js';
 import {
   RbacAuthorizationService,
   type PermissionContext,
@@ -51,12 +49,11 @@ export class PermissionGuard implements CanActivate {
   }
 }
 
-/** Temporary explicit dispatch: an RBAC denial is never retried against RolesGuard. */
+/** One explicit policy per route; no legacy authorization. */
 @Injectable()
 export class AuthorizationGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly legacy: RolesGuard,
     private readonly permissions: PermissionGuard,
   ) {}
 
@@ -65,6 +62,7 @@ export class AuthorizationGuard implements CanActivate {
       SCOPED_PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
     );
+    if (this.reflector.get<boolean>(IS_PUBLIC_KEY, context.getHandler()) === true) return true;
     if (scoped === true) return this.permissions.canActivate(context);
     if (
       this.reflector.get(REQUIRED_PERMISSION_KEY, context.getHandler()) !==
@@ -87,12 +85,6 @@ export class AuthorizationGuard implements CanActivate {
         throw new UnauthorizedException();
       return true;
     }
-    const roles = this.reflector.getAllAndOverride<unknown[]>(
-      ROLES_KEY,
-      targets,
-    );
-    if (!roles?.length)
-      throw new ForbiddenException('Ruta sin política explícita');
-    return this.legacy.canActivate(context);
+    throw new ForbiddenException('Ruta sin política explícita');
   }
 }

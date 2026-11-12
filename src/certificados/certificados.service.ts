@@ -1,3 +1,5 @@
+import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
+import { resourceWhere } from '../rbac/resource-access.js';
 import { BadRequestException } from '@nestjs/common';
 import { fechaVencimiento } from './fecha-vencimiento.js';
 import { prepararInformacionTecnica } from './informacion-tecnica.js';
@@ -212,7 +214,7 @@ export class CertificadosService {
         nombre: aprobador.nombre,
         apellido: aprobador.apellido,
         cargo: aprobador.cargo,
-        rol: aprobador.rol,
+
       },
       ciclo_esterilizacion: {
         id: ciclo.id,
@@ -272,8 +274,9 @@ export class CertificadosService {
     }
   }
 
-  findAll(): Promise<CertificadoEsterilizacion[]> {
+  findAll(access?: PermissionContext): Promise<CertificadoEsterilizacion[]> {
     return this.certificadoRepository.find({
+      ...(access ? {where: resourceWhere(access, {}, 'operador_id').map(cicloEsterilizacion => ({cicloEsterilizacion}))} : {}),
       relations: [
         'cicloEsterilizacion',
         'cicloEsterilizacion.orden',
@@ -287,9 +290,9 @@ export class CertificadosService {
     });
   }
 
-  async findOne(id: number): Promise<CertificadoEsterilizacion> {
+  async findOne(id: number, access?: PermissionContext): Promise<CertificadoEsterilizacion> {
     const certificado = await this.certificadoRepository.findOne({
-      where: { id },
+      where: access ? resourceWhere(access, {}, 'operador_id').map(cicloEsterilizacion => ({id, cicloEsterilizacion})) : { id },
       relations: CERTIFICATE_RELATIONS,
     });
     if (!certificado) {
@@ -298,11 +301,11 @@ export class CertificadosService {
     return certificado;
   }
 
-  async ensurePdfCurrent(id: number): Promise<CertificadoEsterilizacion> {
+  async ensurePdfCurrent(id: number, access?: PermissionContext): Promise<CertificadoEsterilizacion> {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(CertificadoEsterilizacion);
       const certificate = await repository.findOne({
-        where: { id },
+        where: access ? resourceWhere(access, {}, 'operador_id').map(cicloEsterilizacion => ({id, cicloEsterilizacion})) : { id },
         relations: CERTIFICATE_RELATIONS,
         lock: { mode: 'pessimistic_write' },
       });

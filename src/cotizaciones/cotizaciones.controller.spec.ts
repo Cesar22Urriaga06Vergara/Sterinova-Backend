@@ -59,6 +59,10 @@ describe('CotizacionesController.descargar', () => {
 });
 
 describe('CotizacionesController.create', () => {
+  it('requires internal approval permission instead of edit permission', () => {
+    expect(Reflect.getMetadata(REQUIRED_PERMISSION_KEY, CotizacionesController.prototype.aprobar))
+      .toBe('cotizaciones.aprobar_interna');
+  });
   it('assigns the authenticated user as quote creator', async () => {
     const cotizacionesService = { create: vi.fn(async () => ({ id: 7 })) };
     const controller = new CotizacionesController(

@@ -3,7 +3,6 @@ import { Reflector } from '@nestjs/core';
 import type { ExecutionContext } from '@nestjs/common';
 import { AuthorizationGuard, PermissionGuard } from '../rbac/authorization.guard.js';
 import { RbacAuthorizationService } from '../rbac/rbac-authorization.service.js';
-import { RolesGuard } from '../common/guards/roles.guard.js';
 import { User } from './entities/user.entity.js';
 import { UsersController } from './users.controller.js';
 import { UserRolesController } from './user-roles.controller.js';
@@ -22,7 +21,7 @@ describe('users route permissions', () => {
         permission, permissionActive: 1, resourceAccess: 'SCOPE', includeDescendants: 0 }],
     };
     const reflector = new Reflector();
-    const guard = new AuthorizationGuard(reflector, new RolesGuard(reflector),
+    const guard = new AuthorizationGuard(reflector,
       new PermissionGuard(reflector, new RbacAuthorizationService(source as never)));
     const request = { user: { id: 7, rol: 'Admin' }, headers: {} as Record<string, string>, rbac: undefined as unknown };
     const context = (controller: typeof UsersController | typeof UserRolesController, method: string) => ({

@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { LogisticaService } from './logistica.service.js';
 import { TipoServicioCotizacion } from '../cotizaciones/entities/tipo-servicio.enum.js';
+import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.enum.js';
 import type { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
 import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 
@@ -143,5 +144,149 @@ describe('LogisticaService PDF snapshot', () => {
     await expect(
       scopedService.findOneForPdf(12, access),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('denies PDF access when a linked quote has no authorized scope', async () => {
+    const repository = {
+      findOne: vi.fn().mockResolvedValue({
+        id: 12,
+        scope_id: 7,
+        creador_id: 1,
+        cotizacion: { scope_id: null, creador_id: 1 },
+      }),
+    };
+    const scopedService = new LogisticaService(
+      repository as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    const access: PermissionContext = {
+      permission: 'logistica.ordenes.ver',
+      policy: { userId: 1, scopeIds: [7], ownScopeIds: [] },
+      resourceScopeIds: [7],
+    };
+
+    await expect(
+      scopedService.findOneForPdf(12, access),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('LogisticaService approved quotes', () => {
+  it('limits quotes without an order to the authorized scope', async () => {
+    const quotesRepository = {
+      find: vi.fn().mockResolvedValue([{ id: 5, scope_id: 7 }]),
+    };
+    const ordersRepository = {
+      find: vi.fn().mockResolvedValue([]),
+    };
+    const scopedService = new LogisticaService(
+      ordersRepository as never,
+      quotesRepository as never,
+      {} as never,
+      {} as never,
+    );
+    const access: PermissionContext = {
+      permission: 'logistica.cotizaciones_disponibles.ver',
+      policy: { userId: 1, scopeIds: [7], ownScopeIds: [] },
+      resourceScopeIds: [7],
+    };
+
+    await scopedService.findCotizacionesAprobadasSinOrden(access);
+
+    const options = quotesRepository.find.mock.calls[0][0];
+    expect(options.where).toHaveLength(1);
+    expect(options.where[0]).toMatchObject({ estado: 'APROBADA' });
+    expect(options.where[0].scope_id).toBeDefined();
+  });
+});
+
+describe('LogisticaService operational quantity audit', () => {
+  it('records quantity discrepancies without changing the commercial quote', async () => {
+    const order = {
+      id: 12,
+      version: 4,
+      estado: EstadoOrdenServicio.PENDIENTE,
+      cotizacion_id: 7,
+      metodo_esterilizacion: 'ETO',
+    };
+    const ordersRepository = {
+      findOne: vi
+        .fn()
+        .mockResolvedValueOnce(order)
+        .mockResolvedValueOnce({ ...order, version: 5 }),
+      save: vi.fn(async (value) => value),
+    };
+    const quote = { tipo_servicio: 'INDUSTRIAL_ETO' };
+    const cotizacionesRepository = {
+      findOneByOrFail: vi.fn().mockResolvedValue(quote),
+    };
+    const items = [{ id: 8, descripcion: 'Bata', cantidad: 5 }];
+    const itemsRepository = { find: vi.fn().mockResolvedValue(items) };
+    const materialsRepository = {
+      delete: vi.fn(),
+      insert: vi.fn(),
+    };
+    const cyclesRepository = { existsBy: vi.fn().mockResolvedValue(false) };
+    const repositories: Record<string, unknown> = {
+      OrdenServicio: ordersRepository,
+      Cotizacion: cotizacionesRepository,
+      CotizacionItem: itemsRepository,
+      OrdenServicioMaterial: materialsRepository,
+      CicloEsterilizacion: cyclesRepository,
+    };
+    const manager = {
+      getRepository: (entity: { name: string }) => repositories[entity.name],
+    };
+    const dataSource = {
+      transaction: vi.fn(async (callback) => callback(manager)),
+    };
+    const auditoriaService = { create: vi.fn().mockResolvedValue(undefined) };
+    const service = new LogisticaService(
+      ordersRepository as never,
+      {} as never,
+      dataSource as never,
+      auditoriaService as never,
+    );
+
+    await service.updateMateriales(
+      12,
+      {
+        version: 4,
+        materiales: [
+          { cotizacion_item_id: 8, descripcion: 'Bata', cantidad: 7 },
+        ],
+      },
+      19,
+    );
+
+    expect(auditoriaService.create).toHaveBeenCalledWith(
+      {
+        usuario_id: 19,
+        entidad: 'orden_servicio',
+        entidad_id: 12,
+        accion: 'editar',
+        detalle: {
+          version_anterior: 4,
+          materiales: 1,
+          discrepancias_cantidad: [
+            {
+              cotizacion_item_id: 8,
+              descripcion: 'Bata',
+              cantidad_cotizada: 5,
+              cantidad_operativa: 7,
+              diferencia: 2,
+              tipo: 'exceso',
+            },
+          ],
+        },
+      },
+      manager,
+    );
+    expect(quote).toEqual({ tipo_servicio: 'INDUSTRIAL_ETO' });
+    expect(items).toEqual([
+      { id: 8, descripcion: 'Bata', cantidad: 5 },
+    ]);
   });
 });

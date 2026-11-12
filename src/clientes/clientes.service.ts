@@ -1,3 +1,5 @@
+import { resourceWhere, creationScope } from '../rbac/resource-access.js';
+import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, QueryFailedError, Repository } from 'typeorm';
@@ -12,13 +14,14 @@ export class ClientesService {
     private readonly clientesRepository: Repository<Cliente>,
   ) {}
 
-  create(createClienteDto: CreateClienteDto): Promise<Cliente> {
-    const cliente = this.clientesRepository.create(createClienteDto);
+  create(createClienteDto: CreateClienteDto, access: PermissionContext): Promise<Cliente> {
+    const cliente = this.clientesRepository.create({ ...createClienteDto, scope_id: creationScope(access), creador_id: access.policy.userId });
     return this.clientesRepository.save(cliente);
   }
 
   async bulk(
     createClienteDtos: CreateClienteDto[],
+    access: PermissionContext,
   ): Promise<{ imported: number; skipped: number }> {
     const uniqueClients = new Map<string, CreateClienteDto>();
     let skipped = 0;
@@ -46,7 +49,7 @@ export class ClientesService {
     while (pending.length > 0) {
       try {
         await this.clientesRepository.save(
-          this.clientesRepository.create(pending),
+          this.clientesRepository.create(pending.map(dto => ({...dto, scope_id: creationScope(access), creador_id: access.policy.userId}))),
         );
         return { imported: pending.length, skipped };
       } catch (error) {
@@ -81,28 +84,29 @@ export class ClientesService {
     );
   }
 
-  findAll(): Promise<Cliente[]> {
+  findAll(access: PermissionContext): Promise<Cliente[]> {
     return this.clientesRepository.find({
+      where: resourceWhere<Cliente>(access),
       order: { id: 'DESC' },
     });
   }
 
-  async findOne(id: number): Promise<Cliente> {
-    const cliente = await this.clientesRepository.findOne({ where: { id } });
+  async findOne(id: number, access: PermissionContext): Promise<Cliente> {
+    const cliente = await this.clientesRepository.findOne({ where: resourceWhere<Cliente>(access, { id }) });
     if (!cliente) {
       throw new NotFoundException(`Cliente #${id} no encontrado`);
     }
     return cliente;
   }
 
-  async update(id: number, updateClienteDto: UpdateClienteDto): Promise<Cliente> {
-    const cliente = await this.findOne(id);
+  async update(id: number, updateClienteDto: UpdateClienteDto, access: PermissionContext): Promise<Cliente> {
+    const cliente = await this.findOne(id, access);
     Object.assign(cliente, updateClienteDto);
     return this.clientesRepository.save(cliente);
   }
 
-  async remove(id: number): Promise<{ message: string }> {
-    const cliente = await this.findOne(id);
+  async remove(id: number, access: PermissionContext): Promise<{ message: string }> {
+    const cliente = await this.findOne(id, access);
     await this.clientesRepository.remove(cliente);
     return { message: `Cliente #${id} eliminado` };
   }

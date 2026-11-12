@@ -4,7 +4,6 @@ import {
   Column,
   CreateDateColumn,
 } from 'typeorm';
-import { UserRole } from './user-role.enum.js';
 
 @Entity('usuarios')
 export class User {
@@ -35,8 +34,6 @@ export class User {
   @Column({ type: 'int', default: 1 })
   password_version: number;
 
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.ADMIN })
-  rol: UserRole;
 
   @Column({ type: 'int', default: 0, update: false, insert: false })
   rbac_version: number;

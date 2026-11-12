@@ -21,7 +21,7 @@ import request from 'supertest';
 import { STERINOVA_ENTITIES } from '../src/database/entities.js';
 import { DATABASE_MIGRATIONS } from '../src/database/migration-registry.js';
 import { User } from '../src/users/entities/user.entity.js';
-import { UserRole } from '../src/users/entities/user-role.enum.js';
+import { UserRole } from './fixtures/legacy-user-role.js';
 import { Cliente } from '../src/clientes/entities/cliente.entity.js';
 import { Cotizacion } from '../src/cotizaciones/entities/cotizacion.entity.js';
 import { TipoServicioCotizacion } from '../src/cotizaciones/entities/tipo-servicio.enum.js';

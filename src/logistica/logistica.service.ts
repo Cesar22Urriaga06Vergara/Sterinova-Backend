@@ -1,5 +1,10 @@
+import { resourceWhere, creationScope } from '../rbac/resource-access.js';
 import { CotizacionItem } from '../cotizaciones/entities/cotizacion-item.entity.js';
-import { prepararMateriales, metodoOrden } from './materiales-orden.js';
+import {
+  detectarDiscrepanciasCantidad,
+  prepararMateriales,
+  metodoOrden,
+} from './materiales-orden.js';
 import { UpdateMaterialesOrdenDto } from './dto/update-materiales-orden.dto.js';
 import { OrdenServicioMaterial } from '../ordenes-servicio/entities/orden-servicio-material.entity.js';
 import { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
@@ -77,7 +82,9 @@ export class LogisticaService {
     private readonly auditoriaService: AuditoriaService,
   ) {}
 
-  async createOrden(dto: CreateOrdenDto): Promise<OrdenServicio> {
+  async createOrden(
+    dto: CreateOrdenDto,
+    usuarioId: number | null = null, access?: PermissionContext): Promise<OrdenServicio> {
     // DATE stores a civil day: never truncate timestamps or shift time zones.
     if (
       typeof dto.fecha_programada !== 'string' ||
@@ -137,6 +144,7 @@ export class LogisticaService {
         .getRepository(CotizacionItem)
         .find({ where: { cotizacion_id: dto.cotizacion_id } });
       const materiales = prepararMateriales(dto.materiales ?? [], items);
+      const discrepancias = detectarDiscrepanciasCantidad(items, materiales);
       const savedOrder = await orders.save(
         orders.create({
           metodo_esterilizacion: metodoOrden(
@@ -145,8 +153,8 @@ export class LogisticaService {
           ),
           consecutivo: `OS-${year}-${numero}`,
           cotizacion_id: dto.cotizacion_id,
-          scope_id: cotizacion.scope_id,
-          creador_id: cotizacion.creador_id,
+          scope_id: access ? creationScope(access) : cotizacion.scope_id,
+          creador_id: usuarioId,
           fecha_programada: dto.fecha_programada,
           estado: EstadoOrdenServicio.PENDIENTE,
           conductor_asignado: dto.conductor_asignado ?? null,
@@ -161,6 +169,18 @@ export class LogisticaService {
             orden_id: savedOrder.id,
           })),
         );
+      if (discrepancias.length) {
+        await this.auditoriaService.create(
+          {
+            usuario_id: usuarioId,
+            entidad: 'orden_servicio',
+            entidad_id: savedOrder.id,
+            accion: AccionAuditoria.CREAR,
+            detalle: { discrepancias_cantidad: discrepancias },
+          },
+          manager,
+        );
+      }
       return savedOrder;
     });
     return this.findOne(saved.id);
@@ -169,12 +189,11 @@ export class LogisticaService {
   async updateMateriales(
     id: number,
     dto: UpdateMaterialesOrdenDto,
-    usuarioId: number,
-  ) {
+    usuarioId: number, access?: PermissionContext) {
     await this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(OrdenServicio);
       const orden = await repository.findOne({
-        where: { id },
+        where: access ? resourceWhere<OrdenServicio>(access, { id }) : { id },
         lock: { mode: 'pessimistic_write' },
       });
       if (!orden) throw new NotFoundException('Orden no encontrada');
@@ -201,6 +220,7 @@ export class LogisticaService {
         .getRepository(CotizacionItem)
         .find({ where: { cotizacion_id: orden.cotizacion_id } });
       const materiales = prepararMateriales(dto.materiales, items);
+      const discrepancias = detectarDiscrepanciasCantidad(items, materiales);
       orden.metodo_esterilizacion = metodoOrden(
         quote.tipo_servicio,
         dto.metodo_esterilizacion ?? orden.metodo_esterilizacion ?? undefined,
@@ -223,6 +243,7 @@ export class LogisticaService {
           detalle: {
             version_anterior: dto.version,
             materiales: materiales.length,
+            discrepancias_cantidad: discrepancias,
           },
         },
         manager,
@@ -231,8 +252,9 @@ export class LogisticaService {
     return this.findOne(id);
   }
 
-  findAll(): Promise<OrdenServicio[]> {
+  findAll(access?: PermissionContext): Promise<OrdenServicio[]> {
     return this.ordenesRepository.find({
+      ...(access ? {where: resourceWhere<OrdenServicio>(access)} : {}),
       relations: [
         'cotizacion',
         'cotizacion.cliente',
@@ -243,9 +265,9 @@ export class LogisticaService {
     });
   }
 
-  async findOne(id: number): Promise<OrdenServicio> {
+  async findOne(id: number, access?: PermissionContext): Promise<OrdenServicio> {
     const orden = await this.ordenesRepository.findOne({
-      where: { id },
+      where: access ? resourceWhere<OrdenServicio>(access, { id }) : { id },
       relations: [
         'cotizacion',
         'cotizacion.cliente',
@@ -270,30 +292,42 @@ export class LogisticaService {
     }
 
     const orden = await this.findOne(id);
-    const quoteScopeId = orden.cotizacion?.scope_id ?? null;
-    const scopeMismatch =
-      orden.scope_id !== null &&
-      quoteScopeId !== null &&
-      orden.scope_id !== quoteScopeId;
-    const scopeId = orden.scope_id ?? quoteScopeId;
-    const creatorId =
-      orden.creador_id ?? orden.cotizacion?.creador_id ?? null;
-
+    const quoteScope = orden.cotizacion?.scope_id ?? null;
+    if (orden.cotizacion && quoteScope === null) {
+      throw new NotFoundException(`Orden de servicio #${id} no encontrada`);
+    }
     if (
-      scopeMismatch ||
-      !canAccessResource(access.policy, { scopeId, creatorId })
+      orden.scope_id !== null &&
+      orden.scope_id !== undefined &&
+      quoteScope !== null &&
+      orden.scope_id !== quoteScope
     ) {
       throw new NotFoundException(`Orden de servicio #${id} no encontrada`);
     }
 
+    const orderScope = orden.scope_id ?? quoteScope;
+    const orderCreator =
+      orden.creador_id ?? orden.cotizacion?.creador_id ?? null;
+    if (
+      !canAccessResource(access.policy, {
+        scopeId: orderScope ?? null,
+        creatorId: orderCreator,
+      }) ||
+      (quoteScope !== null &&
+        !canAccessResource(access.policy, {
+          scopeId: quoteScope,
+          creatorId: orden.cotizacion?.creador_id ?? null,
+        }))
+    ) {
+      throw new NotFoundException(`Orden de servicio #${id} no encontrada`);
+    }
     return orden;
   }
 
   async updateEstado(
     id: number,
     dto: UpdateEstadoOrdenDto,
-    usuarioId: number,
-  ): Promise<OrdenServicio> {
+    usuarioId: number, access?: PermissionContext): Promise<OrdenServicio> {
     if (!Object.values(EstadoOrdenServicio).includes(dto.estado)) {
       throw new BadRequestException('Estado de orden inválido');
     }
@@ -301,7 +335,7 @@ export class LogisticaService {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(OrdenServicio);
       const orden = await repository.findOne({
-        where: { id },
+        where: access ? resourceWhere<OrdenServicio>(access, { id }) : { id },
         lock: { mode: 'pessimistic_write' },
       });
       if (!orden)
@@ -359,7 +393,9 @@ export class LogisticaService {
         total: orden.cotizacion?.total,
         items: (orden.cotizacion?.items ?? []).map((item) => ({
           id: item.id,
+          cantidad: item.cantidad,
           valor_unitario: item.valor_unitario,
+          valor_total: item.valor_total,
         })),
       },
       orden: {
@@ -379,9 +415,10 @@ export class LogisticaService {
     };
   }
 
-  async findCotizacionesAprobadasSinOrden(): Promise<Cotizacion[]> {
+  async findCotizacionesAprobadasSinOrden(access: PermissionContext): Promise<Cotizacion[]> {
     const aprobadas = await this.cotizacionesRepository.find({
-      where: { estado: 'APROBADA' },
+      where: resourceWhere<Cotizacion>(access, { estado: 'APROBADA' }),
+      select: {id:true,consecutivo:true,tipo_servicio:true,estado:true,cliente_id:true},
       relations: ['cliente'],
       order: { id: 'DESC' },
     });

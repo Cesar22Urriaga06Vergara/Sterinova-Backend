@@ -32,6 +32,25 @@ function fixture(overrides = {}) {
   return { service, quote, repo, items };
 }
 const access = () => quotePermission('cotizaciones.editar');
+describe('internal approval authorization', () => {
+  it('rejects editing permission without querying or saving the quote', async () => {
+    const { service, repo } = fixture({ creador_id: 7 });
+    await expect(service.aprobar(1, 1, access())).rejects.toMatchObject({ status: 403 });
+    expect(repo.findOne).not.toHaveBeenCalled();
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+  it('rejects approval by the creator even with approval permission', async () => {
+    const { service, repo } = fixture({ creador_id: 42 });
+    await expect(service.aprobar(1, 1, quotePermission('cotizaciones.aprobar_interna')))
+      .rejects.toMatchObject({ status: 403 });
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+  it('records the authorized approver for another creator', async () => {
+    const { service } = fixture({ creador_id: 7 });
+    await expect(service.aprobar(1, 1, quotePermission('cotizaciones.aprobar_interna')))
+      .resolves.toMatchObject({ estado: 'APROBADA', version: 2, aprobador_interno_id: 42, aprobado_internamente_at: expect.any(Date) });
+  });
+});
 describe('draft editing', () => {
   it.each([
     { estado: 'EMITIDA' },

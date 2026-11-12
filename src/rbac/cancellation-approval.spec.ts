@@ -15,7 +15,8 @@ function fixture(code = 'admin_area', scopeId = 2) {
       scopeId,
       assignmentActive: 1,
       roleActive: 1,
-      permission: null,
+      permission: code === 'asesor' ? null : 'solicitudes_anulacion.aprobar',
+      permissionActive: 1, resourceAccess: 'SCOPE', includeDescendants: scopeId===1 ? 1 : 0,
     },
   ];
   const roles = [
@@ -67,8 +68,8 @@ describe('ámbitos de aprobación de anulaciones RBAC', () => {
     );
   });
   it('rechaza roles inactivos', async () => {
-    const { service, roles } = fixture();
-    roles[0].active = false;
+    const { service, rows } = fixture();
+    rows[0].roleActive = 0;
     await expect(service.getCancellationApprovalScopeIds(8)).resolves.toEqual(
       [],
     );
@@ -80,11 +81,11 @@ describe('ámbitos de aprobación de anulaciones RBAC', () => {
       [],
     );
   });
-  it('no acepta un rol superadmin estándar como propietario de plataforma', async () => {
+  it('uses grants rather than privileged role names', async () => {
     const { service, roles } = fixture('superadmin', 1);
     roles[0].kind = 'STANDARD';
     await expect(service.getCancellationApprovalScopeIds(8)).resolves.toEqual(
-      [],
+      [2,3,4],
     );
   });
 });

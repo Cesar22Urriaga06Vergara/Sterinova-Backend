@@ -12,7 +12,7 @@ import { PDF_RENDERER_VERSION } from '../pdf/pdf-generator.service.js';
 import { FormatoResolverService } from '../formatos-documentales/formato-resolver.service.js';
 import { CicloEsterilizacion, MetodoEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
 import { User } from '../users/entities/user.entity.js';
-import { UserRole } from '../users/entities/user-role.enum.js';
+import { UserRole } from '../../test/fixtures/legacy-user-role.js';
 
 const runDatabaseIntegration = process.env.RUN_DB_INTEGRATION === '1';
 const databaseIntegration = runDatabaseIntegration ? describe : describe.skip;

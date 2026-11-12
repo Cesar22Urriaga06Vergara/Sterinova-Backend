@@ -75,6 +75,167 @@ describe('PdfGeneratorService', () => {
     }
   });
 
+  it.each([
+    ['equal', 5],
+    ['greater', 7],
+    ['lower', 2],
+  ])(
+    'keeps commercial amounts unchanged when the operational quantity is %s than quoted',
+    async (_comparison, operationalQuantity) => {
+    const temporaryRoot = await mkdtemp(
+      path.join(os.tmpdir(), 'sterinova-pdf-logistica-commercial-'),
+    );
+    process.env.PDF_STORAGE_PATH = temporaryRoot;
+    process.env.PDF_RENDER_SECRET = 'test-render-secret-containing-at-least-32-bytes';
+    const page = {
+      setExtraHTTPHeaders: vi.fn(),
+      setContent: vi.fn(async () => undefined),
+      goto: vi.fn(),
+      waitForSelector: vi.fn(),
+      evaluate: vi.fn(async () => undefined),
+      emulateMedia: vi.fn(),
+      pdf: vi.fn(async () => Buffer.from('%PDF-1.7 logistic')),
+      close: vi.fn(),
+    };
+    vi.mocked(chromium.launch).mockResolvedValue({
+      newPage: vi.fn(async () => page),
+      close: vi.fn(),
+    } as unknown as Browser);
+    const service = new PdfGeneratorService(new LocalStorageService(), {} as never);
+
+    try {
+      const quoteItem = { id: 7, descripcion: 'Muestra', cantidad: 5, valor_unitario: 2500, valor_total: 12500 };
+      const snapshot = {
+        documento: { tipo: 'ORDEN_SERVICIO', consecutivo: 'OS-2026-002', fecha_programada: '2026-11-10' },
+        cliente: { razon_social: 'Cliente prueba', direccion: null, nit: null, telefono: null, email: null },
+        orden: { metodo_esterilizacion: 'ETO', observaciones: 'Recepción parcial.' },
+        cotizacion: {
+          tipo_servicio: 'INDUSTRIAL_ETO',
+          subtotal: 12500,
+          iva: 2375,
+          total: 14875,
+          items: [quoteItem],
+        },
+        materiales: [{ descripcion: 'Muestra', lote: 'L-99', cantidad: operationalQuantity, cotizacion_item_id: 7 }],
+      };
+
+      await service.generate(snapshot, 'logistica/OS-2026-002-commercial.pdf');
+      const html = page.setContent.mock.calls.at(-1)?.[0] ?? '';
+      const formatCurrency = (value: number) =>
+        new Intl.NumberFormat('es-CO', {
+          style: 'currency',
+          currency: 'COP',
+          maximumFractionDigits: 2,
+        }).format(value);
+
+      expect(html).toContain(formatCurrency(quoteItem.valor_total));
+      if (operationalQuantity !== quoteItem.cantidad) {
+        expect(html).not.toContain(
+          formatCurrency(quoteItem.valor_unitario * operationalQuantity),
+        );
+      }
+      expect(html).toContain(
+        `<td class="number">${operationalQuantity}</td>`,
+      );
+      expect(html).toContain(formatCurrency(quoteItem.valor_unitario));
+      expect(html).toContain(formatCurrency(snapshot.cotizacion.subtotal));
+      expect(html).toContain(formatCurrency(snapshot.cotizacion.iva));
+      expect(html).toContain(formatCurrency(snapshot.cotizacion.total));
+    } finally {
+      await service.remove('logistica/OS-2026-002-commercial.pdf');
+      await service.onModuleDestroy();
+      await rm(temporaryRoot, { recursive: true, force: true });
+    }
+    },
+  );
+
+  it('renders a split quote item total only once across operational lots', async () => {
+    const temporaryRoot = await mkdtemp(
+      path.join(os.tmpdir(), 'sterinova-pdf-logistica-split-'),
+    );
+    process.env.PDF_STORAGE_PATH = temporaryRoot;
+    process.env.PDF_RENDER_SECRET =
+      'test-render-secret-containing-at-least-32-bytes';
+    const page = {
+      setExtraHTTPHeaders: vi.fn(),
+      setContent: vi.fn(async () => undefined),
+      goto: vi.fn(),
+      waitForSelector: vi.fn(),
+      evaluate: vi.fn(async () => undefined),
+      emulateMedia: vi.fn(),
+      pdf: vi.fn(async () => Buffer.from('%PDF-1.7 logistic')),
+      close: vi.fn(),
+    };
+    vi.mocked(chromium.launch).mockResolvedValue({
+      newPage: vi.fn(async () => page),
+      close: vi.fn(),
+    } as unknown as Browser);
+    const service = new PdfGeneratorService(new LocalStorageService(), {} as never);
+
+    try {
+      const snapshot = {
+        documento: { tipo: 'ORDEN_SERVICIO', consecutivo: 'OS-2026-003' },
+        cliente: { razon_social: 'Cliente prueba' },
+        orden: { metodo_esterilizacion: 'ETO' },
+        cotizacion: {
+          subtotal: 12500,
+          iva: 2375,
+          total: 14875,
+          items: [
+            {
+              id: 7,
+              cantidad: 5,
+              valor_unitario: 2500,
+              valor_total: 12500,
+            },
+          ],
+        },
+        materiales: [
+          {
+            descripcion: 'Muestra',
+            lote: 'L-01',
+            cantidad: 2,
+            cotizacion_item_id: 7,
+          },
+          {
+            descripcion: 'Muestra',
+            lote: 'L-02',
+            cantidad: 3,
+            cotizacion_item_id: 7,
+          },
+        ],
+      };
+
+      await service.generate(snapshot, 'logistica/OS-2026-003-split.pdf');
+      const html = page.setContent.mock.calls.at(-1)?.[0] ?? '';
+      const rows =
+        html.match(
+          /<tr>\s*<td class="description">Muestra<\/td>[\s\S]*?<\/tr>/g,
+        ) ?? [];
+      const formattedLineTotal = new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        maximumFractionDigits: 2,
+      }).format(12500);
+
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toContain(formattedLineTotal);
+      expect(rows[1]).not.toContain(formattedLineTotal);
+      expect(html).toContain(formattedLineTotal);
+      expect(html).toContain(
+        new Intl.NumberFormat('es-CO', {
+          style: 'currency',
+          currency: 'COP',
+          maximumFractionDigits: 2,
+        }).format(14875),
+      );
+    } finally {
+      await service.remove('logistica/OS-2026-003-split.pdf');
+      await service.onModuleDestroy();
+      await rm(temporaryRoot, { recursive: true, force: true });
+    }
+  });
+
   it.each(['orden_servicio', 'acta_servicio'] as const)(
     'builds dynamic %s tables for large and long material lists',
     async (type) => {
@@ -171,6 +332,9 @@ describe('PdfGeneratorService', () => {
           );
           expect(html).toContain('Material-1 &amp; instrumental');
           expect(html).toContain('descripción extendida');
+          expect(html).toContain('<meta charset="utf-8" />');
+          expect(html).toContain('page-break-inside: avoid');
+          expect(html).not.toContain('\uFFFD');
           expect(html.match(/<td class="description">/g)).toHaveLength(count);
           if (type === 'acta_servicio') {
             expect(html).toContain('<td class="lot">LOTE-1-');

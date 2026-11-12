@@ -56,7 +56,6 @@ export class UsersController {
   @RequirePermission('usuarios.identidad.gestionar')
   async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto, @Req() request: AuthenticatedRequest) {
     await this.userRoles.authorizeIdentity(request.user.id, request.rbac);
-    if (dto.rol !== undefined) throw new BadRequestException('El rol de compatibilidad se deriva de las asignaciones RBAC. Usa la gestión de Roles.');
     return this.usersService.update(id, dto);
   }
 

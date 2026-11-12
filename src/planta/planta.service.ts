@@ -1,3 +1,5 @@
+import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
+import { resourceWhere, creationScope } from '../rbac/resource-access.js';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
 import { ProtocoloEsterilizacionVersion } from './entities/protocolo-esterilizacion-version.entity.js';
 import { OrdenServicioMaterial } from '../ordenes-servicio/entities/orden-servicio-material.entity.js';
@@ -23,16 +25,17 @@ import { CreateCicloDto } from './dto/create-ciclo.dto.js';
 export class PlantaService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
-  findOrdenesEnPlanta(): Promise<OrdenServicio[]> {
+  findOrdenesEnPlanta(access?: PermissionContext): Promise<OrdenServicio[]> {
     return this.dataSource.getRepository(OrdenServicio).find({
-      where: { estado: EstadoOrdenServicio.EN_PLANTA },
+      where: access ? resourceWhere<OrdenServicio>(access, {estado: EstadoOrdenServicio.EN_PLANTA}) : { estado: EstadoOrdenServicio.EN_PLANTA },
       relations: ['cotizacion', 'cotizacion.cliente', 'materiales'],
       order: { id: 'DESC' },
     });
   }
 
-  findCiclos(): Promise<CicloEsterilizacion[]> {
+  findCiclos(access?: PermissionContext): Promise<CicloEsterilizacion[]> {
     return this.dataSource.getRepository(CicloEsterilizacion).find({
+      ...(access ? {where: resourceWhere<CicloEsterilizacion>(access, {}, 'operador_id')} : {}),
       relations: [
         'orden',
         'orden.cotizacion',
@@ -58,14 +61,13 @@ export class PlantaService {
 
   createCiclo(
     dto: CreateCicloDto,
-    operadorId: number,
-  ): Promise<CicloEsterilizacion> {
+    operadorId: number, access?: PermissionContext): Promise<CicloEsterilizacion> {
     return this.dataSource.transaction(async (manager) => {
       const ordenesRepository = manager.getRepository(OrdenServicio);
       const usersRepository = manager.getRepository(User);
       const ciclosRepository = manager.getRepository(CicloEsterilizacion);
       const orden = await ordenesRepository.findOne({
-        where: { id: dto.orden_id },
+        where: access ? resourceWhere<OrdenServicio>(access, {id: dto.orden_id}) : { id: dto.orden_id },
         lock: { mode: 'pessimistic_write' },
       });
 
@@ -142,6 +144,7 @@ export class PlantaService {
         );
       const ciclo = ciclosRepository.create({
         ...dto,
+        scope_id: access ? creationScope(access) : orden.scope_id,
         protocolo_version_id: protocolo.id,
         tiempo_secado:
           dto.tiempo_secado == null ? null : String(dto.tiempo_secado),

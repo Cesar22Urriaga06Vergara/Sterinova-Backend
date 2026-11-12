@@ -7,7 +7,7 @@ import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { PdfGeneratorService } from '../src/pdf/pdf-generator.service.js';
 import { User } from '../src/users/entities/user.entity.js';
-import { UserRole } from '../src/users/entities/user-role.enum.js';
+import { UserRole } from './fixtures/legacy-user-role.js';
 import { MetodoEsterilizacion } from '../src/planta/entities/ciclo-esterilizacion.entity.js';
 import { EstadoOrdenServicio } from '../src/ordenes-servicio/entities/estado-orden.enum.js';
 import { withRbacFixtureWrite } from './fixtures/rbac-fixture-write.js';

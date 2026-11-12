@@ -38,9 +38,20 @@ describe('CertificadosController.descargar', () => {
       auditoriaService as never,
     );
 
-    await controller.descargar(8, response as unknown as Response, { user: { id: 3 } } as never);
+    const request = {
+      user: { id: 3 },
+      rbac: {
+        permission: 'certificados.descargar',
+        policy: { userId: 3, scopeIds: [2], ownScopeIds: [] },
+        resourceScopeIds: [2],
+      },
+    };
+    await controller.descargar(8, response as unknown as Response, request as never);
 
-    expect(certificadosService.ensurePdfCurrent).toHaveBeenCalledWith(8);
+    expect(certificadosService.ensurePdfCurrent).toHaveBeenCalledWith(
+      8,
+      request.rbac,
+    );
     expect(pdfGenerator.getFile).toHaveBeenCalledWith(certificate.pdf_url, certificate.hash_pdf);
     expect(response.end).toHaveBeenCalledWith(Buffer.from('%PDF downloaded bytes'), expect.any(Function));
     response.end.mock.calls[0][1]();

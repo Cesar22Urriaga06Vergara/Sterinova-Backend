@@ -1,3 +1,5 @@
+import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
+import { resourceWhere } from '../rbac/resource-access.js';
 import { CicloParametroEvaluacion } from '../planta/entities/ciclo-parametro-evaluacion.entity.js';
 import {
   BadRequestException,
@@ -29,9 +31,9 @@ export class CalidadService {
     private readonly auditoriaService: AuditoriaService,
   ) {}
 
-  findPendientes(): Promise<CicloEsterilizacion[]> {
+  findPendientes(access?: PermissionContext): Promise<CicloEsterilizacion[]> {
     return this.dataSource.getRepository(CicloEsterilizacion).find({
-      where: { estado: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD },
+      where: access ? resourceWhere<CicloEsterilizacion>(access, {estado: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD}, 'operador_id') : { estado: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD },
       relations: [
         'orden',
         'orden.cotizacion',
@@ -42,11 +44,11 @@ export class CalidadService {
     });
   }
 
-  async findCicloPendiente(id: number): Promise<CicloEsterilizacion> {
+  async findCicloPendiente(id: number, access?: PermissionContext): Promise<CicloEsterilizacion> {
     const cycle = await this.dataSource
       .getRepository(CicloEsterilizacion)
       .findOne({
-        where: { id, estado: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD },
+        where: access ? resourceWhere<CicloEsterilizacion>(access, {id, estado: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD}, 'operador_id') : { id, estado: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD },
         relations: [
           'orden',
           'orden.cotizacion',
@@ -63,7 +65,7 @@ export class CalidadService {
     return cycle;
   }
 
-  async aprobar(dto: ApproveCycleDto, aprobadorId: number) {
+  async aprobar(dto: ApproveCycleDto, aprobadorId: number, access?: PermissionContext) {
     const passwordValida = await this.authService.verifyPassword(
       aprobadorId,
       dto.password,
@@ -84,7 +86,7 @@ export class CalidadService {
       return await this.dataSource.transaction(async (manager) => {
         const cycleRepository = manager.getRepository(CicloEsterilizacion);
         const cycle = await cycleRepository.findOne({
-          where: { id: dto.ciclo_id },
+          where: access ? resourceWhere<CicloEsterilizacion>(access, {id: dto.ciclo_id}, 'operador_id') : { id: dto.ciclo_id },
           relations: [
             'orden',
             'orden.cotizacion',
@@ -99,6 +101,7 @@ export class CalidadService {
         if (!cycle) {
           throw new NotFoundException(`Ciclo #${dto.ciclo_id} no encontrado`);
         }
+        if (cycle.operador_id === aprobadorId) throw new ForbiddenException('El operador no puede aprobar su propio ciclo');
         this.assertPending(cycle);
 
         const decidedAt = new Date();
@@ -163,7 +166,7 @@ export class CalidadService {
     }
   }
 
-  async rechazar(dto: RejectCycleDto, revisorId: number) {
+  async rechazar(dto: RejectCycleDto, revisorId: number, access?: PermissionContext) {
     const motivo = dto.motivo.trim();
     if (!motivo) {
       await this.recordFailedAttempt({
@@ -180,7 +183,7 @@ export class CalidadService {
       return await this.dataSource.transaction(async (manager) => {
         const cycleRepository = manager.getRepository(CicloEsterilizacion);
         const cycle = await cycleRepository.findOne({
-          where: { id: dto.ciclo_id },
+          where: access ? resourceWhere<CicloEsterilizacion>(access, {id: dto.ciclo_id}, 'operador_id') : { id: dto.ciclo_id },
           relations: ['protocolo_version'],
           lock: { mode: 'pessimistic_write' },
         });

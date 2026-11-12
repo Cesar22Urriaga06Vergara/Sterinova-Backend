@@ -1,8 +1,8 @@
 # Arquitectura organizacional y matriz de permisos
 
-> Ampliación técnica backend: [secciones 8–13](#8-contrato-técnico-backend-y-lectura-de-la-matriz). Roadmap asociado: [plan por fases](../superpowers/plans/2026-11-10-rbac-backend.md). Todo lo siguiente es diseño objetivo; no modifica la autorización efectiva.
+> Ampliación técnica backend: [secciones 8–13](#8-contrato-técnico-backend-y-lectura-de-la-matriz). Roadmap asociado: [plan por fases](../superpowers/plans/2026-11-10-rbac-backend.md). La matriz organizacional sigue siendo diseño objetivo; no sustituye las concesiones RBAC efectivamente persistidas.
 
-Fecha: 10 de noviembre de 2026. Estado: diseño objetivo documental, definido por la directiva de reingeniería. No cambia permisos efectivos ni acredita despliegue o conformidad ISO. Fuente funcional: [reglas maestras](../negocio/reglas-maestras.md). Evidencia técnica: [estado implementado](estado-implementado.md).
+Fecha: 12 de noviembre de 2026. Estado: diseño organizacional documental; el runtime ya usa permisos y ámbitos, mientras que la migración correctiva de esquema debe aplicarse por separado. Este documento no acredita concesiones de usuarios ni estado de despliegue o conformidad ISO. Fuente funcional: [reglas maestras](../negocio/reglas-maestras.md). Evidencia técnica: [estado implementado](estado-implementado.md).
 
 ## 1. Decisión y jerarquía
 
@@ -125,7 +125,7 @@ Los identificadores con barras abrevian acciones distintas; no son comodines ni 
 
 | Situación actual | Trabajo documentalmente requerido |
 |---|---|
-| Cinco roles legacy; Admin pasa RolesGuard | Sustituir gradualmente rutas legacy por permisos y proyecciones; no mapear Admin automáticamente a SuperAdmin o Gerente General |
+| El runtime ya no usa los cinco roles legacy ni `RolesGuard`; la migración correctiva aún debe aplicarse a las bases existentes | Verificar migración y asignaciones explícitas en el ambiente autorizado; no mapear Admin automáticamente a SuperAdmin o Gerente General |
 | superadmin PLATFORM único y admin_area genérico existen | Restringir concesiones técnicas/funcionales y completar gestión delegada; verificar titular en ambiente autorizado |
 | No gerente_general; STANDARD no admite GLOBAL | Diseñar cambio controlado del esquema/evaluador para lectura global ordinaria y auditoría global sin usar titularidad de plataforma |
 | comercial/emisor_comercial existen; piloto limita a OWN | Reconciliar lectura SCOPE, responsabilidad y separación aprobación/aceptación/emisión; mantener restricción efectiva hasta implementar |

@@ -34,11 +34,11 @@ export class AuthService {
     return user ? bcrypt.compare(password, user.password_hash) : false;
   }
 
-  login(user: Pick<User, 'id' | 'nombre' | 'apellido' | 'email' | 'rol' | 'cargo' | 'celular' | 'email_contacto' | 'password_version'>) {
+  login(user: Pick<User, 'id' | 'nombre' | 'apellido' | 'email' | 'cargo' | 'celular' | 'email_contacto' | 'password_version'>) {
     const payload = {
       sub: user.id,
       email: user.email,
-      rol: user.rol,
+
       password_version: user.password_version ?? 1,
     };
 
@@ -49,7 +49,7 @@ export class AuthService {
         nombre: user.nombre,
         apellido: user.apellido,
         email: user.email,
-        rol: user.rol,
+
         cargo: user.cargo,
         celular: user.celular,
         email_contacto: user.email_contacto,

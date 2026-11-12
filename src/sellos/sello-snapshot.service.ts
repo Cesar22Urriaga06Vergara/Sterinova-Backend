@@ -61,20 +61,11 @@ export class SelloSnapshotService {
     manager: EntityManager,
     creadoPorId: number | null = null,
   ): Promise<FrozenSeal> {
-    const configured = process.env.ICONTEC_SELLO_ID;
-    if (configured && !/^[1-9]\d*$/.test(configured))
-      throw new ConflictException('ICONTEC_SELLO_ID inválido');
-    const sello = await manager.getRepository(SelloCertificacion).findOne({
-      where: configured
-        ? { id: Number(configured), activo: true }
-        : { activo: true, nombre_norma: Like('%ICONTEC%') },
-      order: { orden: 'ASC', id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
-    });
+    const sello = await this.findActiveSeal(manager, true);
     if (!sello)
       throw new ConflictException({
         code: 'SELLO_ICONTEC_NO_DISPONIBLE',
-        message: 'Configure un sello ICONTEC activo antes de emitir',
+        message: 'Configure un sello ICONTEC o SELLOS activo antes de emitir',
       });
     const file = path.resolve(this.root, sello.imagen_key);
     if (!file.startsWith(this.root + path.sep))
@@ -135,6 +126,52 @@ export class SelloSnapshotService {
       numero_licencia: version.numero_licencia,
       imagen_src: `/internal/pdf-assets/sellos/${sha256}.${type.extension}`,
     };
+  }
+
+  async preview(
+    manager: EntityManager = this.source.manager,
+  ): Promise<{ imagen_src: string } | null> {
+    const sello = await this.findActiveSeal(manager);
+    if (!sello) return null;
+    const file = path.resolve(this.root, sello.imagen_key);
+    if (!file.startsWith(this.root + path.sep))
+      throw new ConflictException('Ruta de sello inválida');
+    const bytes = await readFile(file).catch(() => {
+      throw new ConflictException(
+        'No está disponible la imagen del sello ICONTEC',
+      );
+    });
+    const type = imageType(bytes);
+    return {
+      imagen_src: `data:${type.mime};base64,${bytes.toString('base64')}`,
+    };
+  }
+
+  private async findActiveSeal(
+    manager: EntityManager,
+    lock = false,
+  ): Promise<SelloCertificacion | null> {
+    const configured = process.env.ICONTEC_SELLO_ID;
+    if (configured && !/^[1-9]\d*$/.test(configured))
+      throw new ConflictException('ICONTEC_SELLO_ID inválido');
+    const sealRepository = manager.getRepository(SelloCertificacion);
+    const order = { orden: 'ASC' as const, id: 'ASC' as const };
+    const lockOptions = lock ? { lock: { mode: 'pessimistic_write' as const } } : {};
+    let sello = await sealRepository.findOne({
+      where: configured
+        ? { id: Number(configured), activo: true }
+        : { activo: true, nombre_norma: Like('%ICONTEC%') },
+      order,
+      ...lockOptions,
+    });
+    if (!configured && !sello) {
+      sello = await sealRepository.findOne({
+        where: { activo: true, nombre_norma: 'SELLOS' },
+        order,
+        ...lockOptions,
+      });
+    }
+    return sello;
   }
 
   async readFrozen(

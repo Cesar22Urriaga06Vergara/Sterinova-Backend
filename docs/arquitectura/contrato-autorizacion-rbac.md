@@ -1,10 +1,10 @@
-> **Referencia del piloto, no matriz organizacional definitiva.** El [estado implementado](estado-implementado.md) precisa las extensiones a anulación/tasas y la restricción especial por código de rol. El [diseño objetivo](roles-y-permisos.md) reconcilia los ocho módulos. Las afirmaciones de ejecución local siguientes son reportes históricos, no verificaciones de esta entrega.
+> **Referencia histórica del piloto, no matriz organizacional definitiva.** El [estado implementado](estado-implementado.md) describe la autorización vigente; el [diseño objetivo](roles-y-permisos.md) reconcilia los ocho módulos. Las afirmaciones de ejecución local siguientes corresponden al 8 de noviembre de 2026 y no describen el código actual ni verifican una base desplegada.
 
 # Contrato central de autorización RBAC
 
 Fecha: 8 de noviembre de 2026. Decisiones aprobadas durante la auditoría de Sterinova.
 
-## Estado de esta entrega
+## Estado histórico del piloto (8 de noviembre de 2026)
 
 El piloto RBAC está integrado exclusivamente en Cotizaciones: cargador servidor de concesiones,
 `@RequirePermission` por endpoint y filtros SQL por ámbito/creador. Las rutas y métodos HTTP se conservan.

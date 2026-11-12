@@ -1,5 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
-import { UserRole } from '../entities/user-role.enum.js';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -18,9 +17,6 @@ export class UpdateUserDto {
   @MaxLength(255)
   email?: string;
 
-  @IsOptional()
-  @IsEnum(UserRole)
-  rol?: UserRole;
 
   @IsOptional()
   @IsString()

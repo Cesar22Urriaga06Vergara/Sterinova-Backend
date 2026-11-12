@@ -1,5 +1,7 @@
 # Reglas maestras de negocio — ocho módulos
 
+> Actualización posterior: consultar la [hoja de ruta integral del 12 de noviembre de 2026](hoja-ruta-integral-2026-11-12.md). Consolida decisiones adicionales y correcciones del usuario sobre emisión comercial, documentos, parciales, ciclos mixtos, recetas, inventario y Calidad. En caso de conflicto, prevalecen esas decisiones confirmadas; sus propuestas técnicas no equivalen a reglas aprobadas ni a implementación.
+
 Consolidación: 10 de noviembre de 2026. Requisitos al 9 de noviembre; no acredita implementación.
 
 Se reúnen íntegramente las ocho reglas del frontend, preservando decisiones, propuestas y pendientes. Las reglas oficiales se mantienen en este documento desde el 11 de noviembre de 2026. Los cuestionarios originales se conservan en cuestionarios-origen.md. Una propuesta no se convierte en decisión confirmada por consolidarla. Diseño objetivo: [roles y permisos](../arquitectura/roles-y-permisos.md).

@@ -1,3 +1,4 @@
+import { RemoveLegacyUserRole1794484800000 } from './migrations/1794484800000-RemoveLegacyUserRole.js';
 import { AddBackendRoleSchema1794312000000 } from './migrations/1794312000000-AddBackendRoleSchema.js';
 import { BridgeLegacyUserAdministration1794398400000 } from './migrations/1794398400000-BridgeLegacyUserAdministration.js';
 import { UnifyUserRoleAssignments1794312002000 } from './migrations/1794312002000-UnifyUserRoleAssignments.js';
@@ -51,4 +52,5 @@ export const DATABASE_MIGRATIONS = [
   BridgeLegacyUserAdministration1794398400000,
   AddPasswordVersion1794413600000,
   CreatePasswordResetTokens1794413660000,
+  RemoveLegacyUserRole1794484800000,
 ];

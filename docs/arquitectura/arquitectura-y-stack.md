@@ -1,7 +1,7 @@
 # Arquitectura, autenticación y seguridad
 
 > **Estado:** vigente.
-> **Verificado contra:** código backend y frontend el 6 de noviembre de 2026.
+> **Verificado contra:** código backend y frontend el 12 de noviembre de 2026.
 > **Alcance:** arquitectura backend, autenticación, autorización y riesgos de seguridad visibles.
 > **No cubre:** configuración efectiva de despliegue ni seguridad de instancias.
 
@@ -16,17 +16,19 @@
 
 ## Autenticación y autorización
 
-`JwtAuthGuard` y `RolesGuard` están registrados como guardas globales. Las rutas requieren JWT válido salvo que estén marcadas con `@Public()`. Los controladores usan `@Roles(...)` para autorización por perfil; `RolesGuard` también permite al rol `Admin` en rutas restringidas.
+Las rutas privadas requieren JWT y una política explícita del guard global de autorización. Las políticas RBAC validan permisos persistidos y ámbitos por solicitud; una ruta sin política explícita se deniega. No existe bypass por `usuarios.rol`, nombre visible de perfil o ID de cuenta. `POST /auth/login` y las rutas declaradas públicas usan `@Public()`.
 
-Roles definidos: `Admin`, `Comercial`, `Logistica`, `Planta` y `Calidad` (`src/users/entities/user-role.enum.ts`). La ruta `POST /auth/login` es pública. La ruta `GET /certificados/validar/:token` es pública para validación; las demás rutas de certificados requieren autenticación y roles de Admin o Calidad. No existe `POST /auth/seed` en el controlador actual.
+Los perfiles se asignan por `role_id` y `scope_id`; sus permisos determinan las capacidades de la sesión. La respuesta de sesión publica permisos, capacidades, ámbito actual y perfiles descriptivos, no un rol de compatibilidad. La UI usa esos permisos para navegación y acciones; las operaciones sobre recursos también validan sus ámbitos y reglas de negocio.
 
-El primer administrador se aprovisiona mediante `npm run bootstrap:admin`, que requiere `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` de al menos 12 caracteres y falla si ya existe esa cuenta (`src/scripts/bootstrap-admin.ts`). No se observaron credenciales de bootstrap en una ruta HTTP.
+El bootstrap requiere `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` de al menos 12 caracteres, configurados en el entorno privado. En una instalación sin asignaciones RBAC, `npm run bootstrap:admin` crea el usuario y asigna `Admin General` mediante `rbac_set_user_roles`. `--if-missing` no modifica una cuenta existente. Para reconfigurar la identidad ya conservada con ID 1, usar `npm run bootstrap:admin -- --reconfigure-id1`: requiere `ADMIN_EMAIL` y `ADMIN_PASSWORD`; si no se define `ADMIN_NAME`, conserva el nombre actual. La operación invalida sesiones previas y verifica una concesión global explícita. Si hay asignaciones existentes y la cuenta ID 1 no es ya administradora global, el script se detiene y requiere que una cuenta autorizada asigne el perfil; no concede privilegios por ID. No se ejecutó el bootstrap ni se modificó una base de datos en esta revisión.
+
+No se observaron credenciales de bootstrap en una ruta HTTP. Las credenciales y secretos deben permanecer en configuración privada del entorno: `JWT_SECRET`, `DB_*`, `PDF_RENDER_SECRET`, `PDF_RENDER_BASE_URL` o `FRONTEND_INTERNAL_URL`. `PDF_RENDER_SECRET` debe tener al menos 32 caracteres y compartirse entre backend y frontend sin prefijo `NEXT_PUBLIC_` (`src/pdf/pdf-render-token.ts`). No se revisaron valores de `.env`.
 
 Las credenciales y secretos deben permanecer en configuración privada del entorno: `JWT_SECRET`, `DB_*`, `PDF_RENDER_SECRET`, `PDF_RENDER_BASE_URL` o `FRONTEND_INTERNAL_URL`. `PDF_RENDER_SECRET` debe tener al menos 32 caracteres y compartirse entre backend y frontend sin prefijo `NEXT_PUBLIC_` (`src/pdf/pdf-render-token.ts`). No se revisaron valores de `.env`.
 
 ## Alcance y riesgos de seguridad observables
 
-- La autorización por rol sí está implementada en API; no debe confundirse con la visibilidad de enlaces o la protección visual de la UI.
+- La visibilidad de enlaces es solo una ayuda de navegación; la API vuelve a validar el permiso y el ámbito.
 - `/certificados/validar/:token` publica datos del certificado aprobado asociados al token aleatorio. Tratar el token como credencial pública de validación.
 - Los PDFs se guardan en disco local por defecto (`storage/pdfs`); no se verificó persistencia compartida o respaldos en despliegue.
 - El CORS observado solo declara el origen local; no se verificó configuración por ambiente productivo.

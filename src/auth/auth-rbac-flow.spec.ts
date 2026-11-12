@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service.js';
 import { JwtStrategy } from './jwt.strategy.js';
 import { RbacAuthorizationService } from '../rbac/rbac-authorization.service.js';
-import { UserRole } from '../users/entities/user-role.enum.js';
+import { UserRole } from '../../test/fixtures/legacy-user-role.js';
 import { User } from '../users/entities/user.entity.js';
 
 const scopes = [

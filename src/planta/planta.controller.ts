@@ -1,3 +1,5 @@
+import type { RbacRequest } from '../rbac/authorization.guard.js';
+import { RequirePermission, ScopedPermissions } from '../rbac/require-permission.decorator.js';
 import {
   Body,
   Controller,
@@ -5,39 +7,38 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
-import type { Request } from 'express';
 import { CreateCicloDto } from './dto/create-ciclo.dto.js';
 import { PlantaService } from './planta.service.js';
-import { Roles } from '../common/decorators/roles.decorator.js';
-import { UserRole } from '../users/entities/user-role.enum.js';
 
-interface AuthenticatedRequest extends Request {
-  user: { id: number };
-}
+type AuthenticatedRequest = RbacRequest;
 
 @Controller('planta')
-@Roles(UserRole.ADMIN, UserRole.PLANTA)
+@ScopedPermissions()
 export class PlantaController {
   constructor(private readonly plantaService: PlantaService) {}
 
   @Get('protocolos')
+  @RequirePermission('planta.protocolos.ver')
   findProtocolos() { return this.plantaService.findProtocolos(); }
 
   @Get('ordenes')
-  findOrdenesEnPlanta() {
-    return this.plantaService.findOrdenesEnPlanta();
+  @RequirePermission('planta.ordenes.ver')
+  findOrdenesEnPlanta(@Req() request: RbacRequest) {
+    return this.plantaService.findOrdenesEnPlanta(request.rbac);
   }
 
   @Get('ciclos')
-  findCiclos() {
-    return this.plantaService.findCiclos();
+  @RequirePermission('planta.ciclos.ver')
+  findCiclos(@Req() request: RbacRequest) {
+    return this.plantaService.findCiclos(request.rbac);
   }
 
   @Post('ciclos')
+  @RequirePermission('planta.ciclos.crear')
   createCiclo(
     @Body() createCicloDto: CreateCicloDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.plantaService.createCiclo(createCicloDto, request.user.id);
+    return this.plantaService.createCiclo(createCicloDto, request.user.id, request.rbac);
   }
 }

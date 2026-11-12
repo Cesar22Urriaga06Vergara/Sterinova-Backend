@@ -3,6 +3,7 @@ import { siguienteConsecutivo } from '../documentos/consecutivo.js';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -131,7 +132,7 @@ export class CotizacionesService {
       throw new BadRequestException(
         'La cotización debe incluir al menos un ítem',
       );
-    await this.clientesService.findOne(dto.cliente_id);
+    await this.clientesService.findOne(dto.cliente_id, { ...access, policy: {...access.policy, scopeIds: [...new Set([...access.policy.scopeIds, ...access.policy.ownScopeIds])], ownScopeIds: []} });
     const items = dto.items.map((item) => {
       const cantidad = Number(item.cantidad);
       const valor_unitario = Number(item.valor_unitario);
@@ -266,7 +267,9 @@ export class CotizacionesService {
       quote.cliente_id,
       this.dataSource.manager,
     );
-    return buildPdfSnapshot(quote, version, quote.fecha);
+    const snapshot = buildPdfSnapshot(quote, version, quote.fecha);
+    const seal = await this.selloSnapshot.preview(this.dataSource.manager);
+    return seal ? { ...snapshot, sellos: { icontec: seal } } : snapshot;
   }
 
   async ensurePdfCurrent(
@@ -422,11 +425,13 @@ export class CotizacionesService {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Cotizacion);
       const quote = await repository.findOne({
-        where: quoteWhere(access, 'cotizaciones.editar', id),
+        where: quoteWhere(access, 'cotizaciones.aprobar_interna', id),
         lock: { mode: 'pessimistic_write' },
       });
       if (!quote)
         throw new NotFoundException(`Cotización #${id} no encontrada`);
+      if (quote.creador_id === access.policy.userId)
+        throw new ForbiddenException('No puede aprobar su propia cotización');
       if (
         quote.fecha_emision ||
         quote.estado.toUpperCase() !== 'BORRADOR' ||
@@ -436,6 +441,8 @@ export class CotizacionesService {
           'El borrador cambió o ya no se puede aprobar',
         );
       quote.estado = 'APROBADA';
+      quote.aprobador_interno_id = access.policy.userId!;
+      quote.aprobado_internamente_at = new Date();
       quote.version += 1;
       return repository.save(quote);
     });
@@ -467,7 +474,7 @@ export class CotizacionesService {
           'La cotización cambió. Recargue el borrador antes de guardar.',
         );
       if (dto.cliente_id !== undefined) {
-        await this.clientesService.findOne(dto.cliente_id);
+        await this.clientesService.findOne(dto.cliente_id, { ...access, policy: {...access.policy, scopeIds: [...new Set([...access.policy.scopeIds, ...access.policy.ownScopeIds])], ownScopeIds: []} });
         cotizacion.cliente_id = dto.cliente_id;
         // Avoid persisting the previous relation over the new foreign key.
         cotizacion.cliente = undefined as never;

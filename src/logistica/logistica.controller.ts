@@ -13,14 +13,12 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 
-type AuthenticatedRequest = Request & { user: { id: number } };
+type AuthenticatedRequest = RbacRequest;
 import { LogisticaService } from './logistica.service.js';
 import { CreateOrdenDto } from './dto/create-orden.dto.js';
 import { UpdateEstadoOrdenDto } from './dto/update-estado-orden.dto.js';
-import { Roles } from '../common/decorators/roles.decorator.js';
-import { UserRole } from '../users/entities/user-role.enum.js';
 import { PdfGeneratorService } from '../pdf/pdf-generator.service.js';
 import {
   RequirePermission,
@@ -29,7 +27,7 @@ import {
 import type { RbacRequest } from '../rbac/authorization.guard.js';
 
 @Controller('logistica')
-@Roles(UserRole.ADMIN, UserRole.LOGISTICA)
+@ScopedPermissions()
 export class LogisticaController {
   constructor(
     private readonly logisticaService: LogisticaService,
@@ -37,32 +35,42 @@ export class LogisticaController {
   ) {}
 
   @Post('ordenes')
-  createOrden(@Body() createOrdenDto: CreateOrdenDto) {
-    return this.logisticaService.createOrden(createOrdenDto);
+  @RequirePermission('logistica.ordenes.crear')
+  createOrden(
+    @Body() createOrdenDto: CreateOrdenDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.logisticaService.createOrden(
+      createOrdenDto,
+      request.user.id, request.rbac);
   }
 
   @Patch('ordenes/:id/materiales')
+  @RequirePermission('logistica.recepciones.registrar')
   updateMateriales(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMaterialesOrdenDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.logisticaService.updateMateriales(id, dto, request.user.id);
+    return this.logisticaService.updateMateriales(id, dto, request.user.id, request.rbac);
   }
 
   @Get('ordenes')
-  findAllOrdenes() {
-    return this.logisticaService.findAll();
+  @RequirePermission('logistica.ordenes.ver')
+  findAllOrdenes(@Req() request: RbacRequest) {
+    return this.logisticaService.findAll(request.rbac);
   }
 
   @Get('cotizaciones-aprobadas')
-  findCotizacionesAprobadas() {
-    return this.logisticaService.findCotizacionesAprobadasSinOrden();
+  @RequirePermission('logistica.cotizaciones_disponibles.ver')
+  findCotizacionesAprobadas(@Req() request: RbacRequest) {
+    return this.logisticaService.findCotizacionesAprobadasSinOrden(request.rbac);
   }
 
   @Get('ordenes/:id')
-  findOneOrden(@Param('id', ParseIntPipe) id: number) {
-    return this.logisticaService.findOne(id);
+  @RequirePermission('logistica.ordenes.ver')
+  findOneOrden(@Param('id', ParseIntPipe) id: number, @Req() request: RbacRequest) {
+    return this.logisticaService.findOne(id, request.rbac);
   }
 
   @Get('ordenes/:id/pdf')
@@ -98,6 +106,7 @@ export class LogisticaController {
   }
 
   @Put('ordenes/:id/estado')
+  @RequirePermission('logistica.ordenes.cambiar_estado')
   updateEstado(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateEstadoOrdenDto: UpdateEstadoOrdenDto,
@@ -106,7 +115,6 @@ export class LogisticaController {
     return this.logisticaService.updateEstado(
       id,
       updateEstadoOrdenDto,
-      request.user.id,
-    );
+      request.user.id, request.rbac);
   }
 }

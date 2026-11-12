@@ -134,7 +134,7 @@ export class CotizacionesController {
   }
 
   @Post(':id/aprobar')
-  @RequirePermission('cotizaciones.editar')
+  @RequirePermission('cotizaciones.aprobar_interna')
   @ApiOperation({ summary: 'Aprobar un borrador sin modificar su contenido' })
   aprobar(
     @Param('id', ParseIntPipe) id: number,

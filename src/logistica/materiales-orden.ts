@@ -1,6 +1,15 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import type { CotizacionItem } from '../cotizaciones/entities/cotizacion-item.entity.js';
 import type { MaterialOrdenDto } from './dto/material-orden.dto.js';
+
+export type DiscrepanciaCantidad = {
+  cotizacion_item_id: number;
+  descripcion: string;
+  cantidad_cotizada: number;
+  cantidad_operativa: number;
+  diferencia: number;
+  tipo: 'exceso' | 'faltante';
+};
 
 export function metodoOrden(servicio: string, solicitado?: 'ETO' | 'VAPOR') {
   const derivado = servicio.endsWith('_ETO')
@@ -11,6 +20,41 @@ export function metodoOrden(servicio: string, solicitado?: 'ETO' | 'VAPOR') {
   if (derivado && solicitado && derivado !== solicitado)
     throw new BadRequestException('El método contradice el servicio cotizado');
   return derivado ?? solicitado ?? null;
+}
+
+export function detectarDiscrepanciasCantidad(
+  items: Pick<CotizacionItem, 'id' | 'cantidad' | 'descripcion'>[],
+  materiales: Pick<MaterialOrdenDto, 'cotizacion_item_id' | 'cantidad'>[],
+): DiscrepanciaCantidad[] {
+  const cantidadesOperativas = new Map<number, number>();
+  for (const material of materiales) {
+    if (material.cotizacion_item_id == null) continue;
+    cantidadesOperativas.set(
+      material.cotizacion_item_id,
+      (cantidadesOperativas.get(material.cotizacion_item_id) ?? 0) +
+        material.cantidad,
+    );
+  }
+
+  return items.flatMap((item) => {
+    const cantidadCotizada = Number(item.cantidad);
+    if (!Number.isFinite(cantidadCotizada)) {
+      throw new InternalServerErrorException(
+        `La cantidad cotizada del ítem #${item.id} no es válida`,
+      );
+    }
+    const cantidadOperativa = cantidadesOperativas.get(item.id) ?? 0;
+    const diferencia = cantidadOperativa - cantidadCotizada;
+    if (diferencia === 0) return [];
+    return [{
+      cotizacion_item_id: item.id,
+      descripcion: item.descripcion,
+      cantidad_cotizada: cantidadCotizada,
+      cantidad_operativa: cantidadOperativa,
+      diferencia,
+      tipo: diferencia > 0 ? 'exceso' : 'faltante',
+    }];
+  });
 }
 
 export function prepararMateriales(

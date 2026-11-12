@@ -1,3 +1,4 @@
+import { RequirePermission, ScopedPermissions } from '../rbac/require-permission.decorator.js';
 import {
   Body,
   Controller,
@@ -9,8 +10,6 @@ import {
   Put,
   Req,
 } from '@nestjs/common';
-import { Roles } from '../common/decorators/roles.decorator.js';
-import { UserRole } from '../users/entities/user-role.enum.js';
 import { CreateFormatoDocumentalDto } from './dto/create-formato-documental.dto.js';
 import { CreateFormatoVersionDto } from './dto/create-formato-version.dto.js';
 import { UpdateFormatoDocumentalDto } from './dto/update-formato-documental.dto.js';
@@ -21,23 +20,26 @@ import { FormatosDocumentalesService } from './formatos-documentales.service.js'
 type AuthenticatedRequest = { user: { id: number } };
 
 @Controller('formatos-documentales')
-@Roles(UserRole.ADMIN)
+@ScopedPermissions()
 export class FormatosDocumentalesController {
   constructor(
     private readonly formatosDocumentalesService: FormatosDocumentalesService,
   ) {}
 
   @Get()
+  @RequirePermission('formatos.ver')
   findAll() {
     return this.formatosDocumentalesService.findAll();
   }
 
   @Get(':id')
+  @RequirePermission('formatos.ver')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.formatosDocumentalesService.findOne(id);
   }
 
   @Post()
+  @RequirePermission('formatos.crear')
   create(
     @Body() dto: CreateFormatoDocumentalDto,
     @Req() request: AuthenticatedRequest,
@@ -46,6 +48,7 @@ export class FormatosDocumentalesController {
   }
 
   @Put(':id')
+  @RequirePermission('formatos.editar')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateFormatoDocumentalDto,
@@ -55,6 +58,7 @@ export class FormatosDocumentalesController {
   }
 
   @Delete(':id')
+  @RequirePermission('formatos.eliminar')
   remove(
     @Param('id', ParseIntPipe) id: number,
     @Req() request: AuthenticatedRequest,
@@ -63,6 +67,7 @@ export class FormatosDocumentalesController {
   }
 
   @Post(':id/versiones')
+  @RequirePermission('formatos.versiones.crear')
   createVersion(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateFormatoVersionDto,
@@ -76,6 +81,7 @@ export class FormatosDocumentalesController {
   }
 
   @Put(':id/versiones/:versionId')
+  @RequirePermission('formatos.versiones.editar')
   updateVersion(
     @Param('id', ParseIntPipe) id: number,
     @Param('versionId', ParseIntPipe) versionId: number,
@@ -91,6 +97,7 @@ export class FormatosDocumentalesController {
   }
 
   @Post(':id/versiones/:versionId/estado')
+  @RequirePermission('formatos.versiones.publicar')
   updateVersionState(
     @Param('id', ParseIntPipe) id: number,
     @Param('versionId', ParseIntPipe) versionId: number,

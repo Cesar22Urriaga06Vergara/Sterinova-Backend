@@ -230,6 +230,11 @@ describe('CotizacionesService.emitir', () => {
       { resolveCotizacion: vi.fn(async () => version) } as never,
       {} as never,
       {} as never,
+      {
+        preview: vi.fn(async () => ({
+          imagen_src: 'data:image/png;base64,iVBORw0KGgo=',
+        })),
+      } as never,
     );
 
     const preview = await service.previsualizar(
@@ -245,6 +250,9 @@ describe('CotizacionesService.emitir', () => {
         fecha_version: '2026-09-17',
       },
       cotizacion: { items: [{ descripcion: 'Lavado', cantidad: 1 }] },
+      sellos: {
+        icontec: { imagen_src: 'data:image/png;base64,iVBORw0KGgo=' },
+      },
     });
   });
 });

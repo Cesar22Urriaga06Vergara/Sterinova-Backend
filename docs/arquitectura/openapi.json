@@ -384,10 +384,16 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Consultar auditoría paginada (solo Admin)",
         "tags": [
           "Auditoría"
-        ]
+        ],
+        "x-required-permission": "auditoria.ver"
       }
     },
     "/auth/me": {
@@ -508,10 +514,16 @@
             "description": "Datos inválidos"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Crear cliente",
         "tags": [
           "Clientes"
-        ]
+        ],
+        "x-required-permission": "clientes.crear"
       },
       "get": {
         "operationId": "ClientesController_findAll",
@@ -521,10 +533,16 @@
             "description": "Lista de clientes"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Listar clientes",
         "tags": [
           "Clientes"
-        ]
+        ],
+        "x-required-permission": "clientes.ver"
       }
     },
     "/clientes/bulk": {
@@ -549,10 +567,16 @@
             "description": "Clientes procesados"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Crear clientes en lote",
         "tags": [
           "Clientes"
-        ]
+        ],
+        "x-required-permission": "clientes.importar"
       }
     },
     "/clientes/{id}": {
@@ -573,10 +597,16 @@
             "description": "Cliente encontrado"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Consultar cliente",
         "tags": [
           "Clientes"
-        ]
+        ],
+        "x-required-permission": "clientes.ver"
       },
       "put": {
         "operationId": "ClientesController_update",
@@ -605,10 +635,16 @@
             "description": "Cliente actualizado"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Actualizar cliente",
         "tags": [
           "Clientes"
-        ]
+        ],
+        "x-required-permission": "clientes.editar"
       },
       "delete": {
         "operationId": "ClientesController_remove",
@@ -627,10 +663,16 @@
             "description": "Cliente eliminado"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Eliminar cliente",
         "tags": [
           "Clientes"
-        ]
+        ],
+        "x-required-permission": "clientes.eliminar"
       }
     },
     "/cotizaciones": {
@@ -941,7 +983,7 @@
         "tags": [
           "Cotizaciones"
         ],
-        "x-required-permission": "cotizaciones.editar"
+        "x-required-permission": "cotizaciones.aprobar_interna"
       }
     },
     "/cotizaciones/{id}/solicitud-anulacion": {
@@ -1085,9 +1127,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "FormatosDocumentales"
-        ]
+        ],
+        "x-required-permission": "formatos.ver"
       },
       "post": {
         "operationId": "FormatosDocumentalesController_create",
@@ -1107,9 +1155,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "FormatosDocumentales"
-        ]
+        ],
+        "x-required-permission": "formatos.crear"
       }
     },
     "/formatos-documentales/{id}": {
@@ -1130,9 +1184,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "FormatosDocumentales"
-        ]
+        ],
+        "x-required-permission": "formatos.ver"
       },
       "put": {
         "operationId": "FormatosDocumentalesController_update",
@@ -1161,9 +1221,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "FormatosDocumentales"
-        ]
+        ],
+        "x-required-permission": "formatos.editar"
       },
       "delete": {
         "operationId": "FormatosDocumentalesController_remove",
@@ -1182,9 +1248,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "FormatosDocumentales"
-        ]
+        ],
+        "x-required-permission": "formatos.eliminar"
       }
     },
     "/formatos-documentales/{id}/versiones": {
@@ -1215,9 +1287,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "FormatosDocumentales"
-        ]
+        ],
+        "x-required-permission": "formatos.versiones.crear"
       }
     },
     "/formatos-documentales/{id}/versiones/{versionId}": {
@@ -1256,9 +1334,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "FormatosDocumentales"
-        ]
+        ],
+        "x-required-permission": "formatos.versiones.editar"
       }
     },
     "/formatos-documentales/{id}/versiones/{versionId}/estado": {
@@ -1297,9 +1381,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "FormatosDocumentales"
-        ]
+        ],
+        "x-required-permission": "formatos.versiones.publicar"
       }
     },
     "/logistica/ordenes": {
@@ -1321,9 +1411,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Logistica"
-        ]
+        ],
+        "x-required-permission": "logistica.ordenes.crear"
       },
       "get": {
         "operationId": "LogisticaController_findAllOrdenes",
@@ -1333,9 +1429,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Logistica"
-        ]
+        ],
+        "x-required-permission": "logistica.ordenes.ver"
       }
     },
     "/logistica/ordenes/{id}/materiales": {
@@ -1366,9 +1468,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Logistica"
-        ]
+        ],
+        "x-required-permission": "logistica.recepciones.registrar"
       }
     },
     "/logistica/cotizaciones-aprobadas": {
@@ -1380,9 +1488,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Logistica"
-        ]
+        ],
+        "x-required-permission": "logistica.cotizaciones_disponibles.ver"
       }
     },
     "/logistica/ordenes/{id}": {
@@ -1403,9 +1517,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Logistica"
-        ]
+        ],
+        "x-required-permission": "logistica.ordenes.ver"
       }
     },
     "/logistica/ordenes/{id}/pdf": {
@@ -1473,9 +1593,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Logistica"
-        ]
+        ],
+        "x-required-permission": "logistica.ordenes.cambiar_estado"
       }
     },
     "/planta/protocolos": {
@@ -1487,9 +1613,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Planta"
-        ]
+        ],
+        "x-required-permission": "planta.protocolos.ver"
       }
     },
     "/planta/ordenes": {
@@ -1501,9 +1633,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Planta"
-        ]
+        ],
+        "x-required-permission": "planta.ordenes.ver"
       }
     },
     "/planta/ciclos": {
@@ -1515,9 +1653,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Planta"
-        ]
+        ],
+        "x-required-permission": "planta.ciclos.ver"
       },
       "post": {
         "operationId": "PlantaController_createCiclo",
@@ -1537,9 +1681,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Planta"
-        ]
+        ],
+        "x-required-permission": "planta.ciclos.crear"
       }
     },
     "/certificados": {
@@ -1551,10 +1701,16 @@
             "description": "Lista de certificados"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Listar certificados",
         "tags": [
           "Certificados"
-        ]
+        ],
+        "x-required-permission": "certificados.ver"
       }
     },
     "/certificados/validar/{token}": {
@@ -1602,10 +1758,16 @@
             "description": "Certificado encontrado"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Consultar certificado",
         "tags": [
           "Certificados"
-        ]
+        ],
+        "x-required-permission": "certificados.ver"
       }
     },
     "/certificados/{id}/descargar": {
@@ -1626,10 +1788,16 @@
             "description": "Archivo PDF"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Descargar PDF de certificado",
         "tags": [
           "Certificados"
-        ]
+        ],
+        "x-required-permission": "certificados.descargar"
       }
     },
     "/calidad/pendientes": {
@@ -1641,10 +1809,16 @@
             "description": "Ciclos pendientes"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Listar ciclos pendientes de revisión",
         "tags": [
           "Calidad"
-        ]
+        ],
+        "x-required-permission": "calidad.ciclos.ver"
       }
     },
     "/calidad/ciclos/{id}": {
@@ -1665,10 +1839,16 @@
             "description": "Ciclo encontrado"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Consultar ciclo pendiente",
         "tags": [
           "Calidad"
-        ]
+        ],
+        "x-required-permission": "calidad.ciclos.ver"
       }
     },
     "/calidad/aprobar": {
@@ -1693,10 +1873,16 @@
             "description": "Datos o contraseña inválidos"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Aprobar ciclo",
         "tags": [
           "Calidad"
-        ]
+        ],
+        "x-required-permission": "calidad.aprobar"
       }
     },
     "/calidad/rechazar": {
@@ -1721,10 +1907,16 @@
             "description": "Datos inválidos"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Rechazar ciclo",
         "tags": [
           "Calidad"
-        ]
+        ],
+        "x-required-permission": "calidad.rechazar"
       }
     },
     "/sellos": {
@@ -1736,9 +1928,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Sellos"
-        ]
+        ],
+        "x-required-permission": "sellos.ver"
       },
       "post": {
         "operationId": "SellosController_create",
@@ -1758,9 +1956,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Sellos"
-        ]
+        ],
+        "x-required-permission": "sellos.crear"
       }
     },
     "/sellos/{id}/imagen": {
@@ -1781,9 +1985,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Sellos"
-        ]
+        ],
+        "x-required-permission": "sellos.ver"
       }
     },
     "/sellos/{id}": {
@@ -1814,9 +2024,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Sellos"
-        ]
+        ],
+        "x-required-permission": "sellos.editar"
       },
       "delete": {
         "operationId": "SellosController_deactivate",
@@ -1835,9 +2051,15 @@
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Sellos"
-        ]
+        ],
+        "x-required-permission": "sellos.desactivar"
       }
     },
     "/health/live": {

@@ -6,7 +6,7 @@ import { IS_PUBLIC_KEY } from './decorators/public.decorator.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { AuthService } from './auth.service.js';
 import { JwtStrategy } from './jwt.strategy.js';
-import { UserRole } from '../users/entities/user-role.enum.js';
+import { UserRole } from '../../test/fixtures/legacy-user-role.js';
 
 describe('JWT authentication guard', () => {
   it.each(['login', 'completePasswordReset'] as const)(
@@ -51,7 +51,7 @@ describe('JWT authentication guard', () => {
     await expect(authService.validateUser('off@example.com', 'password')).resolves.toBeNull();
   });
 
-  it('rejects JWTs for deactivated users and uses the current database role', async () => {
+  it('rejects JWTs for deactivated users and ignores obsolete role claims', async () => {
     const usersService = { findActiveById: vi.fn(async (id: number) => id === 7 ? {
       id, email: 'admin@example.com', rol: UserRole.ADMIN, activo: true, password_version: 1,
     } : null) };
@@ -59,7 +59,7 @@ describe('JWT authentication guard', () => {
     const strategy = new JwtStrategy(configService as never, usersService as never);
 
     await expect(strategy.validate({ sub: 7, email: 'stale@example.com', rol: UserRole.COMERCIAL, password_version: 1 }))
-      .resolves.toMatchObject({ id: 7, email: 'admin@example.com', rol: UserRole.ADMIN, password_version: 1 });
+      .resolves.toEqual({ id: 7, email: 'admin@example.com', password_version: 1 });
     await expect(strategy.validate({ sub: 8, email: 'off@example.com', rol: UserRole.ADMIN, password_version: 1 }))
       .rejects.toMatchObject({ status: 401 });
   });

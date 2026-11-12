@@ -74,16 +74,28 @@ function buildLogisticDocumentHtml(
     new URL('/certificaciones-icontec-iqnet.jpeg', logoBase).toString(),
   );
   const quoteItems = isOrder && Array.isArray(quote?.items) ? quote.items : [];
+  const renderedCommercialTotals = new Set<number>();
   const lineValues = materials.map((material) => {
     const item = quoteItems.find(
       (candidate: Snapshot) => candidate.id === material.cotizacion_item_id,
     );
-    const unitValue = item?.valor_unitario;
-    const totalValue =
-      unitValue == null || material.cantidad == null
+    const unitValue = item?.valor_unitario ?? null;
+    const firstMaterialForQuoteItem =
+      item != null && !renderedCommercialTotals.has(item.id);
+    if (item) renderedCommercialTotals.add(item.id);
+    const quotedQuantity =
+      item?.cantidad == null ? null : Number(item.cantidad);
+    const commercialTotal =
+      !firstMaterialForQuoteItem
         ? null
-        : Number(unitValue) * Number(material.cantidad);
-    return { unitValue, totalValue };
+        : item?.valor_total != null
+        ? Number(item.valor_total)
+        : unitValue == null ||
+            quotedQuantity == null ||
+            !Number.isFinite(quotedQuantity)
+          ? null
+          : Number(unitValue) * quotedQuantity;
+    return { unitValue, totalValue: commercialTotal };
   });
   const totalQuantity = materials.reduce((total, material) => {
     const quantity = Number(material.cantidad ?? 0);

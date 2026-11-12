@@ -9,7 +9,7 @@ import { UserRolesService } from '../src/users/user-roles.service.js';
 import { UsersController } from '../src/users/users.controller.js';
 import { RbacAuthorizationService, type PermissionContext } from '../src/rbac/rbac-authorization.service.js';
 import { User } from '../src/users/entities/user.entity.js';
-import { UserRole } from '../src/users/entities/user-role.enum.js';
+import { UserRole } from './fixtures/legacy-user-role.js';
 
 describe('users RBAC against isolated MariaDB', () => {
   let admin: Connection;

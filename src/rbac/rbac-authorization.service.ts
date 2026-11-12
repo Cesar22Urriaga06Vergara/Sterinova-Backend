@@ -8,7 +8,6 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { User } from '../users/entities/user.entity.js';
 import { RbacScope } from './entities/scope.entity.js';
-import { RbacRole } from './entities/role.entity.js';
 import { compileAuthorizationPolicy } from './authorization-policy.js';
 import type {
   AuthorizationPolicy,
@@ -34,6 +33,8 @@ type GrantRow = {
   scopeId: number;
   assignmentActive: number;
   roleActive: number;
+  roleCode: string;
+  roleName: string;
   permission: string | null;
   permissionActive: number | null;
   resourceAccess: ResourceAccess;
@@ -57,7 +58,8 @@ export class RbacAuthorizationService {
       this.dataSource.query(
         `
         SELECT a.role_id AS roleId, a.scope_id AS scopeId, a.active AS assignmentActive,
-          r.active AS roleActive, p.code AS permission, p.active AS permissionActive,
+          r.active AS roleActive, r.code AS roleCode, r.name AS roleName,
+          p.code AS permission, p.active AS permissionActive,
           g.resource_access AS resourceAccess, g.include_descendants AS includeDescendants
         FROM rbac_user_role_assignments a
         JOIN rbac_roles r ON r.id = a.role_id AND r.kind = a.role_kind
@@ -65,7 +67,8 @@ export class RbacAuthorizationService {
         LEFT JOIN rbac_permissions p ON p.code = g.permission_code
         WHERE a.user_id = ?
         UNION ALL
-        SELECT o.role_id, o.scope_id, 1, r.active, p.code, p.active, g.resource_access, g.include_descendants
+        SELECT o.role_id, o.scope_id, 1, r.active, r.code, r.name,
+          p.code, p.active, g.resource_access, g.include_descendants
         FROM rbac_platform_owner o
         JOIN rbac_roles r ON r.id = o.role_id AND r.kind = o.role_kind
         LEFT JOIN rbac_role_permissions g ON g.role_id = r.id
@@ -75,6 +78,10 @@ export class RbacAuthorizationService {
       ) as Promise<GrantRow[]>,
     ]);
     const assignments = new Map<string, RoleAssignment>();
+    const profiles = new Map<
+      number,
+      { id: number; code: string; name: string }
+    >();
     for (const row of rows) {
       const key = `${row.roleId}:${row.scopeId}`;
       let assignment = assignments.get(key);
@@ -87,6 +94,13 @@ export class RbacAuthorizationService {
           grants: [],
         };
         assignments.set(key, assignment);
+      }
+      if (Number(row.assignmentActive) === 1 && Number(row.roleActive) === 1) {
+        profiles.set(Number(row.roleId), {
+          id: Number(row.roleId),
+          code: row.roleCode,
+          name: row.roleName,
+        });
       }
       if (row.permission)
         assignment.grants = [
@@ -104,7 +118,12 @@ export class RbacAuthorizationService {
       active: true,
       assignments: [...assignments.values()],
     };
-    return { user, subject, scopes };
+    return {
+      user,
+      subject,
+      scopes,
+      profiles: [...profiles.values()].sort((first, second) => first.id - second.id),
+    };
   }
 
   private compile(
@@ -125,7 +144,7 @@ export class RbacAuthorizationService {
   }
 
   async getSession(userId: number, scopeHeader?: string | string[]) {
-    const { user, subject, scopes } = await this.loadSubject(userId);
+    const { user, subject, scopes, profiles } = await this.loadSubject(userId);
     const policies = PERMISSION_CATALOG.map(({ code }) => ({
       permission: code,
       policy: this.compile(subject, code, scopes),
@@ -164,11 +183,12 @@ export class RbacAuthorizationService {
       );
     return {
       user: {
+        profiles,
         id: user.id,
         nombre: user.nombre,
         apellido: user.apellido,
         email: user.email,
-        rol: user.rol,
+
         cargo: user.cargo,
         celular: user.celular,
         email_contacto: user.email_contacto,
@@ -194,52 +214,8 @@ export class RbacAuthorizationService {
   /** Exact assignment scope only; never infer approval from legacy usuarios.rol. */
   async getCancellationApprovalScopeIds(userId: number): Promise<number[]> {
     const { subject, scopes } = await this.loadSubject(userId);
-    const roles = await this.dataSource.getRepository(RbacRole).find({
-      where: { active: true },
-    });
-    const nodes = new Map(scopes.map((scope) => [scope.id, scope]));
-    const isActivePath = (id: number): boolean => {
-      const seen = new Set<number>();
-      let node = nodes.get(id);
-      while (node) {
-        if (!node.active || seen.has(node.id)) return false;
-        seen.add(node.id);
-        if (node.parent_id === null) return node.kind === 'GLOBAL';
-        if (node.kind === 'GLOBAL') return false;
-        node = nodes.get(node.parent_id);
-      }
-      return false;
-    };
-    const allowed = new Set<number>();
-    for (const assignment of subject.assignments) {
-      if (
-        !assignment.active ||
-        !assignment.roleActive ||
-        !isActivePath(assignment.scopeId)
-      )
-        continue;
-      const role = roles.find(
-        ({ id, active }) => id === assignment.roleId && active,
-      );
-      const scope = nodes.get(assignment.scopeId)!;
-      // PLATFORM assignments originate exclusively from rbac_platform_owner in loadSubject.
-      if (
-        role?.code === 'superadmin' &&
-        role.kind === 'PLATFORM' &&
-        scope.kind === 'GLOBAL'
-      ) {
-        for (const candidate of scopes) {
-          if (candidate.kind !== 'GLOBAL' && isActivePath(candidate.id))
-            allowed.add(candidate.id);
-        }
-      } else if (
-        role?.code === 'admin_area' &&
-        role.kind === 'STANDARD' &&
-        scope.kind !== 'GLOBAL'
-      ) {
-        allowed.add(scope.id);
-      }
-    }
+    const policy = this.compile(subject, 'solicitudes_anulacion.aprobar', scopes);
+    const allowed = new Set(policy.scopeIds.filter(id => scopes.some(scope => scope.id===id && scope.kind!=='GLOBAL')));
     return [...allowed].sort((a, b) => a - b);
   }
 

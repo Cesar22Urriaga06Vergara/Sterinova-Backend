@@ -1,0 +1,51 @@
+import 'reflect-metadata';
+import { randomBytes } from 'node:crypto';
+import { createConnection, type Connection } from 'mysql2/promise';
+import { DataSource } from 'typeorm';
+import { DATABASE_MIGRATIONS } from '../src/database/migration-registry.js';
+import { STERINOVA_ENTITIES } from '../src/database/entities.js';
+import { RbacAuthorizationService } from '../src/rbac/rbac-authorization.service.js';
+import { UsersService } from '../src/users/users.service.js';
+import { UserRolesService } from '../src/users/user-roles.service.js';
+import { User } from '../src/users/entities/user.entity.js';
+import { AuthService } from '../src/auth/auth.service.js';
+import { JwtService } from '@nestjs/jwt';
+
+describe('single authority migration and user creation',()=>{
+ let connection:Connection; let source:DataSource; let name:string;
+ beforeAll(async()=>{
+  const port=Number(process.env.RBAC_TEST_PORT);
+  if(process.env.RBAC_TEST_DISPOSABLE_SERVER!=='1'||!port||port===3306)throw Error('Disposable server required');
+  connection=await createConnection({host:'127.0.0.1',port,user:'root',password:process.env.RBAC_TEST_PASSWORD});
+  name='sterinova_single_test_'+randomBytes(8).toString('hex');
+  await connection.query('CREATE DATABASE `'+name+'`');
+  source=new DataSource({type:'mariadb',host:'127.0.0.1',port,username:'root',password:process.env.RBAC_TEST_PASSWORD,database:name,entities:STERINOVA_ENTITIES,migrations:DATABASE_MIGRATIONS,migrationsTransactionMode:'each',synchronize:false});
+  await source.initialize();await source.runMigrations();
+ },60000);
+ afterAll(async()=>{if(source?.isInitialized)await source.destroy();if(connection){if(/^sterinova_single_test_[a-f0-9]{16}$/.test(name))await connection.query('DROP DATABASE `'+name+'`');await connection.end();}});
+ it('drops legacy storage and allows bootstrap, authentication, creation, assignment and revocation',async()=>{
+  expect(await source.query("SHOW COLUMNS FROM usuarios LIKE 'rol'")).toHaveLength(0);
+  expect(await source.query("SHOW COLUMNS FROM rbac_roles LIKE 'legacy_role'")).toHaveLength(0);
+  const users=new UsersService(source.getRepository(User));
+  const authorization=new RbacAuthorizationService(source);
+  const roles=new UserRolesService(source,authorization);
+  const admin=await users.create({nombre:'Admin General',email:'admin@test.invalid',password:'TestPassword123!'});
+  const [root]=await source.query("SELECT id FROM rbac_scopes WHERE kind='GLOBAL'");
+  const [general]=await source.query("SELECT id FROM rbac_roles WHERE code='admin_general'");
+  await source.query('CALL rbac_set_user_roles(?,?,NULL,0)',[admin.id,JSON.stringify([{role_id:general.id,scope_id:root.id}])]);
+  const auth=new AuthService(users,new JwtService({secret:'isolated-test-secret'}));
+  const valid=await auth.validateUser('admin@test.invalid','TestPassword123!');expect(valid).not.toBeNull();
+  expect(auth.login(valid!).user).not.toHaveProperty('rol');
+  expect((await authorization.getSession(admin.id)).user.profiles).toEqual(expect.arrayContaining([expect.objectContaining({code:'admin_general'})]));
+  const catalog=await roles.catalog(admin.id);expect(catalog.roles.some(r=>r.name==='Admin Comercial')).toBe(true);
+  const scope=await source.query("INSERT INTO rbac_scopes(code,name,kind,parent_id,active) VALUES('sales','Comercial','DEPARTMENT',?,1)",[root.id]);
+  const [advisor]=await source.query("SELECT id FROM rbac_roles WHERE code='asesor_comercial'");
+  const user=await users.create({nombre:'Asesor',email:'advisor@test.invalid',password:'TestPassword123!'},false);
+  await roles.assign(admin.id,user.id,{role_id:advisor.id,scope_id:scope.insertId});await users.setActive(user.id,true,admin.id);
+  expect((await authorization.getContext(user.id,'cotizaciones.crear')).policy.scopeIds).toContain(scope.insertId);
+  await expect(authorization.getContext(user.id,'usuarios.identidad.gestionar')).rejects.toMatchObject({status:403});
+  await expect(users.setActive(admin.id,false,user.id)).rejects.toMatchObject({status:409});
+  await users.setActive(user.id,false,admin.id);
+  await expect(authorization.getSession(user.id)).rejects.toMatchObject({status:401});
+ });
+});

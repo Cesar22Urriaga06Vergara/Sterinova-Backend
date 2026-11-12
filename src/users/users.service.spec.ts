@@ -2,13 +2,14 @@ import { ConflictException, ForbiddenException, NotFoundException } from '@nestj
 import type { Repository } from 'typeorm';
 import { User } from './entities/user.entity.js';
 import { UsersService } from './users.service.js';
-import { UserRole } from './entities/user-role.enum.js';
+import { UserRole } from '../../test/fixtures/legacy-user-role.js';
 
 describe('UsersService', () => {
   const createService = (users: Partial<User>[] = []) => {
     let excludedId: number | undefined;
     let queryBuilder: any;
     const repository = {
+      query: vi.fn(async () => [{is_admin:1}]),
       find: vi.fn(async () => users),
       findOne: vi.fn(async ({ where }: { where: Partial<User> }) =>
         users.find((user) => Object.entries(where).every(([key, value]) => user[key as keyof User] === value)) ?? null,
@@ -53,7 +54,8 @@ describe('UsersService', () => {
       rol: UserRole.COMERCIAL, cargo: 'Asesora', celular: '3001234567', email_contacto: 'ana.contacto@example.com',
     });
 
-    expect(user).toMatchObject({ nombre: 'Ana', apellido: 'Pérez', rol: UserRole.COMERCIAL, activo: true });
+    expect(user).toMatchObject({ nombre: 'Ana', apellido: 'Pérez', activo: true });
+    expect(user).not.toHaveProperty('rol');
     expect(user).not.toHaveProperty('password_hash');
     expect(repository.save).toHaveBeenCalled();
   });

@@ -8,6 +8,8 @@ Empieza por [contexto rápido](CONTEXTO_RAPIDO.md) y consulta el [mapa completo]
 
 ## Lectura principal
 
+Actualización funcional del 12 de noviembre: [hoja de ruta integral y decisiones del recorrido](negocio/hoja-ruta-integral-2026-11-12.md), con planes de backend/frontend y bocetos enlazados. Sus decisiones confirmadas posteriores prevalecen sobre propuestas anteriores incompatibles; no acreditan implementación.
+
 1. [Contexto del producto](negocio/contexto-producto.md).
 2. [Reglas maestras de los ocho módulos](negocio/reglas-maestras.md): decisiones, propuestas y pendientes preservados.
 3. [Arquitectura organizacional y matriz RBAC](arquitectura/roles-y-permisos.md): jerarquía, ámbitos, separación de funciones y brechas.

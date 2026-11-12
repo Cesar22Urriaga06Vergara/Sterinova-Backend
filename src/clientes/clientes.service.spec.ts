@@ -2,8 +2,15 @@ import { QueryFailedError, type Repository } from 'typeorm';
 import { ClientesService } from './clientes.service.js';
 import { Cliente } from './entities/cliente.entity.js';
 import { CreateClienteDto } from './dto/create-cliente.dto.js';
+import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 
 describe('ClientesService.bulk', () => {
+  const access: PermissionContext = {
+    permission: 'clientes.importar',
+    policy: { userId: 7, scopeIds: [2], ownScopeIds: [] },
+    resourceScopeIds: [2],
+  };
+
   it('omite NIT existentes e inserta el resto en un solo lote', async () => {
     const existing = [{ nit: '900' }];
     const clientesRepository = {
@@ -35,7 +42,7 @@ describe('ClientesService.bulk', () => {
       },
     ];
 
-    const result = await service.bulk(clientes);
+    const result = await service.bulk(clientes, access);
 
     expect(clientesRepository.save).toHaveBeenCalledTimes(1);
     expect(clientesRepository.save).toHaveBeenCalledWith([
@@ -70,7 +77,7 @@ describe('ClientesService.bulk', () => {
       direccion: 'Calle 1',
     }));
 
-    const result = await service.bulk(clientes);
+    const result = await service.bulk(clientes, access);
 
     expect(clientesRepository.save).toHaveBeenCalledTimes(2);
     expect(clientesRepository.save).toHaveBeenLastCalledWith([

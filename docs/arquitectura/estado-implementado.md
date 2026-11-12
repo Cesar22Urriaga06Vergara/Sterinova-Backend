@@ -1,14 +1,12 @@
 # Estado implementado y límites de autorización
 
-Inspección estática: 10 de noviembre de 2026. Este documento sustituye los índices de fases como punto de entrada al diagnóstico; no sustituye los contratos detallados de API ni afirma estado de una base desplegada. Diseño objetivo en [roles y permisos](roles-y-permisos.md); requisitos en [reglas maestras](../negocio/reglas-maestras.md).
+Inspección estática: 12 de noviembre de 2026. Este documento sustituye los índices de fases como punto de entrada al diagnóstico; no sustituye los contratos detallados de API ni afirma estado de una base desplegada. Diseño organizacional objetivo en [roles y permisos](roles-y-permisos.md); requisitos en [reglas maestras](../negocio/reglas-maestras.md).
 
-## Identidad y dos motores coexistentes
+## Identidad y autorización
 
-`src/users/entities/user.entity.ts` conserva `usuarios.rol` y estado `activo`; `cargo` es descriptivo y no concede permisos. `user-role.enum.ts` contiene Admin, Comercial, Logistica, Planta y Calidad. `RolesGuard` permite Admin en rutas con roles; no convierte Admin en titular técnico.
+`User` ya no mapea `usuarios.rol`; `cargo` sigue siendo descriptivo. El guard global `AuthorizationGuard` solo admite rutas públicas, políticas explícitas de sesión o permisos. `PermissionGuard` carga concesiones persistidas; no existe fallback a `RolesGuard`, al nombre del perfil ni al ID del usuario. La migración correctiva `RemoveLegacyUserRole1794484800000` retira la columna y su compatibilidad SQL sin editar migraciones históricas.
 
-`AuthorizationGuard` despacha los controladores con `@ScopedPermissions()` al motor nuevo. Cotizaciones, solicitudes de anulación y tasas fiscales declaran permisos; Clientes, Logística, Planta, Calidad, Certificados, Usuarios, Auditoría, Formatos y Sellos conservan autorización legacy. Las excepciones públicas del controlador de certificados tienen su propia proyección y no son concesiones internas.
-
-El catálogo de permisos no prueba que todos los módulos lo apliquen. No describir el RBAC como extendido a toda la API.
+La migración debe aplicarse por separado y no se ejecutó en esta entrega; por tanto, este estado del código no acredita que una base existente ya haya retirado la columna o conserve las asignaciones requeridas. Los endpoints de negocio validan recursos y condiciones además del permiso de ruta. Las respuestas públicas de certificados siguen teniendo una proyección independiente y no son concesiones internas.
 
 ## Modelo RBAC observado
 
@@ -20,15 +18,15 @@ Fuentes: `src/rbac/entities/*.ts`, `authorization-policy.ts`, `rbac-authorizatio
 | rbac_roles y rbac_role_permissions | Roles STANDARD/PLATFORM; acciones explícitas, OWN/SCOPE e inclusión de descendientes |
 | rbac_user_role_assignments | Múltiples roles y ámbitos por usuario; CHECK impide STANDARD en GLOBAL y roles PLATFORM por esta tabla |
 | rbac_platform_owner | Única fila id=1, usuario titular, rol PLATFORM y ámbito GLOBAL |
-| Cargador de sujeto | Recarga usuario activo y asignaciones/concesiones desde servidor; incorpora titularidad mediante consulta separada |
+| Cargador de sujeto | Recarga usuario activo, perfiles y asignaciones/concesiones desde servidor; incorpora titularidad en la misma consulta |
 | Evaluador | Denegación ante inactividad/inconsistencia; no mezcla permiso y ámbito de asignaciones diferentes |
-| Sesión | permissions, capabilities, current_scope, available_scopes; cabecera x-scope-id reduce contexto autorizado |
+| Sesión | Perfiles descriptivos, permissions, capabilities, current_scope y available_scopes; cabecera x-scope-id reduce contexto autorizado |
 
 La semilla define superadmin, admin_area, comercial, emisor_comercial, logistica, planta, calidad, auditor_calidad y gestor_documental. Son plantillas, no evidencia de usuarios productivos asignados. El SuperAdmin real es quien esté registrado como titular en rbac_platform_owner; su identidad concreta no se conoce sin consultar el ambiente. El script de conciliación exige ID y correo esperados y rechaza sustituir una titularidad distinta. No se consultó la base ni se ejecutó ese script.
 
 La semilla comercial contiene lectura SCOPE, pero la migración posterior del piloto restringe concesiones a OWN. Leer solo la semilla inicial produce una matriz efectiva incorrecta. El contrato del piloto describe esa restricción, anterior a los requisitos de visibilidad compartida.
 
-La anulación añade una restricción especial: `getCancellationApprovalScopeIds()` acepta admin_area STANDARD en el ámbito exacto o superadmin PLATFORM GLOBAL y ámbitos activos. Esta ruta sí comprueba códigos de roles: la afirmación genérica «ninguna decisión depende de nombres» no describe toda la implementación. Cambiar el nombre visible de un rol no equivale a cambiar su código. Asignar el permiso de aprobar a otro código no elimina esa restricción.
+La aprobación de anulaciones requiere el permiso persistido y un ámbito no global exacto; no se habilita mediante un nombre o código visible de perfil. La operación también mantiene la separación de funciones y restricciones de negocio antes de resolver la solicitud.
 
 ## Protección operativa integrada en logística
 
@@ -58,4 +56,4 @@ El runbook PDF describe recuperación técnica actual. El requisito nuevo exige 
 - [Archivo de contexto del 10 de noviembre](../archivo/2026-11-10/contexto/INDEX.md): inventarios detallados con su fecha y limitaciones, no política vigente.
 - [Archivo del estado funcional anterior](../archivo/2026-11-10/estado-proyecto/modulos.md).
 
-No se ejecutaron pruebas funcionales ni migraciones; la verificación de esta entrega es documental y de integridad de archivos.
+La verificación de esta entrega incluyó pruebas y builds de backend y frontend. No se ejecutó ninguna migración ni se modificó una base de datos; los resultados concretos se informan en la entrega.

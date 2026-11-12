@@ -10,7 +10,6 @@ import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
-import { UserRole } from './entities/user-role.enum.js';
 import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 
 export type PublicUser = Omit<User, 'password_hash'>;
@@ -89,7 +88,6 @@ export class UsersService {
       celular: createUserDto.celular?.trim() || null,
       password_hash,
       password_version: 1,
-      rol: createUserDto.rol,
       activo: initialActive,
     });
     try {
@@ -112,15 +110,11 @@ export class UsersService {
         if (existing && existing.id !== id) throw new ConflictException('Ya existe un usuario con ese correo');
         user.email = email;
       }
-      if (dto.rol !== undefined && user.activo && user.rol === UserRole.ADMIN && dto.rol !== UserRole.ADMIN) {
-        await this.assertAnotherActiveAdmin(repository, id);
-      }
       if (dto.nombre !== undefined) user.nombre = dto.nombre.trim();
       if (dto.apellido !== undefined) user.apellido = dto.apellido?.trim() || null;
       if (dto.cargo !== undefined) user.cargo = dto.cargo?.trim() || null;
       if (dto.celular !== undefined) user.celular = dto.celular?.trim() || null;
       if (dto.email_contacto !== undefined) user.email_contacto = dto.email_contacto?.trim().toLowerCase() || null;
-      if (dto.rol !== undefined) user.rol = dto.rol;
       try {
         return toPublicUser(await repository.save(user));
       } catch (error) {
@@ -138,7 +132,7 @@ export class UsersService {
       const repository = manager.getRepository(User);
       const user = await repository.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
       if (!user) throw new NotFoundException(`Usuario #${id} no encontrado`);
-      if (!activo && user.activo && user.rol === UserRole.ADMIN) {
+      if (!activo && user.activo) {
         await this.assertAnotherActiveAdmin(repository, id);
       }
       user.activo = activo;
@@ -147,9 +141,11 @@ export class UsersService {
   }
 
   private async assertAnotherActiveAdmin(repository: Repository<User>, excludedId: number): Promise<void> {
+    const [target] = await repository.query('SELECT rbac_is_global_admin(?) AS is_admin', [excludedId]);
+    if (!Number(target?.is_admin)) return;
     const admins = await repository
       .createQueryBuilder('usuario')
-      .where('usuario.rol = :rol', { rol: UserRole.ADMIN })
+      .where('rbac_is_global_admin(usuario.id) = 1')
       .andWhere('usuario.activo = :activo', { activo: true })
       .andWhere('usuario.id <> :excludedId', { excludedId })
       .setLock('pessimistic_write')

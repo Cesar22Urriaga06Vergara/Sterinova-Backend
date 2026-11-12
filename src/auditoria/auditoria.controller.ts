@@ -1,18 +1,18 @@
+import { RequirePermission, ScopedPermissions } from '../rbac/require-permission.decorator.js';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../common/decorators/roles.decorator.js';
-import { UserRole } from '../users/entities/user-role.enum.js';
 import { QueryAuditoriaDto } from './dto/query-auditoria.dto.js';
 import { AuditoriaService } from './auditoria.service.js';
 
 @Controller('auditoria')
 @ApiTags('Auditoría')
-@Roles(UserRole.ADMIN)
+@ScopedPermissions()
 export class AuditoriaController {
   constructor(private readonly auditoriaService: AuditoriaService) {}
 
   @Get()
   @ApiOperation({ summary: 'Consultar auditoría paginada (solo Admin)' })
+  @RequirePermission('auditoria.ver')
   findAll(@Query() query: QueryAuditoriaDto) {
     return this.auditoriaService.findAll({
       page: query.page,

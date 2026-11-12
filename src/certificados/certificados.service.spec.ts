@@ -254,7 +254,7 @@ describe('CertificadosService', () => {
         fecha_version: '2024-11-25',
         configuracion_json: { document_code: 'R-AQ-09' },
       },
-      aprobador: { id: 7, nombre: 'María Aprobadora', rol: 'CALIDAD' },
+      aprobador: { id: 7, nombre: 'María Aprobadora' },
       ciclo_esterilizacion: {
         fecha_proceso: '2026-11-04T12:00:00.000Z',
         orden: {
@@ -266,5 +266,6 @@ describe('CertificadosService', () => {
         },
       },
     });
+    expect(generatedSnapshots[0].aprobador).not.toHaveProperty('rol');
   });
 });

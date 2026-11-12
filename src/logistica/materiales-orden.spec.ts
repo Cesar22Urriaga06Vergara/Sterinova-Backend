@@ -1,4 +1,8 @@
-import { prepararMateriales, metodoOrden } from './materiales-orden.js';
+import {
+  detectarDiscrepanciasCantidad,
+  prepararMateriales,
+  metodoOrden,
+} from './materiales-orden.js';
 import { LogisticaService } from './logistica.service.js';
 import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.enum.js';
 it('mantiene lotes, cero muestras y N/A explícitos', () => {
@@ -48,6 +52,56 @@ it('rechaza materiales duplicados dentro de una misma orden', () => {
       [],
     ),
   ).toThrow(/duplicados/i);
+});
+
+describe('discrepancias de cantidad cotizada y operativa', () => {
+  const items = [{ id: 3, descripcion: 'Bata', cantidad: 5 }];
+
+  it.each([
+    ['igual', [{ cotizacion_item_id: 3, cantidad: 5 }], []],
+    [
+      'superior',
+      [{ cotizacion_item_id: 3, cantidad: 7 }],
+      [{
+        cotizacion_item_id: 3,
+        descripcion: 'Bata',
+        cantidad_cotizada: 5,
+        cantidad_operativa: 7,
+        diferencia: 2,
+        tipo: 'exceso',
+      }],
+    ],
+    [
+      'inferior',
+      [{ cotizacion_item_id: 3, cantidad: 2 }],
+      [{
+        cotizacion_item_id: 3,
+        descripcion: 'Bata',
+        cantidad_cotizada: 5,
+        cantidad_operativa: 2,
+        diferencia: -3,
+        tipo: 'faltante',
+      }],
+    ],
+  ])('registra una cantidad %s sin cambiar los datos cotizados', (_, materials, expected) => {
+    expect(detectarDiscrepanciasCantidad(items, materials)).toEqual(expected);
+    expect(items[0]).toEqual({ id: 3, descripcion: 'Bata', cantidad: 5 });
+  });
+
+  it('suma lotes operativos asociados al mismo ítem antes de comparar', () => {
+    expect(
+      detectarDiscrepanciasCantidad(items, [
+        { cotizacion_item_id: 3, cantidad: 2 },
+        { cotizacion_item_id: 3, cantidad: 3 },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('registra ítems cotizados que no fueron incluidos en logística', () => {
+    expect(detectarDiscrepanciasCantidad(items, [])).toMatchObject([
+      { cantidad_cotizada: 5, cantidad_operativa: 0, tipo: 'faltante' },
+    ]);
+  });
 });
 
 it('rechaza transiciones de estado no permitidas', async () => {

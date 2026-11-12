@@ -1,3 +1,4 @@
+import { RequirePermission, ScopedPermissions } from '../rbac/require-permission.decorator.js';
 import {
   Body,
   Controller,
@@ -12,23 +13,23 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Roles } from '../common/decorators/roles.decorator.js';
-import { UserRole } from '../users/entities/user-role.enum.js';
 import { CreateSelloCertificacionDto } from './dto/create-sello-certificacion.dto.js';
 import { UpdateSelloCertificacionDto } from './dto/update-sello-certificacion.dto.js';
 import { SellosService, type UploadedImage } from './sellos.service.js';
 
 @Controller('sellos')
-@Roles(UserRole.ADMIN)
+@ScopedPermissions()
 export class SellosController {
   constructor(private readonly sellosService: SellosService) {}
 
   @Get()
+  @RequirePermission('sellos.ver')
   findAll() {
     return this.sellosService.findAll();
   }
 
   @Get(':id/imagen')
+  @RequirePermission('sellos.ver')
   async getImage(@Param('id', ParseIntPipe) id: number) {
     const image = await this.sellosService.getImage(id);
     return new StreamableFile(image.buffer, { type: image.mimeType });
@@ -36,6 +37,7 @@ export class SellosController {
 
   @Post()
   @UseInterceptors(FileInterceptor('imagen', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @RequirePermission('sellos.crear')
   create(
     @Body() dto: CreateSelloCertificacionDto,
     @UploadedFile() file?: UploadedImage,
@@ -45,6 +47,7 @@ export class SellosController {
 
   @Patch(':id')
   @UseInterceptors(FileInterceptor('imagen', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @RequirePermission('sellos.editar')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSelloCertificacionDto,
@@ -54,6 +57,7 @@ export class SellosController {
   }
 
   @Delete(':id')
+  @RequirePermission('sellos.desactivar')
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.sellosService.deactivate(id);
   }

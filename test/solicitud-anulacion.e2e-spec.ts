@@ -7,7 +7,7 @@ import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 import { AppModule } from '../src/app.module.js';
 import { User } from '../src/users/entities/user.entity.js';
-import { UserRole } from '../src/users/entities/user-role.enum.js';
+import { UserRole } from './fixtures/legacy-user-role.js';
 import { withRbacFixtureWrite } from './fixtures/rbac-fixture-write.js';
 import { Cliente } from '../src/clientes/entities/cliente.entity.js';
 import { Cotizacion } from '../src/cotizaciones/entities/cotizacion.entity.js';

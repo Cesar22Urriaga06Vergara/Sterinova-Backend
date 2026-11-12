@@ -65,7 +65,9 @@ export class UserRolesService {
       this.db.getRepository(RbacRole).find({ order: { name: 'ASC' } }),
       this.db.getRepository(RbacScope).find({ where: { active: true }, order: { id: 'ASC' } }),
     ]);
-    return { roles, scopes };
+    const codes = new Set(['admin_general','admin_comercial','asesor_comercial','admin_logistica','operador_logistica','admin_planta','operario_planta','admin_calidad','analista_calidad','admin_lavanderia','operario_lavanderia','director_tecnico','auditor','gestor_documental']);
+    const grants = await this.db.query(`SELECT g.role_id,p.code,p.label FROM rbac_role_permissions g JOIN rbac_permissions p ON p.code=g.permission_code AND p.active=1 ORDER BY p.module,p.label`) as {role_id:number;code:string;label:string}[];
+    return { roles: roles.filter(role => codes.has(role.code)).map(role => ({...role, permissions: grants.filter(g => g.role_id===role.id).map(({code,label}) => ({code,label}))})), scopes };
   }
 
   async assignments(actorId: number, userId?: number, context?: PermissionContext): Promise<Assignment[]> {

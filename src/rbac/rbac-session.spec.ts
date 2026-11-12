@@ -27,6 +27,8 @@ describe('RBAC session identity', () => {
       scopeId: 2,
       assignmentActive: 1,
       roleActive: 1,
+      roleCode: 'asesor_comercial',
+      roleName: 'Asesor Comercial',
       permission,
       permissionActive: 1,
       resourceAccess: 'OWN',
@@ -62,12 +64,16 @@ describe('RBAC session identity', () => {
     expect(session.permissions).toContain('cotizaciones.crear');
     expect(session.permissions).not.toContain('cotizaciones.emitir');
     expect(session.current_scope).toMatchObject({ id: 2, name: 'Comercial' });
+    expect(session.user.profiles).toEqual([
+      { id: 2, code: 'asesor_comercial', name: 'Asesor Comercial' },
+    ]);
     expect(session.capabilities).toContainEqual({
       permission: 'cotizaciones.ver',
       scope_ids: [],
       own_scope_ids: [2],
     });
     expect(session.user).not.toHaveProperty('password_hash');
+    expect(session.user).not.toHaveProperty('rol');
   });
   it('refreshes revoked grants and rejects unauthorized or malformed scope selection', async () => {
     const { service, rows } = fixture();
@@ -152,6 +158,8 @@ describe('RBAC session identity', () => {
         scopeId: 2,
         assignmentActive: 1,
         roleActive: 1,
+        roleCode: role.code,
+        roleName: 'Admin Comercial',
         permission: grant.permission,
         permissionActive: 1,
         resourceAccess: grant.access,
@@ -194,5 +202,7 @@ describe('RBAC session identity', () => {
     expect(userRepository.findOne).toHaveBeenCalledTimes(2);
     expect(scopeRepository.find).toHaveBeenCalledTimes(2);
     expect(source.query).toHaveBeenCalledTimes(2);
+    expect(source.query.mock.calls[1][0]).toContain('r.code AS roleCode');
+    expect(source.query.mock.calls[1][0]).toContain('r.name AS roleName');
   });
 });
