@@ -93,7 +93,10 @@ export class LogisticaController {
       request.rbac,
     );
     const pdfType = tipo === 'acta' ? 'ACTA_SERVICIO' : 'ORDEN_SERVICIO';
-    const snapshot = this.logisticaService.buildPdfSnapshot(orden, pdfType);
+    const snapshot = await this.logisticaService.buildPdfSnapshot(
+      orden,
+      pdfType,
+    );
     const safeConsecutivo = orden.consecutivo.replace(/[^A-Za-z0-9._-]/g, '_');
     const pdf = await this.pdfGenerator.render(snapshot);
     response.setHeader('Content-Type', 'application/pdf');

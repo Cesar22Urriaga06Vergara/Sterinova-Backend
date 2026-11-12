@@ -675,6 +675,232 @@
         "x-required-permission": "clientes.eliminar"
       }
     },
+    "/productos": {
+      "get": {
+        "operationId": "ProductosController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar catálogo de productos y servicios",
+        "tags": [
+          "Productos"
+        ],
+        "x-required-permission": "productos.gestionar"
+      },
+      "post": {
+        "operationId": "ProductosController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear producto o servicio del catálogo",
+        "tags": [
+          "Productos"
+        ],
+        "x-required-permission": "productos.gestionar"
+      }
+    },
+    "/productos/buscar/crear": {
+      "get": {
+        "operationId": "ProductosController_searchForCreation",
+        "parameters": [
+          {
+            "name": "tipo_servicio",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INDUSTRIAL_ETO",
+                "INSTITUCIONAL_ETO",
+                "INSTITUCIONAL_VAPOR",
+                "INSUMOS",
+                "LAVANDERIA",
+                "FARMACEUTICO",
+                "FABRICANTE"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Buscar productos activos para una cotización nueva",
+        "tags": [
+          "Productos"
+        ],
+        "x-required-permission": "cotizaciones.crear"
+      }
+    },
+    "/productos/buscar/editar": {
+      "get": {
+        "operationId": "ProductosController_searchForEditing",
+        "parameters": [
+          {
+            "name": "tipo_servicio",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INDUSTRIAL_ETO",
+                "INSTITUCIONAL_ETO",
+                "INSTITUCIONAL_VAPOR",
+                "INSUMOS",
+                "LAVANDERIA",
+                "FARMACEUTICO",
+                "FABRICANTE"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Buscar productos activos para editar una cotización",
+        "tags": [
+          "Productos"
+        ],
+        "x-required-permission": "cotizaciones.editar"
+      }
+    },
+    "/productos/{id}": {
+      "put": {
+        "operationId": "ProductosController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar producto o servicio del catálogo",
+        "tags": [
+          "Productos"
+        ],
+        "x-required-permission": "productos.gestionar"
+      }
+    },
+    "/productos/{id}/estado": {
+      "patch": {
+        "operationId": "ProductosController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductoStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activar o desactivar una referencia del catálogo",
+        "tags": [
+          "Productos"
+        ],
+        "x-required-permission": "productos.gestionar"
+      }
+    },
     "/cotizaciones": {
       "post": {
         "operationId": "CotizacionesController_create",
@@ -984,6 +1210,99 @@
           "Cotizaciones"
         ],
         "x-required-permission": "cotizaciones.aprobar_interna"
+      }
+    },
+    "/cotizaciones/{id}/items/{itemId}/imagen": {
+      "put": {
+        "operationId": "CotizacionesController_uploadItemImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "imagen": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "imagen"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adjuntar una imagen opcional a un ítem de Insumos",
+        "tags": [
+          "Cotizaciones"
+        ],
+        "x-required-permission": "cotizaciones.editar"
+      },
+      "delete": {
+        "operationId": "CotizacionesController_removeItemImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Quitar la imagen de un ítem de Insumos",
+        "tags": [
+          "Cotizaciones"
+        ],
+        "x-required-permission": "cotizaciones.editar"
       }
     },
     "/cotizaciones/{id}/solicitud-anulacion": {
@@ -2437,9 +2756,200 @@
         "type": "object",
         "properties": {}
       },
+      "CreateProductoDto": {
+        "type": "object",
+        "properties": {
+          "tipo_servicio": {
+            "type": "string",
+            "enum": [
+              "INDUSTRIAL_ETO",
+              "INSTITUCIONAL_ETO",
+              "INSTITUCIONAL_VAPOR",
+              "INSUMOS",
+              "LAVANDERIA",
+              "FARMACEUTICO",
+              "FABRICANTE"
+            ]
+          },
+          "tipo_item": {
+            "type": "string",
+            "enum": [
+              "PRODUCTO",
+              "SERVICIO"
+            ]
+          },
+          "categoria": {
+            "type": "string",
+            "enum": [
+              "EMPAQUES",
+              "MONITOREO",
+              "EQUIPOS",
+              "GENERAL"
+            ]
+          },
+          "codigo": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "referencia": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "metodo": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "presentacion": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "marca": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "unidad": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "precision_cantidad": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2,
+            "default": 0
+          }
+        },
+        "required": [
+          "tipo_servicio",
+          "tipo_item",
+          "descripcion",
+          "unidad",
+          "precision_cantidad"
+        ]
+      },
+      "UpdateProductoDto": {
+        "type": "object",
+        "properties": {
+          "tipo_servicio": {
+            "type": "string",
+            "enum": [
+              "INDUSTRIAL_ETO",
+              "INSTITUCIONAL_ETO",
+              "INSTITUCIONAL_VAPOR",
+              "INSUMOS",
+              "LAVANDERIA",
+              "FARMACEUTICO",
+              "FABRICANTE"
+            ]
+          },
+          "tipo_item": {
+            "type": "string",
+            "enum": [
+              "PRODUCTO",
+              "SERVICIO"
+            ]
+          },
+          "categoria": {
+            "type": "string",
+            "enum": [
+              "EMPAQUES",
+              "MONITOREO",
+              "EQUIPOS",
+              "GENERAL"
+            ]
+          },
+          "codigo": {
+            "type": "object",
+            "maxLength": 80
+          },
+          "referencia": {
+            "type": "object",
+            "maxLength": 160
+          },
+          "metodo": {
+            "type": "object",
+            "maxLength": 120
+          },
+          "presentacion": {
+            "type": "object",
+            "maxLength": 160
+          },
+          "marca": {
+            "type": "object",
+            "maxLength": 120
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "unidad": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "precision_cantidad": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2
+          }
+        }
+      },
+      "UpdateProductoStatusDto": {
+        "type": "object",
+        "properties": {
+          "activo": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "activo"
+        ]
+      },
       "CreateCotizacionItemDto": {
         "type": "object",
         "properties": {
+          "producto_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "tipo_item": {
+            "type": "string",
+            "enum": [
+              "PRODUCTO",
+              "SERVICIO"
+            ]
+          },
+          "categoria": {
+            "type": "string",
+            "enum": [
+              "EMPAQUES",
+              "MONITOREO",
+              "EQUIPOS",
+              "GENERAL"
+            ]
+          },
+          "codigo": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "referencia": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "metodo": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "presentacion": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "marca": {
+            "type": "string",
+            "maxLength": 120
+          },
           "descripcion": {
             "type": "string",
             "example": "Esterilización de instrumental"
@@ -2453,10 +2963,19 @@
             "type": "number",
             "example": 150000,
             "minimum": 0
+          },
+          "unidad": {
+            "type": "string",
+            "example": "unidad",
+            "maxLength": 80
+          },
+          "precision_cantidad": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2
           }
         },
         "required": [
-          "descripcion",
           "cantidad",
           "valor_unitario"
         ]
@@ -2493,6 +3012,24 @@
           "condiciones_comerciales": {
             "type": "string"
           },
+          "tiempo_despacho": {
+            "type": "string"
+          },
+          "transporte": {
+            "type": "string"
+          },
+          "forma_pago": {
+            "type": "string"
+          },
+          "validez_oferta": {
+            "type": "string"
+          },
+          "precio_incluye": {
+            "type": "string"
+          },
+          "precio_no_incluye": {
+            "type": "string"
+          },
           "estado": {
             "type": "string"
           }
@@ -2519,6 +3056,46 @@
       "UpdateCotizacionItemDto": {
         "type": "object",
         "properties": {
+          "producto_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "tipo_item": {
+            "type": "string",
+            "enum": [
+              "PRODUCTO",
+              "SERVICIO"
+            ]
+          },
+          "categoria": {
+            "type": "string",
+            "enum": [
+              "EMPAQUES",
+              "MONITOREO",
+              "EQUIPOS",
+              "GENERAL"
+            ]
+          },
+          "codigo": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "referencia": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "metodo": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "presentacion": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "marca": {
+            "type": "string",
+            "maxLength": 120
+          },
           "descripcion": {
             "type": "string",
             "example": "Esterilización de instrumental"
@@ -2532,10 +3109,19 @@
             "type": "number",
             "example": 150000,
             "minimum": 0
+          },
+          "unidad": {
+            "type": "string",
+            "example": "unidad",
+            "maxLength": 80
+          },
+          "precision_cantidad": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2
           }
         },
         "required": [
-          "descripcion",
           "cantidad",
           "valor_unitario"
         ]
@@ -2564,6 +3150,24 @@
             ]
           },
           "condiciones_comerciales": {
+            "type": "string"
+          },
+          "tiempo_despacho": {
+            "type": "string"
+          },
+          "transporte": {
+            "type": "string"
+          },
+          "forma_pago": {
+            "type": "string"
+          },
+          "validez_oferta": {
+            "type": "string"
+          },
+          "precio_incluye": {
+            "type": "string"
+          },
+          "precio_no_incluye": {
             "type": "string"
           },
           "items": {
@@ -2735,9 +3339,108 @@
           "materiales"
         ]
       },
+      "CantidadEventoMaterialDto": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "cantidad": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cajas": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "material_id",
+          "cantidad",
+          "cajas"
+        ]
+      },
+      "EventoOrdenDto": {
+        "type": "object",
+        "properties": {
+          "responsable": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "recibido_por": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "entregado_por": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "transportista": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "observaciones": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "materiales": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CantidadEventoMaterialDto"
+            }
+          }
+        },
+        "required": [
+          "responsable",
+          "materiales"
+        ]
+      },
       "UpdateEstadoOrdenDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "estado": {
+            "type": "string",
+            "enum": [
+              "PENDIENTE",
+              "EN_RUTA",
+              "RECOGIDO",
+              "EN_PLANTA",
+              "PROCESADO",
+              "ENTREGADO",
+              "CANCELADO"
+            ]
+          },
+          "evento": {
+            "description": "Requerido al cambiar a RECOGIDO, EN_PLANTA o ENTREGADO; PROCESADO se registra desde Planta al crear un ciclo.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventoOrdenDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "estado"
+        ]
+      },
+      "MaterialProcesadoDto": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "cantidad": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "material_id",
+          "cantidad"
+        ]
       },
       "CreateCicloDto": {
         "type": "object",
@@ -2757,6 +3460,13 @@
           },
           "orden_id": {
             "type": "number"
+          },
+          "materiales_procesados": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaterialProcesadoDto"
+            }
           },
           "equipo": {
             "type": "string"
@@ -2799,6 +3509,7 @@
         "required": [
           "fecha_esterilizacion",
           "orden_id",
+          "materiales_procesados",
           "equipo",
           "metodo",
           "temperatura",

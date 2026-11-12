@@ -8,7 +8,14 @@ function fixture(overrides = {}) {
     estado: 'Borrador',
     fecha_emision: null,
     version: 1,
+    scope_id: 10,
     iva_tasa: '0.050000',
+    tiempo_despacho: 'Cinco días hábiles',
+    transporte: 'Por cuenta del cliente',
+    forma_pago: '50% al aceptar y 50% al entregar',
+    validez_oferta: '30 días desde su emisión',
+    precio_incluye: 'Servicio descrito',
+    precio_no_incluye: 'Impuestos no incluidos',
     items: [],
     ...overrides,
   };
@@ -50,6 +57,37 @@ describe('internal approval authorization', () => {
     await expect(service.aprobar(1, 1, quotePermission('cotizaciones.aprobar_interna')))
       .resolves.toMatchObject({ estado: 'APROBADA', version: 2, aprobador_interno_id: 42, aprobado_internamente_at: expect.any(Date) });
   });
+  it('rejects approval when the draft has no creator recorded', async () => {
+    const { service, repo } = fixture({ creador_id: null });
+    await expect(service.aprobar(1, 1, quotePermission('cotizaciones.aprobar_interna')))
+      .rejects.toMatchObject({ status: 403 });
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+  it('rejects approval outside the quote scope', async () => {
+    const { service, repo } = fixture({ creador_id: 7, scope_id: 2 });
+    const request = {
+      ...quotePermission('cotizaciones.aprobar_interna'),
+      resourceScopeIds: [99],
+    };
+    await expect(service.aprobar(1, 1, request)).rejects.toMatchObject({
+      status: 403,
+    });
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+  it('requires all six separate commercial conditions before approval', async () => {
+    const { service, repo } = fixture({
+      creador_id: 7,
+      tiempo_despacho: '  ',
+    });
+    await expect(
+      service.aprobar(
+        1,
+        1,
+        quotePermission('cotizaciones.aprobar_interna'),
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(repo.save).not.toHaveBeenCalled();
+  });
 });
 describe('draft editing', () => {
   it.each([
@@ -74,7 +112,7 @@ describe('draft editing', () => {
         1,
         {
           version: 1,
-          items: [{ descripcion: 'Nuevo', cantidad: 2, valor_unitario: 100 }],
+          items: [{ descripcion: 'Nuevo', tipo_item: 'SERVICIO', cantidad: 2, valor_unitario: 100, unidad: 'servicio', precision_cantidad: 0 }],
         },
         access(),
       ),
@@ -87,7 +125,7 @@ describe('draft editing', () => {
       1,
       {
         version: 1,
-        items: [{ descripcion: 'Nuevo', cantidad: 2, valor_unitario: 100 }],
+        items: [{ descripcion: 'Nuevo', tipo_item: 'SERVICIO', cantidad: 2, valor_unitario: 100, unidad: 'servicio', precision_cantidad: 0 }],
       },
       access(),
     );
@@ -99,11 +137,32 @@ describe('draft editing', () => {
       items: [
         {
           descripcion: 'Nuevo',
+          tipo_item: 'SERVICIO',
           cantidad: 2,
           valor_unitario: 100,
+          unidad: 'servicio',
+          precision_cantidad: 0,
           valor_total: 200,
         },
       ],
+    });
+  });
+  it('updates independent commercial conditions on the draft', async () => {
+    const { service, quote } = fixture();
+
+    await service.update(
+      1,
+      {
+        version: 1,
+        tiempo_despacho: 'Diez días hábiles',
+        precio_incluye: 'Empaque y procesamiento',
+      },
+      access(),
+    );
+
+    expect(quote).toMatchObject({
+      tiempo_despacho: 'Diez días hábiles',
+      precio_incluye: 'Empaque y procesamiento',
     });
   });
   it('does not invent a fiscal rate for legacy drafts', async () => {
@@ -113,7 +172,7 @@ describe('draft editing', () => {
         1,
         {
           version: 1,
-          items: [{ descripcion: 'Nuevo', cantidad: 1, valor_unitario: 100 }],
+          items: [{ descripcion: 'Nuevo', tipo_item: 'SERVICIO', cantidad: 1, valor_unitario: 100, unidad: 'servicio', precision_cantidad: 0 }],
         },
         access(),
       ),

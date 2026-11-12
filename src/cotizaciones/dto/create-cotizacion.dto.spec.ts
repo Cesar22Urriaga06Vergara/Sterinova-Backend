@@ -11,8 +11,11 @@ describe('CreateCotizacionDto validation', () => {
       items: [
         {
           descripcion: 'Servicio',
+          tipo_item: 'SERVICIO',
           cantidad: '2',
           valor_unitario: '150',
+          unidad: 'servicio',
+          precision_cantidad: 0,
         },
       ],
     });
@@ -42,5 +45,22 @@ describe('CreateCotizacionDto validation', () => {
         expect.objectContaining({ property: 'items' }),
       ]),
     );
+  });
+
+  it('accepts catalog items without client-supplied snapshot fields', async () => {
+    const dto = plainToInstance(CreateCotizacionDto, {
+      cliente_id: 12,
+      tipo_servicio: 'INSUMOS',
+      items: [
+        {
+          producto_id: '8',
+          cantidad: '2',
+          valor_unitario: '150',
+        },
+      ],
+    });
+
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.items[0]?.producto_id).toBe(8);
   });
 });

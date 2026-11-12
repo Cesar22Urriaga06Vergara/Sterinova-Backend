@@ -59,6 +59,7 @@ describe('fecha_programada: contrato DATE', () => {
       {} as never,
       source as never,
       {} as never,
+      {} as never,
     );
     await expect(
       service.createOrden({
@@ -100,6 +101,10 @@ describe('fecha_programada: contrato DATE', () => {
       {} as never,
       { transaction: async (work) => work(manager) } as never,
       {} as never,
+      {
+        resolveOrdenServicio: vi.fn().mockResolvedValue({ id: 1 }),
+        resolveActaServicio: vi.fn().mockResolvedValue({ id: 2 }),
+      } as never,
     );
     const result = await service.createOrden({
       cotizacion_id: 1,

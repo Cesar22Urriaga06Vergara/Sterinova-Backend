@@ -5,12 +5,20 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import type { DataSource, Repository } from 'typeorm';
 import { Cotizacion } from './entities/cotizacion.entity.js';
 import { CotizacionItem } from './entities/cotizacion-item.entity.js';
+import { Producto } from '../productos/entities/producto.entity.js';
+import { buildCotizacionItem } from './cotizacion-item-builder.js';
+import {
+  CotizacionItemImageService,
+  type UploadedQuoteItemImage,
+} from './cotizacion-item-image.service.js';
 import { CreateCotizacionDto } from './dto/create-cotizacion.dto.js';
 import { UpdateCotizacionDto } from './dto/update-cotizacion.dto.js';
 import { ClientesService } from '../clientes/clientes.service.js';
@@ -54,6 +62,7 @@ function buildPdfSnapshot(
   quote: Cotizacion,
   version: FormatoVersiones,
   emittedAt: Date,
+  imageSources: ReadonlyMap<number, string> = new Map(),
 ) {
   const config = version.configuracion_json;
   return {
@@ -85,12 +94,42 @@ function buildPdfSnapshot(
       fecha: quote.fecha,
       tipo_servicio: quote.tipo_servicio,
       items: quote.items.map(
-        ({ id, descripcion, cantidad, valor_unitario, valor_total }) => ({
+        ({
           id,
+          producto_id,
+          tipo_item,
+          categoria,
+          codigo,
+          referencia,
+          metodo,
+          presentacion,
+          marca,
           descripcion,
+          unidad,
+          precision_cantidad,
           cantidad,
           valor_unitario,
           valor_total,
+        }) => ({
+          id,
+          producto_id,
+          tipo_item,
+          categoria,
+          codigo,
+          referencia,
+          metodo,
+          presentacion,
+          marca,
+          descripcion,
+          unidad,
+          precision_cantidad,
+          cantidad,
+          valor_unitario,
+          valor_total,
+          imagen_src:
+            quote.tipo_servicio === TipoServicioCotizacion.INSUMOS
+              ? (imageSources.get(id) ?? null)
+              : null,
         }),
       ),
       subtotal: quote.subtotal,
@@ -99,6 +138,12 @@ function buildPdfSnapshot(
       iva_version_id: quote.iva_version_id ?? null,
       total: quote.total,
       condiciones_comerciales: quote.condiciones_comerciales,
+      tiempo_despacho: quote.tiempo_despacho,
+      transporte: quote.transporte,
+      forma_pago: quote.forma_pago,
+      validez_oferta: quote.validez_oferta,
+      precio_incluye: quote.precio_incluye,
+      precio_no_incluye: quote.precio_no_incluye,
     },
     reconstruido: false,
   };
@@ -106,6 +151,8 @@ function buildPdfSnapshot(
 
 @Injectable()
 export class CotizacionesService {
+  private readonly logger = new Logger(CotizacionesService.name);
+
   constructor(
     @InjectRepository(Cotizacion)
     private readonly cotizacionesRepository: Repository<Cotizacion>,
@@ -117,6 +164,8 @@ export class CotizacionesService {
     private readonly pdfGenerator: PdfGeneratorService,
     private readonly auditoriaService: AuditoriaService,
     private readonly selloSnapshot: SelloSnapshotService,
+    @Optional()
+    private readonly cotizacionItemImages?: CotizacionItemImageService,
   ) {}
 
   private prefix(tipo: TipoServicioCotizacion): string {
@@ -133,20 +182,6 @@ export class CotizacionesService {
         'La cotización debe incluir al menos un ítem',
       );
     await this.clientesService.findOne(dto.cliente_id, { ...access, policy: {...access.policy, scopeIds: [...new Set([...access.policy.scopeIds, ...access.policy.ownScopeIds])], ownScopeIds: []} });
-    const items = dto.items.map((item) => {
-      const cantidad = Number(item.cantidad);
-      const valor_unitario = Number(item.valor_unitario);
-      const valor_total = Number((cantidad * valor_unitario).toFixed(2));
-      return this.itemsRepository.create({
-        descripcion: item.descripcion,
-        cantidad,
-        valor_unitario,
-        valor_total,
-      });
-    });
-    const subtotal = Number(
-      items.reduce((sum, item) => sum + Number(item.valor_total), 0).toFixed(2),
-    );
     const prefix = this.prefix(dto.tipo_servicio);
     const saved = await this.dataSource.transaction(async (manager) => {
       const tax = await resolveCurrentIva(manager);
@@ -157,6 +192,24 @@ export class CotizacionesService {
         throw new ConflictException(
           'La tasa de IVA cambió. Revise la previsualización antes de guardar.',
         );
+      const itemsRepository = manager.getRepository(CotizacionItem);
+      const productosRepository = manager.getRepository(Producto);
+      const items: CotizacionItem[] = [];
+      for (const item of dto.items) {
+        items.push(
+          await buildCotizacionItem(item, {
+            tipo_servicio: dto.tipo_servicio,
+            scope_id: scopeId,
+            productos_repository: productosRepository,
+            items_repository: itemsRepository,
+          }),
+        );
+      }
+      const subtotal = Number(
+        items
+          .reduce((sum, item) => sum + Number(item.valor_total), 0)
+          .toFixed(2),
+      );
       const iva = ivaAmount(subtotal, tax.tasa);
       const total = Number((subtotal + iva).toFixed(2));
       const sequences = manager.getRepository(SecuenciaConsecutivos);
@@ -188,6 +241,12 @@ export class CotizacionesService {
         scope_id: scopeId,
         tipo_servicio: dto.tipo_servicio,
         condiciones_comerciales: dto.condiciones_comerciales ?? null,
+        tiempo_despacho: dto.tiempo_despacho ?? null,
+        transporte: dto.transporte ?? null,
+        forma_pago: dto.forma_pago ?? null,
+        validez_oferta: dto.validez_oferta ?? null,
+        precio_incluye: dto.precio_incluye ?? null,
+        precio_no_incluye: dto.precio_no_incluye ?? null,
         estado: dto.estado ?? 'Borrador',
         subtotal,
         iva,
@@ -243,7 +302,25 @@ export class CotizacionesService {
     });
     if (!cotizacion)
       throw new NotFoundException(`Cotización #${id} no encontrada`);
+    cotizacion.items = [...(cotizacion.items ?? [])].sort((a, b) => a.id - b.id);
     return cotizacion;
+  }
+
+  private async itemImageSources(
+    quote: Cotizacion,
+  ): Promise<Map<number, string>> {
+    const sources = new Map<number, string>();
+    if (quote.tipo_servicio !== TipoServicioCotizacion.INSUMOS) return sources;
+    for (const item of quote.items ?? []) {
+      if (!item.imagen_key) continue;
+      if (!this.cotizacionItemImages)
+        throw new ConflictException(
+          'El almacenamiento de imágenes de cotización no está disponible',
+        );
+      const source = await this.cotizacionItemImages.toDataUri(item);
+      if (source && item.id) sources.set(item.id, source);
+    }
+    return sources;
   }
 
   findOne(id: number, access: PermissionContext): Promise<Cotizacion> {
@@ -267,7 +344,12 @@ export class CotizacionesService {
       quote.cliente_id,
       this.dataSource.manager,
     );
-    const snapshot = buildPdfSnapshot(quote, version, quote.fecha);
+    const snapshot = buildPdfSnapshot(
+      quote,
+      version,
+      quote.fecha,
+      await this.itemImageSources(quote),
+    );
     const seal = await this.selloSnapshot.preview(this.dataSource.manager);
     return seal ? { ...snapshot, sellos: { icontec: seal } } : snapshot;
   }
@@ -343,6 +425,7 @@ export class CotizacionesService {
     if (quote.estado === 'ANULADA')
       throw new ConflictException('No se puede emitir una cotización anulada');
     if (quote.fecha_emision) return quote;
+    this.assertInternallyApproved(quote);
     const storageKey = `cotizaciones/${quote.consecutivo.replace(/[^\w.-]/g, '_')}.pdf`;
     let generated = false;
     try {
@@ -358,6 +441,7 @@ export class CotizacionesService {
         if (current.estado === 'ANULADA')
           throw new ConflictException('No se puede emitir una cotización anulada');
         if (current.fecha_emision) return;
+        this.assertInternallyApproved(current);
         const emittedAt = new Date();
         const version = await this.formatoResolver.resolveCotizacion(
           current.tipo_servicio,
@@ -369,7 +453,12 @@ export class CotizacionesService {
           access.policy.userId,
         );
         const snapshot = {
-          ...buildPdfSnapshot(current, version, emittedAt),
+          ...buildPdfSnapshot(
+            current,
+            version,
+            emittedAt,
+            await this.itemImageSources(current),
+          ),
           schema_version: 2,
           sellos: { icontec: seal },
         };
@@ -417,6 +506,60 @@ export class CotizacionesService {
     return emitted;
   }
 
+  private assertInternallyApproved(quote: Cotizacion): void {
+    if (
+      (quote.estado ?? '').toString().toUpperCase() !== 'APROBADA' ||
+      quote.creador_id == null ||
+      quote.aprobador_interno_id == null ||
+      quote.aprobado_internamente_at == null ||
+      quote.aprobador_interno_id === quote.creador_id
+    )
+      throw new ConflictException(
+        'La cotización debe contar con aprobación interna vigente antes de emitirse',
+      );
+  }
+
+  private assertApprovalCandidate(
+    quote: Cotizacion,
+    version: number,
+    approverId: number,
+  ) {
+    if (quote.creador_id == null)
+      throw new ForbiddenException(
+        'La cotización no tiene creador asociado para aprobarla',
+      );
+    if (quote.creador_id === approverId)
+      throw new ForbiddenException('No puede aprobar su propia cotización');
+    if (!Number.isInteger(version) || version < 1)
+      throw new BadRequestException('La versión indicada es inválida');
+    if (
+      quote.fecha_emision ||
+      (quote.estado ?? '').toString().toUpperCase() !== 'BORRADOR' ||
+      quote.version !== version
+    )
+      throw new ConflictException(
+        'El borrador cambió o ya no se puede aprobar',
+      );
+  }
+
+  private assertCommercialConditions(quote: Cotizacion): void {
+    const requiredConditions = [
+      ['TIEMPO DE DESPACHO', quote.tiempo_despacho],
+      ['TRANSPORTE', quote.transporte],
+      ['FORMA DE PAGO', quote.forma_pago],
+      ['VALIDEZ DE LA OFERTA', quote.validez_oferta],
+      ['EL PRECIO INCLUYE', quote.precio_incluye],
+      ['EL PRECIO NO INCLUYE', quote.precio_no_incluye],
+    ] as const;
+    const missing = requiredConditions
+      .filter(([, value]) => typeof value !== 'string' || !value.trim())
+      .map(([label]) => label);
+    if (missing.length)
+      throw new BadRequestException(
+        `Completa las condiciones comerciales antes de aprobar: ${missing.join(', ')}`,
+      );
+  }
+
   async aprobar(
     id: number,
     version: number,
@@ -430,16 +573,22 @@ export class CotizacionesService {
       });
       if (!quote)
         throw new NotFoundException(`Cotización #${id} no encontrada`);
-      if (quote.creador_id === access.policy.userId)
-        throw new ForbiddenException('No puede aprobar su propia cotización');
       if (
-        quote.fecha_emision ||
-        quote.estado.toUpperCase() !== 'BORRADOR' ||
-        quote.version !== version
+        quote.scope_id !== null &&
+        quote.scope_id !== undefined &&
+        !access.resourceScopeIds.includes(quote.scope_id)
       )
-        throw new ConflictException(
-          'El borrador cambió o ya no se puede aprobar',
+        throw new ForbiddenException(
+          'No tiene permiso para aprobar cotizaciones de este ámbito',
         );
+
+      this.assertApprovalCandidate(
+        quote,
+        version,
+        access.policy.userId ?? NaN,
+      );
+      this.assertCommercialConditions(quote);
+
       quote.estado = 'APROBADA';
       quote.aprobador_interno_id = access.policy.userId!;
       quote.aprobado_internamente_at = new Date();
@@ -448,12 +597,144 @@ export class CotizacionesService {
     });
   }
 
+  private assertImageEditable(quote: Cotizacion): void {
+    if (
+      quote.fecha_emision ||
+      quote.estado.toUpperCase() !== 'BORRADOR'
+    )
+      throw new ConflictException(
+        'Solo se pueden modificar imágenes de cotizaciones en borrador',
+      );
+    if (quote.tipo_servicio !== TipoServicioCotizacion.INSUMOS)
+      throw new BadRequestException(
+        'Las imágenes solo aplican a cotizaciones de Insumos',
+      );
+  }
+
+  private async deleteImageBestEffort(key: string): Promise<void> {
+    if (!this.cotizacionItemImages) return;
+    try {
+      await this.cotizacionItemImages.delete(key);
+    } catch (error) {
+      this.logger.error(
+        `No se pudo limpiar la imagen de cotización ${key}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+
+  async uploadItemImage(
+    quoteId: number,
+    itemId: number,
+    file: UploadedQuoteItemImage | undefined,
+    access: PermissionContext,
+  ): Promise<{ item_id: number; imagen_disponible: true; version: number }> {
+    const imageStorage = this.cotizacionItemImages;
+    if (!imageStorage)
+      throw new ConflictException(
+        'El almacenamiento de imágenes de cotización no está disponible',
+      );
+    if (!file?.buffer?.length)
+      throw new BadRequestException('Seleccione una imagen');
+    const storageState: {
+      uploaded: Awaited<ReturnType<CotizacionItemImageService['save']>> | null;
+      previousKey: string | null;
+    } = { uploaded: null, previousKey: null };
+    try {
+      const result = await this.dataSource.transaction(async (manager) => {
+        const quoteRepository = manager.getRepository(Cotizacion);
+        const quote = await quoteRepository.findOne({
+          where: quoteWhere(access, 'cotizaciones.editar', quoteId),
+          relations: ['items'],
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!quote)
+          throw new NotFoundException(`Cotización #${quoteId} no encontrada`);
+        this.assertImageEditable(quote);
+        const item = quote.items.find((candidate) => candidate.id === itemId);
+        if (!item)
+          throw new NotFoundException(
+            `Ítem #${itemId} no pertenece a la cotización`,
+          );
+        storageState.uploaded = await imageStorage.save(file.buffer);
+        storageState.previousKey = item.imagen_key;
+        Object.assign(item, storageState.uploaded);
+        await manager.getRepository(CotizacionItem).save(item);
+        quote.version += 1;
+        quote.aprobador_interno_id = null;
+        quote.aprobado_internamente_at = null;
+        await quoteRepository.save(quote);
+        return {
+          item_id: item.id,
+          imagen_disponible: true as const,
+          version: quote.version,
+        };
+      });
+      const { uploaded, previousKey } = storageState;
+      if (previousKey && uploaded && previousKey !== uploaded.imagen_key)
+        await this.deleteImageBestEffort(previousKey);
+      return result;
+    } catch (error) {
+      const uploaded = storageState.uploaded;
+      if (uploaded) await this.deleteImageBestEffort(uploaded.imagen_key);
+      throw error;
+    }
+  }
+
+  async removeItemImage(
+    quoteId: number,
+    itemId: number,
+    access: PermissionContext,
+  ): Promise<{ item_id: number; imagen_disponible: false; version: number }> {
+    if (!this.cotizacionItemImages)
+      throw new ConflictException(
+        'El almacenamiento de imágenes de cotización no está disponible',
+      );
+    let previousKey: string | null = null;
+    const result = await this.dataSource.transaction(async (manager) => {
+      const quoteRepository = manager.getRepository(Cotizacion);
+      const quote = await quoteRepository.findOne({
+        where: quoteWhere(access, 'cotizaciones.editar', quoteId),
+        relations: ['items'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!quote)
+        throw new NotFoundException(`Cotización #${quoteId} no encontrada`);
+      this.assertImageEditable(quote);
+      const item = quote.items.find((candidate) => candidate.id === itemId);
+      if (!item)
+        throw new NotFoundException(
+          `Ítem #${itemId} no pertenece a la cotización`,
+        );
+      if (item.imagen_key) {
+        previousKey = item.imagen_key;
+        item.imagen_key = null;
+        item.imagen_sha256 = null;
+        item.imagen_mime_type = null;
+        item.imagen_tamano_bytes = null;
+        await manager.getRepository(CotizacionItem).save(item);
+        quote.version += 1;
+        quote.aprobador_interno_id = null;
+        quote.aprobado_internamente_at = null;
+        await quoteRepository.save(quote);
+      }
+      return {
+        item_id: item.id,
+        imagen_disponible: false as const,
+        version: quote.version,
+      };
+    });
+    if (previousKey) await this.deleteImageBestEffort(previousKey);
+    return result;
+  }
+
   async update(
     id: number,
     dto: UpdateCotizacionDto,
     access: PermissionContext,
   ): Promise<Cotizacion> {
-    return this.dataSource.transaction(async (manager) => {
+    const obsoleteImageKeys: string[] = [];
+    const updated = await this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Cotizacion);
       const cotizacion = await repository.findOne({
         where: quoteWhere(access, 'cotizaciones.editar', id),
@@ -473,6 +754,16 @@ export class CotizacionesService {
         throw new ConflictException(
           'La cotización cambió. Recargue el borrador antes de guardar.',
         );
+      const previousTipoServicio = cotizacion.tipo_servicio;
+      const previousItems = cotizacion.items ?? [];
+      if (
+        dto.tipo_servicio !== undefined &&
+        dto.tipo_servicio !== previousTipoServicio &&
+        dto.items === undefined
+      )
+        throw new BadRequestException(
+          'Incluya nuevamente los ítems al cambiar el tipo de cotización',
+        );
       if (dto.cliente_id !== undefined) {
         await this.clientesService.findOne(dto.cliente_id, { ...access, policy: {...access.policy, scopeIds: [...new Set([...access.policy.scopeIds, ...access.policy.ownScopeIds])], ownScopeIds: []} });
         cotizacion.cliente_id = dto.cliente_id;
@@ -483,6 +774,18 @@ export class CotizacionesService {
         cotizacion.tipo_servicio = dto.tipo_servicio;
       if (dto.condiciones_comerciales !== undefined)
         cotizacion.condiciones_comerciales = dto.condiciones_comerciales;
+      if (dto.tiempo_despacho !== undefined)
+        cotizacion.tiempo_despacho = dto.tiempo_despacho;
+      if (dto.transporte !== undefined)
+        cotizacion.transporte = dto.transporte;
+      if (dto.forma_pago !== undefined)
+        cotizacion.forma_pago = dto.forma_pago;
+      if (dto.validez_oferta !== undefined)
+        cotizacion.validez_oferta = dto.validez_oferta;
+      if (dto.precio_incluye !== undefined)
+        cotizacion.precio_incluye = dto.precio_incluye;
+      if (dto.precio_no_incluye !== undefined)
+        cotizacion.precio_no_incluye = dto.precio_no_incluye;
       if (dto.items !== undefined) {
         if (!dto.items.length)
           throw new BadRequestException('Se requiere al menos un ítem');
@@ -491,15 +794,32 @@ export class CotizacionesService {
             'El borrador histórico no tiene tasa fiscal conciliada',
           );
         const itemsRepository = manager.getRepository(CotizacionItem);
-        const items = dto.items.map((item) =>
-          itemsRepository.create({
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            valor_unitario: item.valor_unitario,
-            valor_total: Number(
-              (item.cantidad * item.valor_unitario).toFixed(2),
+        const productosRepository = manager.getRepository(Producto);
+        const items: CotizacionItem[] = [];
+        for (const item of dto.items) {
+          items.push(
+            await buildCotizacionItem(item, {
+              tipo_servicio: cotizacion.tipo_servicio,
+              scope_id: cotizacion.scope_id,
+              productos_repository: productosRepository,
+              items_repository: itemsRepository,
+              previous_items: previousItems,
+              previous_tipo_servicio: previousTipoServicio,
+            }),
+          );
+        }
+        const retainedImageKeys = new Set(
+          items
+            .map((item) => item.imagen_key)
+            .filter((key): key is string => Boolean(key)),
+        );
+        obsoleteImageKeys.push(
+          ...previousItems
+            .map((item) => item.imagen_key)
+            .filter(
+              (key): key is string =>
+                key !== null && key !== '' && !retainedImageKeys.has(key),
             ),
-          }),
         );
         cotizacion.subtotal = Number(
           items
@@ -519,16 +839,21 @@ export class CotizacionesService {
       await repository.save(cotizacion);
       return this.loadAuthorized(repository, id, access, 'cotizaciones.editar');
     });
+    for (const key of obsoleteImageKeys)
+      await this.deleteImageBestEffort(key);
+    return updated;
   }
 
   async remove(
     id: number,
     access: PermissionContext,
   ): Promise<{ message: string }> {
-    return this.dataSource.transaction(async (manager) => {
+    const imageKeys: string[] = [];
+    const result = await this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Cotizacion);
       const cotizacion = await repository.findOne({
         where: quoteWhere(access, 'cotizaciones.eliminar', id),
+        relations: ['items'],
         lock: { mode: 'pessimistic_write' },
       });
       if (!cotizacion)
@@ -537,8 +862,15 @@ export class CotizacionesService {
         throw new ConflictException(
           'No se puede eliminar una cotización emitida',
         );
+      imageKeys.push(
+        ...(cotizacion.items ?? [])
+          .map((item) => item.imagen_key)
+          .filter((key): key is string => Boolean(key)),
+      );
       await repository.remove(cotizacion);
       return { message: `Cotización #${id} eliminada` };
     });
+    for (const key of imageKeys) await this.deleteImageBestEffort(key);
+    return result;
   }
 }

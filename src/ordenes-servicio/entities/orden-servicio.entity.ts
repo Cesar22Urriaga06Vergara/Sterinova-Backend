@@ -3,6 +3,7 @@ import { ManyToOne } from 'typeorm';
 import { User } from '../../users/entities/user.entity.js';
 import { RbacScope } from '../../rbac/entities/scope.entity.js';
 import { OrdenServicioMaterial } from './orden-servicio-material.entity.js';
+import { OrdenServicioEvento } from './orden-servicio-evento.entity.js';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -50,11 +51,23 @@ export class OrdenServicio {
   @OneToMany(() => OrdenServicioMaterial, (material) => material.orden)
   materiales: Relation<OrdenServicioMaterial[]>;
 
+  @OneToMany(() => OrdenServicioEvento, (evento) => evento.orden)
+  eventos: Relation<OrdenServicioEvento[]>;
+
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ unique: true })
   consecutivo: string;
+
+  @Column({ type: 'varchar', length: 40, nullable: true, unique: true })
+  acta_consecutivo: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  formato_orden_version_id: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  formato_acta_version_id: number | null;
 
   @Column({ type: 'int', unique: true })
   cotizacion_id: number;

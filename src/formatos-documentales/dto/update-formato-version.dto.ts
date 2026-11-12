@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
@@ -33,6 +34,13 @@ export class UpdateFormatoVersionDto {
   @IsNotEmpty()
   @MaxLength(255)
   responsable?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  @Matches(/\S/)
+  version_label?: string;
 
   @IsOptional()
   @IsString()

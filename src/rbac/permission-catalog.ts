@@ -62,6 +62,11 @@ export const PERMISSION_CATALOG = [
     label: 'Eliminar clientes sin referencias',
   },
   {
+    code: 'productos.gestionar',
+    module: 'comercial',
+    label: 'Administrar el catálogo de productos y servicios',
+  },
+  {
     code: 'cotizaciones.ver',
     module: 'comercial',
     label: 'Consultar cotizaciones comerciales',

@@ -9,6 +9,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  Matches,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -43,6 +44,13 @@ export class CreateFormatoDocumentalDto {
   @IsInt()
   @Min(1)
   version: number;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  @Matches(/\S/)
+  version_label?: string;
 
   @IsDateString()
   fecha_version: string;

@@ -11,27 +11,15 @@ import {
   ArrayNotEmpty,
   ValidateNested,
   ValidateIf,
-  Max,
-  MaxLength,
-  Matches,
-  IsNumber,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateCotizacionItemDto extends CreateCotizacionItemDto {
-  @MaxLength(500)
-  @Matches(/\S/)
-  declare descripcion: string;
-
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Max(9999999999.99)
-  declare cantidad: number;
-
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  @Max(9999999999.99)
-  declare valor_unitario: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  declare id?: number;
 }
 
 export class QuoteVersionDto {
@@ -60,6 +48,36 @@ export class UpdateCotizacionDto extends QuoteVersionDto {
   @IsOptional()
   @IsString()
   condiciones_comerciales?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  tiempo_despacho?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  transporte?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  forma_pago?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  validez_oferta?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  precio_incluye?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  precio_no_incluye?: string;
 
   @ApiPropertyOptional({ type: () => [UpdateCotizacionItemDto] })
   @ValidateIf((_object, value) => value !== undefined)

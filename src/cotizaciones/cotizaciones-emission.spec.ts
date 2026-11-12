@@ -7,12 +7,16 @@ import { CotizacionItem } from './entities/cotizacion-item.entity.js';
 import type { DataSource, Repository } from 'typeorm';
 
 describe('CotizacionesService.emitir', () => {
-  it('creates a PDF snapshot with the selected client and audits the emission', async () => {
+  it('includes Insumos item images in the emitted PDF snapshot', async () => {
     const quote = {
       id: 7,
-      consecutivo: 'COT-LAV-007',
+      consecutivo: 'COT-CMI-007',
       cliente_id: 3,
-      tipo_servicio: TipoServicioCotizacion.LAVANDERIA,
+      tipo_servicio: TipoServicioCotizacion.INSUMOS,
+      estado: 'APROBADA',
+      creador_id: 7,
+      aprobador_interno_id: 42,
+      aprobado_internamente_at: new Date('2026-11-04T11:00:00.000Z'),
       fecha: new Date('2026-11-04T12:00:00.000Z'),
       fecha_emision: null,
       cliente: {
@@ -28,6 +32,10 @@ describe('CotizacionesService.emitir', () => {
       },
       items: [
         {
+          id: 11,
+          imagen_key: 'cotizacion-items/11/producto.png',
+          tipo_item: 'PRODUCTO',
+          categoria: 'EMPAQUES',
           descripcion: 'Lavandería farmacéutica',
           cantidad: 1,
           valor_unitario: 100,
@@ -40,6 +48,12 @@ describe('CotizacionesService.emitir', () => {
       iva_version_id: 1,
       total: 119,
       condiciones_comerciales: 'Oferta de prueba',
+      tiempo_despacho: 'Cinco días hábiles',
+      transporte: 'Por cuenta del cliente',
+      forma_pago: '50% al aceptar y 50% al entregar',
+      validez_oferta: '30 días desde su emisión',
+      precio_incluye: 'Servicio descrito',
+      precio_no_incluye: 'Impuestos no incluidos',
     } as unknown as Cotizacion;
     const version = {
       id: 14,
@@ -85,6 +99,9 @@ describe('CotizacionesService.emitir', () => {
       pdfGenerator as never,
       auditoriaService as never,
       { freeze:vi.fn(async()=>({version_id:10,sha256:"b".repeat(64),imagen_key:"versiones/frozen.png"})) } as never,
+      {
+        toDataUri: vi.fn(async () => 'data:image/png;base64,cHJvZHVjdA=='),
+      } as never,
     );
 
     const emitted = await service.emitir(
@@ -96,13 +113,29 @@ describe('CotizacionesService.emitir', () => {
     expect(emitted.version_formato_id).toBe(14);
     expect(emitted.sello_icontec_version_id).toBe(10);
     expect(quote.snapshot_datos?.sellos).toMatchObject({icontec:{version_id:10,sha256:'b'.repeat(64)}});
-    expect(emitted.pdf_url).toBe('cotizaciones/COT-LAV-007.pdf');
-    expect(emitted.pdf_renderer_version).toBe('react-playwright-v2');
+    expect(emitted.pdf_url).toBe('cotizaciones/COT-CMI-007.pdf');
+    expect(emitted.pdf_renderer_version).toBe('react-playwright-v3');
     expect(quote.snapshot_datos?.cliente).toMatchObject({
       cargo: 'Compras',
       ciudad: 'Bogotá',
     });
-    expect(quote.snapshot_datos?.cotizacion).toMatchObject({ iva_tasa: '0.190000', iva_version_id: 1 });
+    expect(quote.snapshot_datos?.cotizacion).toMatchObject({
+      tipo_servicio: TipoServicioCotizacion.INSUMOS,
+      items: [
+        {
+          id: 11,
+          imagen_src: 'data:image/png;base64,cHJvZHVjdA==',
+        },
+      ],
+      iva_tasa: '0.190000',
+      iva_version_id: 1,
+      tiempo_despacho: 'Cinco días hábiles',
+      transporte: 'Por cuenta del cliente',
+      forma_pago: '50% al aceptar y 50% al entregar',
+      validez_oferta: '30 días desde su emisión',
+      precio_incluye: 'Servicio descrito',
+      precio_no_incluye: 'Impuestos no incluidos',
+    });
     expect(pdfGenerator.generate).toHaveBeenCalledWith(
       expect.objectContaining({
         formato: expect.objectContaining({
@@ -115,7 +148,7 @@ describe('CotizacionesService.emitir', () => {
         }),
         cliente: expect.objectContaining({ ciudad: 'Bogotá' }),
       }),
-      'cotizaciones/COT-LAV-007.pdf',
+      'cotizaciones/COT-CMI-007.pdf',
       manager,
     );
     expect(auditoriaService.create).toHaveBeenCalledWith(
@@ -127,6 +160,106 @@ describe('CotizacionesService.emitir', () => {
       }),
       manager,
     );
+  });
+
+  it('rejects a draft before resolving the format or generating a PDF', async () => {
+    const quote = {
+      id: 7,
+      consecutivo: 'COT-LAV-007',
+      estado: 'Borrador',
+      fecha_emision: null,
+    } as Cotizacion;
+    const quoteRepository = { findOne: vi.fn(async () => quote) };
+    const formatResolver = { resolveCotizacion: vi.fn() };
+    const pdfGenerator = { generate: vi.fn() };
+    const service = new CotizacionesService(
+      quoteRepository as unknown as Repository<Cotizacion>,
+      {} as Repository<CotizacionItem>,
+      {} as never,
+      {} as never,
+      formatResolver as never,
+      pdfGenerator as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.emitir(7, quotePermission('cotizaciones.emitir')),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(formatResolver.resolveCotizacion).not.toHaveBeenCalled();
+    expect(pdfGenerator.generate).not.toHaveBeenCalled();
+  });
+
+  it('rejects an approved state without valid approval metadata', async () => {
+    const quote = {
+      id: 7,
+      consecutivo: 'COT-LAV-007',
+      estado: 'APROBADA',
+      creador_id: 7,
+      aprobador_interno_id: 7,
+      aprobado_internamente_at: new Date(),
+      fecha_emision: null,
+    } as Cotizacion;
+    const quoteRepository = { findOne: vi.fn(async () => quote) };
+    const formatResolver = { resolveCotizacion: vi.fn() };
+    const pdfGenerator = { generate: vi.fn() };
+    const service = new CotizacionesService(
+      quoteRepository as unknown as Repository<Cotizacion>,
+      {} as Repository<CotizacionItem>,
+      {} as never,
+      {} as never,
+      formatResolver as never,
+      pdfGenerator as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.emitir(7, quotePermission('cotizaciones.emitir')),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(formatResolver.resolveCotizacion).not.toHaveBeenCalled();
+    expect(pdfGenerator.generate).not.toHaveBeenCalled();
+  });
+
+  it('rechecks approval under the emission lock before generating a PDF', async () => {
+    const approvedQuote = {
+      id: 7,
+      consecutivo: 'COT-LAV-007',
+      estado: 'APROBADA',
+      creador_id: 7,
+      aprobador_interno_id: 42,
+      aprobado_internamente_at: new Date(),
+      fecha_emision: null,
+    } as Cotizacion;
+    const changedQuote = { ...approvedQuote, estado: 'Borrador' };
+    const quoteRepository = { findOne: vi.fn(async () => approvedQuote) };
+    const manager = {
+      getRepository: vi.fn(() => ({
+        findOne: vi.fn(async () => changedQuote),
+      })),
+    };
+    const formatResolver = { resolveCotizacion: vi.fn() };
+    const pdfGenerator = { generate: vi.fn() };
+    const service = new CotizacionesService(
+      quoteRepository as unknown as Repository<Cotizacion>,
+      {} as Repository<CotizacionItem>,
+      {} as never,
+      {
+        transaction: vi.fn(async (work: (manager: unknown) => unknown) =>
+          work(manager),
+        ),
+      } as unknown as DataSource,
+      formatResolver as never,
+      pdfGenerator as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.emitir(7, quotePermission('cotizaciones.emitir')),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(formatResolver.resolveCotizacion).not.toHaveBeenCalled();
+    expect(pdfGenerator.generate).not.toHaveBeenCalled();
   });
 
   it('regenerates a previously emitted PDF with the React renderer before downloading', async () => {
@@ -167,6 +300,7 @@ describe('CotizacionesService.emitir', () => {
       dataSource as unknown as DataSource,
       {} as never,
       pdfGenerator as never,
+      {} as never,
       {} as never,
     );
 

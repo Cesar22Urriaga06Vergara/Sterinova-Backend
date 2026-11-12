@@ -3,6 +3,7 @@ import { resourceWhere, creationScope } from '../rbac/resource-access.js';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
 import { ProtocoloEsterilizacionVersion } from './entities/protocolo-esterilizacion-version.entity.js';
 import { OrdenServicioMaterial } from '../ordenes-servicio/entities/orden-servicio-material.entity.js';
+import { OrdenServicioEvento } from '../ordenes-servicio/entities/orden-servicio-evento.entity.js';
 import { fechaVencimiento } from '../certificados/fecha-vencimiento.js';
 import { metodoOrden } from '../logistica/materiales-orden.js';
 import {
@@ -112,6 +113,56 @@ export class PlantaService {
         throw new BadRequestException(
           'Complete los materiales recibidos antes de registrar el ciclo',
         );
+      const cantidadesProcesadas = dto.materiales_procesados;
+      if (!Array.isArray(cantidadesProcesadas) || !cantidadesProcesadas.length) {
+        throw new BadRequestException(
+          'Registre la cantidad procesada para cada material de la orden',
+        );
+      }
+      const submittedMaterialIds = cantidadesProcesadas.map(
+        ({ material_id }) => material_id,
+      );
+      const materialesPorId = new Map(
+        materiales.map((material) => [material.id, material]),
+      );
+      if (
+        submittedMaterialIds.length !== materialesPorId.size ||
+        new Set(submittedMaterialIds).size !== submittedMaterialIds.length ||
+        submittedMaterialIds.some(
+          (materialId) => !materialesPorId.has(materialId),
+        )
+      ) {
+        throw new BadRequestException(
+          'Registre la cantidad procesada para cada material de la orden, sin repetir materiales',
+        );
+      }
+      if (
+        cantidadesProcesadas.some(
+          ({ cantidad }) =>
+            !Number.isSafeInteger(cantidad) ||
+            cantidad < 0 ||
+            cantidad > 4294967295,
+        )
+      ) {
+        throw new BadRequestException(
+          'La cantidad procesada debe ser un entero no negativo válido',
+        );
+      }
+      if (
+        cantidadesProcesadas.some(
+          ({ material_id, cantidad }) =>
+            cantidad > (materialesPorId.get(material_id)?.cantidad ?? 0),
+        )
+      ) {
+        throw new BadRequestException(
+          'La cantidad procesada no puede superar la cantidad recibida',
+        );
+      }
+      if (cantidadesProcesadas.every(({ cantidad }) => cantidad === 0)) {
+        throw new BadRequestException(
+          'El ciclo debe procesar al menos una unidad de material',
+        );
+      }
       const protocolo = await manager
         .getRepository(ProtocoloEsterilizacionVersion)
         .findOne({
@@ -142,8 +193,9 @@ export class PlantaService {
         throw new BadRequestException(
           'La presion negativa solo corresponde a EtO',
         );
+      const { materiales_procesados: _, ...cicloDto } = dto;
       const ciclo = ciclosRepository.create({
-        ...dto,
+        ...cicloDto,
         scope_id: access ? creationScope(access) : orden.scope_id,
         protocolo_version_id: protocolo.id,
         tiempo_secado:
@@ -161,6 +213,26 @@ export class PlantaService {
 
       orden.estado = EstadoOrdenServicio.PROCESADO;
       await ordenesRepository.save(orden);
+      const eventosRepository = manager.getRepository(OrdenServicioEvento);
+      await eventosRepository.save(
+        eventosRepository.create({
+          orden_id: orden.id,
+          tipo: 'PROCESAMIENTO',
+          ocurrido_at: new Date(),
+          usuario_id: operador.id,
+          datos_json: {
+            responsable: [operador.nombre, operador.apellido]
+              .filter(Boolean)
+              .join(' '),
+            ciclo_id: saved.id,
+            fecha_esterilizacion: dto.fecha_esterilizacion,
+            materiales: cantidadesProcesadas.map((material) => ({
+              material_id: material.material_id,
+              cantidad: material.cantidad,
+            })),
+          },
+        }),
+      );
 
       const result = await ciclosRepository.findOne({
         where: { id: saved.id },

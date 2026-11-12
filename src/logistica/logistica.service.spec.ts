@@ -9,14 +9,32 @@ import type { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.
 import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 
 describe('LogisticaService PDF snapshot', () => {
+  const formatVersion = {
+    id: 21,
+    version: 3,
+    renderer_key: 'logistica_v1',
+    fecha_version: '2024-10-15',
+    configuracion_json: {
+      document_code: 'R-ES-02',
+      title: 'Orden de servicio',
+      version_label: '03',
+      version_date: '2024-10-15',
+    },
+  };
+  const formatResolver = {
+    resolveOrdenServicio: vi.fn().mockResolvedValue(formatVersion),
+    resolveActaServicio: vi.fn().mockResolvedValue(formatVersion),
+    resolvePinnedVersion: vi.fn().mockResolvedValue(formatVersion),
+  };
   const service = new LogisticaService(
     {} as never,
     {} as never,
     {} as never,
     {} as never,
+    formatResolver as never,
   );
 
-  it('uses the linked customer, quote values and order materials without inventing fields', () => {
+  it('uses the linked customer, quote values, actual format version, and order materials', async () => {
     const orden = {
       consecutivo: 'OS-2026-0001',
       fecha_programada: '2026-11-10',
@@ -48,7 +66,7 @@ describe('LogisticaService PDF snapshot', () => {
       ],
     } as OrdenServicio;
 
-    const snapshot = service.buildPdfSnapshot(orden, 'ORDEN_SERVICIO');
+    const snapshot = await service.buildPdfSnapshot(orden, 'ORDEN_SERVICIO');
 
     expect(snapshot.cliente).toEqual({
       razon_social: 'Cliente de prueba',
@@ -72,18 +90,23 @@ describe('LogisticaService PDF snapshot', () => {
     });
     expect(snapshot.documento).not.toHaveProperty('fecha_emision');
     expect(snapshot.orden).not.toHaveProperty('fecha_recepcion');
+    expect(snapshot.formato).toMatchObject({
+      codigo: 'R-ES-02',
+      version: 3,
+      configuracion_json: { version_label: '03' },
+    });
   });
 
-  it('rejects a PDF snapshot when the order has no linked customer', () => {
+  it('rejects a PDF snapshot when the order has no linked customer', async () => {
     const orden = {
       consecutivo: 'OS-2026-0001',
       cotizacion: null,
       materiales: [],
     } as unknown as OrdenServicio;
 
-    expect(() =>
+    await expect(
       service.buildPdfSnapshot(orden, 'ACTA_SERVICIO'),
-    ).toThrow(InternalServerErrorException);
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
   });
 
   it('limits PDF lookup to the order or linked quote scope', async () => {
@@ -101,6 +124,7 @@ describe('LogisticaService PDF snapshot', () => {
     };
     const scopedService = new LogisticaService(
       repository as never,
+      {} as never,
       {} as never,
       {} as never,
       {} as never,
@@ -134,6 +158,7 @@ describe('LogisticaService PDF snapshot', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
     const access: PermissionContext = {
       permission: 'logistica.ordenes.ver',
@@ -157,6 +182,7 @@ describe('LogisticaService PDF snapshot', () => {
     };
     const scopedService = new LogisticaService(
       repository as never,
+      {} as never,
       {} as never,
       {} as never,
       {} as never,
@@ -184,6 +210,7 @@ describe('LogisticaService approved quotes', () => {
     const scopedService = new LogisticaService(
       ordersRepository as never,
       quotesRepository as never,
+      {} as never,
       {} as never,
       {} as never,
     );
@@ -229,11 +256,13 @@ describe('LogisticaService operational quantity audit', () => {
       insert: vi.fn(),
     };
     const cyclesRepository = { existsBy: vi.fn().mockResolvedValue(false) };
+    const eventsRepository = { existsBy: vi.fn().mockResolvedValue(false) };
     const repositories: Record<string, unknown> = {
       OrdenServicio: ordersRepository,
       Cotizacion: cotizacionesRepository,
       CotizacionItem: itemsRepository,
       OrdenServicioMaterial: materialsRepository,
+      OrdenServicioEvento: eventsRepository,
       CicloEsterilizacion: cyclesRepository,
     };
     const manager = {
@@ -248,6 +277,7 @@ describe('LogisticaService operational quantity audit', () => {
       {} as never,
       dataSource as never,
       auditoriaService as never,
+      {} as never,
     );
 
     await service.updateMateriales(

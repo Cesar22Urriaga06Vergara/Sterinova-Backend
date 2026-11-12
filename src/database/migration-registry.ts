@@ -24,6 +24,10 @@ import { ScopeQuotePilot1794096001000 } from './migrations/1794096001000-ScopeQu
 import { AddVersionedIva1794225600000 } from './migrations/1794225600000-AddVersionedIva.js';
 import { AddPasswordVersion1794413600000 } from './migrations/1794413600000-AddPasswordVersion.js';
 import { CreatePasswordResetTokens1794413660000 } from './migrations/1794413660000-CreatePasswordResetTokens.js';
+import { AddQuoteCommercialConditions1794500000000 } from './migrations/1794500000000-AddQuoteCommercialConditions.js';
+import { AddActaEventsAndLogisticsFormats1794600000000 } from './migrations/1794600000000-AddActaEventsAndLogisticsFormats.js';
+import { AddProductCatalog1794700000000 } from './migrations/1794700000000-AddProductCatalog.js';
+import { AddQuoteItemCatalogSnapshots1794800000000 } from './migrations/1794800000000-AddQuoteItemCatalogSnapshots.js';
 
 /** Shared by the CLI and isolated migration rehearsals; does not load environment variables. */
 export const DATABASE_MIGRATIONS = [
@@ -53,4 +57,8 @@ export const DATABASE_MIGRATIONS = [
   AddPasswordVersion1794413600000,
   CreatePasswordResetTokens1794413660000,
   RemoveLegacyUserRole1794484800000,
+  AddQuoteCommercialConditions1794500000000,
+  AddActaEventsAndLogisticsFormats1794600000000,
+  AddProductCatalog1794700000000,
+  AddQuoteItemCatalogSnapshots1794800000000,
 ];

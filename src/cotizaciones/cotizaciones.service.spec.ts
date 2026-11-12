@@ -7,6 +7,17 @@ import { TipoServicioCotizacion } from './entities/tipo-servicio.enum.js';
 import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecutivos.entity.js';
 
 describe('CotizacionesService consecutivos', () => {
+  const manualItem = (tipoServicio: TipoServicioCotizacion) => ({
+    descripcion: 'Servicio',
+    tipo_item: 'SERVICIO' as const,
+    ...(tipoServicio === TipoServicioCotizacion.INSUMOS
+      ? { categoria: 'EMPAQUES' as const }
+      : {}),
+    cantidad: 1,
+    valor_unitario: 100,
+    unidad: 'servicio',
+    precision_cantidad: 0,
+  });
   const createService = (existingConsecutivos: string[] = []) => {
     let savedCotizacion: Cotizacion;
     let sequence: SecuenciaConsecutivos | null = null;
@@ -91,7 +102,7 @@ describe('CotizacionesService consecutivos', () => {
       {
         cliente_id: 1,
         tipo_servicio,
-        items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
+        items: [manualItem(tipo_servicio)],
       },
       quotePermission('cotizaciones.crear'),
     );
@@ -111,7 +122,7 @@ describe('CotizacionesService consecutivos', () => {
       {
         cliente_id: 1,
         tipo_servicio: TipoServicioCotizacion.INSUMOS,
-        items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
+        items: [manualItem(TipoServicioCotizacion.INSUMOS)],
       },
       quotePermission('cotizaciones.crear'),
     );
@@ -128,7 +139,7 @@ describe('CotizacionesService consecutivos', () => {
       {
         cliente_id: 1,
         tipo_servicio: TipoServicioCotizacion.INDUSTRIAL_ETO,
-        items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
+        items: [manualItem(TipoServicioCotizacion.INDUSTRIAL_ETO)],
       },
       quotePermission('cotizaciones.crear'),
     );
@@ -145,7 +156,7 @@ describe('CotizacionesService consecutivos', () => {
       {
         cliente_id: 1,
         tipo_servicio: TipoServicioCotizacion.LAVANDERIA,
-        items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }],
+        items: [manualItem(TipoServicioCotizacion.LAVANDERIA)],
       },
       quotePermission('cotizaciones.crear'),
     );
@@ -158,7 +169,7 @@ describe('CotizacionesService consecutivos', () => {
   it('rejects an exhausted historical sequence without renumbering', async () => {
     const { service, cotizacionesRepository, sequenceRepository } = createService(['COT-CMI-999999999']);
     await expect(service.create({ cliente_id: 1, tipo_servicio: TipoServicioCotizacion.INSUMOS,
-      items: [{ descripcion: 'Servicio', cantidad: 1, valor_unitario: 100 }] },
+      items: [manualItem(TipoServicioCotizacion.INSUMOS)] },
       quotePermission('cotizaciones.crear'))).rejects.toMatchObject({ response: { code: 'CONSECUTIVO_AGOTADO' } });
     expect(cotizacionesRepository.save).not.toHaveBeenCalled();
     expect(sequenceRepository.save).not.toHaveBeenCalled();

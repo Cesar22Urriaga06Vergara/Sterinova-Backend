@@ -7,6 +7,11 @@ import {
 } from './materiales-orden.js';
 import { UpdateMaterialesOrdenDto } from './dto/update-materiales-orden.dto.js';
 import { OrdenServicioMaterial } from '../ordenes-servicio/entities/orden-servicio-material.entity.js';
+import {
+  EventoOrdenDatos,
+  OrdenServicioEvento,
+  TipoEventoOrden,
+} from '../ordenes-servicio/entities/orden-servicio-evento.entity.js';
 import { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
 import {
   BadRequestException,
@@ -32,6 +37,16 @@ import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
 import { isDateString } from 'class-validator';
 import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 import { canAccessResource } from '../rbac/authorization-policy.js';
+import { FormatoResolverService } from '../formatos-documentales/formato-resolver.service.js';
+import { FormatoVersiones } from '../formatos-documentales/entities/formato-versiones.entity.js';
+
+const EVENTO_POR_ESTADO: Partial<
+  Record<EstadoOrdenServicio, TipoEventoOrden>
+> = {
+  [EstadoOrdenServicio.RECOGIDO]: 'RECOGIDA',
+  [EstadoOrdenServicio.EN_PLANTA]: 'RECEPCION_PLANTA',
+  [EstadoOrdenServicio.ENTREGADO]: 'ENTREGA_CLIENTE',
+};
 
 const TRANSICIONES_ESTADO: Record<
   EstadoOrdenServicio,
@@ -50,10 +65,10 @@ const TRANSICIONES_ESTADO: Record<
     EstadoOrdenServicio.CANCELADO,
   ],
   [EstadoOrdenServicio.EN_PLANTA]: [
-    EstadoOrdenServicio.PROCESADO,
     EstadoOrdenServicio.CANCELADO,
   ],
-  [EstadoOrdenServicio.PROCESADO]: [],
+  [EstadoOrdenServicio.PROCESADO]: [EstadoOrdenServicio.ENTREGADO],
+  [EstadoOrdenServicio.ENTREGADO]: [],
   [EstadoOrdenServicio.CANCELADO]: [],
 };
 
@@ -80,6 +95,7 @@ export class LogisticaService {
     private readonly cotizacionesRepository: Repository<Cotizacion>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly auditoriaService: AuditoriaService,
+    private readonly formatoResolver: FormatoResolverService,
   ) {}
 
   async createOrden(
@@ -115,6 +131,10 @@ export class LogisticaService {
           'La cotización ya tiene una orden de servicio',
         );
       }
+      const [orderFormat, actaFormat] = await Promise.all([
+        this.formatoResolver.resolveOrdenServicio(manager),
+        this.formatoResolver.resolveActaServicio(manager),
+      ]);
       const year = new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
         timeZone: 'America/Bogota',
@@ -140,6 +160,25 @@ export class LogisticaService {
         'UPDATE secuencias_consecutivos SET ultimo_valor = ? WHERE nombre = ?',
         [valor.toString(), name],
       );
+      const actaSequenceName = `acta_servicio:${year}`;
+      await manager.query(
+        'INSERT INTO secuencias_consecutivos (nombre, ultimo_valor) VALUES (?, 0) ON DUPLICATE KEY UPDATE nombre = VALUES(nombre)',
+        [actaSequenceName],
+      );
+      const actaSequence = await sequences.findOne({
+        where: { nombre: actaSequenceName },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!actaSequence)
+        throw new Error('No se pudo inicializar la secuencia de actas');
+      const actaConsecutivo = siguienteConsecutivo(
+        actaSequence.ultimo_valor,
+        4,
+      );
+      await manager.query(
+        'UPDATE secuencias_consecutivos SET ultimo_valor = ? WHERE nombre = ?',
+        [actaConsecutivo.valor.toString(), actaSequenceName],
+      );
       const items = await manager
         .getRepository(CotizacionItem)
         .find({ where: { cotizacion_id: dto.cotizacion_id } });
@@ -157,6 +196,9 @@ export class LogisticaService {
           creador_id: usuarioId,
           fecha_programada: dto.fecha_programada,
           estado: EstadoOrdenServicio.PENDIENTE,
+          acta_consecutivo: `AS-${year}-${actaConsecutivo.numero}`,
+          formato_orden_version_id: orderFormat.id,
+          formato_acta_version_id: actaFormat.id,
           conductor_asignado: dto.conductor_asignado ?? null,
           vehiculo_placa: dto.vehiculo_placa ?? null,
           observaciones: dto.observaciones ?? null,
@@ -205,6 +247,9 @@ export class LogisticaService {
         [EstadoOrdenServicio.PROCESADO, EstadoOrdenServicio.CANCELADO].includes(
           orden.estado,
         ) ||
+        (await manager
+          .getRepository(OrdenServicioEvento)
+          .existsBy({ orden_id: id })) ||
         (await manager
           .getRepository(CicloEsterilizacion)
           .existsBy({ orden_id: id }))
@@ -260,6 +305,7 @@ export class LogisticaService {
         'cotizacion.cliente',
         'cotizacion.items',
         'materiales',
+        'eventos',
       ],
       order: { id: 'DESC' },
     });
@@ -273,6 +319,7 @@ export class LogisticaService {
         'cotizacion.cliente',
         'cotizacion.items',
         'materiales',
+        'eventos',
       ],
     });
     if (!orden) {
@@ -341,9 +388,80 @@ export class LogisticaService {
       if (!orden)
         throw new NotFoundException(`Orden de servicio #${id} no encontrada`);
       const estadoAnterior = orden.estado;
+      if (dto.estado === EstadoOrdenServicio.PROCESADO) {
+        throw new BadRequestException(
+          'El estado PROCESADO solo se registra al crear un ciclo de esterilización',
+        );
+      }
       validarTransicionEstado(estadoAnterior, dto.estado);
+      const eventoTipo = EVENTO_POR_ESTADO[dto.estado];
+      let eventoDatos: EventoOrdenDatos | undefined;
+      if (eventoTipo) {
+        const evento = dto.evento;
+        if (!evento || !evento.responsable.trim()) {
+          throw new BadRequestException(
+            'El hito requiere registrar el responsable y los datos reales del evento',
+          );
+        }
+        const orderMaterials = await manager
+          .getRepository(OrdenServicioMaterial)
+          .find({ where: { orden_id: id } });
+        const submittedIds = evento.materiales.map(
+          ({ material_id }) => material_id,
+        );
+        const expectedIds = new Set(orderMaterials.map(({ id: materialId }) => materialId));
+        if (
+          !orderMaterials.length ||
+          submittedIds.length !== expectedIds.size ||
+          new Set(submittedIds).size !== submittedIds.length ||
+          submittedIds.some((materialId) => !expectedIds.has(materialId))
+        ) {
+          throw new BadRequestException(
+            'Registre una cantidad para cada material de la orden, sin repetir materiales',
+          );
+        }
+        eventoDatos = {
+          responsable: evento.responsable.trim(),
+          recibido_por: evento.recibido_por?.trim() || null,
+          entregado_por: evento.entregado_por?.trim() || null,
+          transportista: evento.transportista?.trim() || null,
+          observaciones: evento.observaciones?.trim() || null,
+          materiales: evento.materiales.map((material) => ({
+            material_id: material.material_id,
+            cantidad: material.cantidad,
+            cajas: material.cajas,
+          })),
+        };
+        if (
+          eventoTipo === 'RECEPCION_PLANTA' &&
+          !eventoDatos.recibido_por
+        ) {
+          throw new BadRequestException(
+            'Indique quién recibió el material en planta',
+          );
+        }
+        if (
+          eventoTipo === 'ENTREGA_CLIENTE' &&
+          !eventoDatos.recibido_por
+        ) {
+          throw new BadRequestException(
+            'Indique quién recibió el material por parte del cliente',
+          );
+        }
+      }
       orden.estado = dto.estado;
       const saved = await repository.save(orden);
+      if (eventoTipo && eventoDatos) {
+        await manager.getRepository(OrdenServicioEvento).save(
+          manager.getRepository(OrdenServicioEvento).create({
+            orden_id: orden.id,
+            tipo: eventoTipo,
+            ocurrido_at: new Date(),
+            usuario_id: usuarioId,
+            datos_json: eventoDatos,
+          }),
+        );
+      }
       await this.auditoriaService.create(
         {
           usuario_id: usuarioId,
@@ -353,6 +471,7 @@ export class LogisticaService {
           detalle: {
             estado_anterior: estadoAnterior,
             estado_nuevo: dto.estado,
+            evento: eventoTipo ?? null,
           },
         },
         manager,
@@ -361,10 +480,10 @@ export class LogisticaService {
     });
   }
 
-  buildPdfSnapshot(
+  async buildPdfSnapshot(
     orden: OrdenServicio,
     tipo: 'ORDEN_SERVICIO' | 'ACTA_SERVICIO',
-  ): Record<string, any> {
+  ): Promise<Record<string, any>> {
     const cliente = orden.cotizacion?.cliente;
     if (!cliente) {
       throw new InternalServerErrorException(
@@ -372,12 +491,35 @@ export class LogisticaService {
       );
     }
 
+    const pinnedFormatId =
+      tipo === 'ORDEN_SERVICIO'
+        ? orden.formato_orden_version_id
+        : orden.formato_acta_version_id;
+    const formatVersion: FormatoVersiones = pinnedFormatId
+      ? await this.formatoResolver.resolvePinnedVersion(pinnedFormatId)
+      : tipo === 'ORDEN_SERVICIO'
+        ? await this.formatoResolver.resolveOrdenServicio()
+        : await this.formatoResolver.resolveActaServicio();
+    const configuration = formatVersion.configuracion_json;
+
     return {
       documento: {
         tipo,
-        consecutivo: orden.consecutivo,
+        consecutivo:
+          tipo === 'ACTA_SERVICIO'
+            ? orden.acta_consecutivo ?? null
+            : orden.consecutivo,
         fecha_programada: orden.fecha_programada,
         observaciones: orden.observaciones ?? null,
+      },
+      formato: {
+        id: formatVersion.id,
+        codigo: configuration.document_code,
+        version: formatVersion.version,
+        fecha_version:
+          formatVersion.fecha_version ?? configuration.version_date ?? null,
+        renderer_key: formatVersion.renderer_key,
+        configuracion_json: configuration,
       },
       cliente: {
         razon_social: cliente.razon_social,
@@ -402,9 +544,12 @@ export class LogisticaService {
         consecutivo: orden.consecutivo,
         fecha_programada: orden.fecha_programada,
         metodo_esterilizacion: orden.metodo_esterilizacion,
+        conductor_asignado: orden.conductor_asignado ?? null,
+        vehiculo_placa: orden.vehiculo_placa ?? null,
         observaciones: orden.observaciones ?? null,
       },
       materiales: (orden.materiales ?? []).map((material) => ({
+        id: material.id,
         descripcion: material.descripcion,
         referencia: material.referencia ?? null,
         lote: material.lote ?? null,
@@ -412,6 +557,17 @@ export class LogisticaService {
         cotizacion_item_id: material.cotizacion_item_id,
         posicion: material.posicion,
       })),
+      eventos: (orden.eventos ?? [])
+        .slice()
+        .sort(
+          (left, right) =>
+            left.ocurrido_at.getTime() - right.ocurrido_at.getTime(),
+        )
+        .map((evento) => ({
+          tipo: evento.tipo,
+          ocurrido_at: evento.ocurrido_at.toISOString(),
+          ...evento.datos_json,
+        })),
     };
   }
 

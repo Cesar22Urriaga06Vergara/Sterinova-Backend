@@ -105,6 +105,24 @@ export class Cotizacion {
   @Column({ type: 'text', nullable: true })
   condiciones_comerciales: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  tiempo_despacho: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  transporte: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  forma_pago: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  validez_oferta: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  precio_incluye: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  precio_no_incluye: string | null;
+
   @Column({ type: 'int', nullable: true })
   version_formato_id: number | null;
 

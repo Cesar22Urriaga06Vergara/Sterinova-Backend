@@ -88,7 +88,7 @@ describe('CertificadosService', () => {
     expect(result.snapshot_datos?.materiales).toMatchObject([{lote:'L1',cantidad:39}]);
     expect(result.snapshot_datos?.informacion_tecnica).toMatchObject({tablas:{VAPOR:expect.arrayContaining([expect.objectContaining({resultado:'N/A'})])}});
     expect(result).toEqual(expect.objectContaining({ consecutivo: '001', ciclo_id: 12 }));
-    expect(result.pdf_renderer_version).toBe('react-playwright-v2');
+    expect(result.pdf_renderer_version).toBe('react-playwright-v3');
     expect(certificateRepository.save).toHaveBeenCalled();
   });
 

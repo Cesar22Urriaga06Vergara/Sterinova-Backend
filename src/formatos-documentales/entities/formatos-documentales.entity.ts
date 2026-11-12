@@ -14,6 +14,8 @@ import { FormatoAsignacionesCliente } from './formato-asignaciones-cliente.entit
 export enum TipoDocumentoFormato {
   COTIZACION = 'COTIZACION',
   CERTIFICADO = 'CERTIFICADO',
+  ORDEN_SERVICIO = 'ORDEN_SERVICIO',
+  ACTA_SERVICIO = 'ACTA_SERVICIO',
 }
 
 @Entity('formatos_documentales')

@@ -2,11 +2,103 @@ import { AddClienteDocumentFields1793813200000 } from './1793813200000-AddClient
 import { CreateAuditoria1793813300000 } from './1793813300000-CreateAuditoria.js';
 import { AddTemplateResponsible1793813400000 } from './1793813400000-AddTemplateResponsible.js';
 import { AddPdfRendererVersion1793813500000 } from './1793813500000-AddPdfRendererVersion.js';
+import { AddQuoteCommercialConditions1794500000000 } from './1794500000000-AddQuoteCommercialConditions.js';
+import { AddActaEventsAndLogisticsFormats1794600000000 } from './1794600000000-AddActaEventsAndLogisticsFormats.js';
+import { DATABASE_MIGRATIONS } from '../migration-registry.js';
 import { AddUsersAndCertificationSeals1793813600000 } from './1793813600000-AddUsersAndCertificationSeals.js';
 import { ExtendAuditoriaEvents1793813700000 } from './1793813700000-ExtendAuditoriaEvents.js';
 import type { QueryRunner } from 'typeorm';
 
 describe('document administration migrations', () => {
+  it('registers the quote and logistics migrations in deployment order', () => {
+    expect(
+      DATABASE_MIGRATIONS.indexOf(AddQuoteCommercialConditions1794500000000),
+    ).toBeGreaterThanOrEqual(0);
+    expect(
+      DATABASE_MIGRATIONS.indexOf(
+        AddActaEventsAndLogisticsFormats1794600000000,
+      ),
+    ).toBeGreaterThan(
+      DATABASE_MIGRATIONS.indexOf(AddQuoteCommercialConditions1794500000000),
+    );
+  });
+
+  it('adds Acta event capture, a new delivery milestone, and pinned logistics formats without filling events from old orders', async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.startsWith('SELECT id FROM formatos_documentales')) return [];
+      if (sql.startsWith('SELECT id FROM formato_versiones')) return [];
+      if (sql.startsWith('INSERT INTO formatos_documentales')) return { insertId: 1 };
+      if (sql.startsWith('INSERT INTO formato_versiones')) return { insertId: 1 };
+      return undefined;
+    });
+
+    await new AddActaEventsAndLogisticsFormats1794600000000().up({
+      query,
+    } as unknown as QueryRunner);
+
+    const statements = query.mock.calls.map(([statement]) => statement);
+    expect(statements[0]).toContain("'ENTREGADO'");
+    expect(
+      statements.some((statement) =>
+        statement.includes('CREATE TABLE ordenes_servicio_eventos'),
+      ),
+    ).toBe(true);
+    expect(
+      statements.some((statement) =>
+        statement.includes('UQ_ordenes_servicio_evento_tipo'),
+      ),
+    ).toBe(true);
+    expect(statements.filter((statement) =>
+      statement.startsWith('INSERT INTO formatos_documentales'),
+    )).toHaveLength(2);
+    expect(statements.filter((statement) =>
+      statement.startsWith('INSERT INTO formato_versiones'),
+    )).toHaveLength(2);
+    expect(statements.at(-1)).toContain(
+      'SET formato_orden_version_id = ?, formato_acta_version_id = ?',
+    );
+    expect(statements.join('\n')).not.toContain('INSERT INTO ordenes_servicio_eventos');
+  });
+
+  it('refuses to roll back logistics history after events or Actas exist', async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('ordenes_servicio_eventos')) return [{ total: 1 }];
+      return [{ total: 0 }];
+    });
+
+    await expect(
+      new AddActaEventsAndLogisticsFormats1794600000000().down({
+        query,
+      } as unknown as QueryRunner),
+    ).rejects.toThrow(
+      'No se puede revertir mientras existan eventos logísticos, actas emitidas u órdenes entregadas',
+    );
+
+    expect(
+      query.mock.calls.some(([sql]) => String(sql).startsWith('DROP TABLE')),
+    ).toBe(false);
+    expect(
+      query.mock.calls.some(([sql]) => String(sql).startsWith('ALTER TABLE')),
+    ).toBe(false);
+  });
+
+  it('adds the six quote conditions independently and without backfilling legacy text', async () => {
+    const query = vi.fn(async () => undefined);
+    await new AddQuoteCommercialConditions1794500000000().up({
+      query,
+    } as unknown as QueryRunner);
+
+    expect(query).toHaveBeenCalledWith(
+      `ALTER TABLE cotizaciones
+      ADD tiempo_despacho TEXT NULL,
+      ADD transporte TEXT NULL,
+      ADD forma_pago TEXT NULL,
+      ADD validez_oferta TEXT NULL,
+      ADD precio_incluye TEXT NULL,
+      ADD precio_no_incluye TEXT NULL`,
+    );
+  });
+
   it('allows nullable entity ids and flexible audit action names', async () => {
     const query = vi.fn(async (sql: string) => {
       if (sql.includes('SELECT COUNT')) return [{ total: 0 }];

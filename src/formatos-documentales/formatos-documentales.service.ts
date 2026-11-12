@@ -10,6 +10,7 @@ import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
 import { CertificadoEsterilizacion } from '../certificados/entities/certificado-esterilizacion.entity.js';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
+import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
 import {
   EstadoVersionFormato,
   FormatoVersiones,
@@ -33,6 +34,7 @@ type VersionEditorFields = {
   codigo?: string;
   nombre?: string;
   fecha_version?: string;
+  version_label?: string;
   responsable?: string;
   introduccion?: string;
   condiciones_comerciales?: string;
@@ -66,9 +68,17 @@ function createConfiguration(
 
   return {
     ...current,
-    document_code: fields.codigo ?? format.codigo,
-    title: fields.nombre ?? format.nombre,
-    version_label: String(version).padStart(2, '0'),
+    document_code:
+      fields.codigo ??
+      (typeof current.document_code === 'string'
+        ? current.document_code
+        : format.codigo),
+    title:
+      fields.nombre ??
+      (typeof current.title === 'string' ? current.title : format.nombre),
+    version_label:
+      fields.version_label ??
+      String(version).padStart(2, '0'),
     version_date: fields.fecha_version ?? date,
     ...(paragraphs === undefined ? {} : { paragraphs }),
     ...(commercialTerms === undefined
@@ -125,6 +135,14 @@ export class FormatosDocumentalesService {
         'Las plantillas de cotización requieren un tipo de servicio',
       );
     }
+    if (
+      dto.tipo_documento !== TipoDocumentoFormato.COTIZACION &&
+      dto.tipo_servicio
+    ) {
+      throw new BadRequestException(
+        'El tipo de servicio solo aplica a las plantillas de cotización',
+      );
+    }
 
     return this.dataSource.transaction(async (manager) => {
       const formats = manager.getRepository(FormatosDocumentales);
@@ -142,6 +160,7 @@ export class FormatosDocumentalesService {
         codigo: dto.codigo,
         nombre: dto.nombre,
         fecha_version: dto.fecha_version,
+        version_label: dto.version_label,
         introduccion: dto.introduccion,
         condiciones_comerciales: dto.condiciones_comerciales,
         firmas: dto.firmas,
@@ -151,7 +170,11 @@ export class FormatosDocumentalesService {
           formato_id: format.id,
           version: dto.version,
           estado: EstadoVersionFormato.BORRADOR,
-          renderer_key: 'cotizacion_v1',
+          renderer_key:
+            dto.tipo_documento === TipoDocumentoFormato.ORDEN_SERVICIO ||
+            dto.tipo_documento === TipoDocumentoFormato.ACTA_SERVICIO
+              ? 'logistica_v1'
+              : 'cotizacion_v1',
           configuracion_json: configuration,
           fecha_version: dto.fecha_version,
           responsable: dto.responsable,
@@ -216,7 +239,7 @@ export class FormatosDocumentalesService {
 
       const versionRows = await versions.find({ where: { formato_id: id } });
       const versionIds = versionRows.map(({ id: versionId }) => versionId);
-      const [assignments, quotes, certificates] = await Promise.all([
+      const [assignments, quotes, certificates, orders] = await Promise.all([
         manager.getRepository(FormatoAsignacionesCliente).countBy({ formato_id: id }),
         versionIds.length
           ? manager.getRepository(Cotizacion).countBy({
@@ -228,8 +251,16 @@ export class FormatosDocumentalesService {
               version_formato_id: In(versionIds),
             })
           : 0,
+        versionIds.length
+          ? manager.getRepository(OrdenServicio).count({
+              where: [
+                { formato_orden_version_id: In(versionIds) },
+                { formato_acta_version_id: In(versionIds) },
+              ],
+            })
+          : 0,
       ]);
-      if (assignments || quotes || certificates) {
+      if (assignments || quotes || certificates || orders) {
         throw new ConflictException(
           'No se puede eliminar un formato usado por clientes o documentos emitidos',
         );
@@ -272,9 +303,10 @@ export class FormatosDocumentalesService {
       const version = (latest?.version ?? 0) + 1;
       const previousConfig = latest?.configuracion_json ?? {};
       const configuration = createConfiguration(format, version, dto.fecha_version, {
-        codigo: format.codigo,
-        nombre: format.nombre,
+        codigo: dto.codigo,
+        nombre: dto.nombre,
         fecha_version: dto.fecha_version,
+        version_label: dto.version_label,
       }, previousConfig);
       const saved = await versions.save(
         versions.create({
@@ -328,18 +360,21 @@ export class FormatosDocumentalesService {
         );
       }
 
-      if (dto.codigo !== undefined) format.codigo = dto.codigo;
-      if (dto.nombre !== undefined) format.nombre = dto.nombre;
-      if (dto.codigo !== undefined || dto.nombre !== undefined) {
-        await formats.save(format);
-      }
       version.fecha_version = dto.fecha_version ?? version.fecha_version;
       version.responsable = dto.responsable ?? version.responsable;
+      const currentVersionLabel = version.configuracion_json.version_label;
       version.configuracion_json = createConfiguration(
         format,
         version.version,
         version.fecha_version ?? '',
-        dto,
+        {
+          ...dto,
+          version_label:
+            dto.version_label ??
+            (typeof currentVersionLabel === 'string'
+              ? currentVersionLabel
+              : undefined),
+        },
         version.configuracion_json,
       );
       await versions.save(version);

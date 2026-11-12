@@ -5,6 +5,7 @@ import type { DataSource, EntityManager } from 'typeorm';
 import { User } from '../users/entities/user.entity.js';
 import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.enum.js';
 import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
+import { OrdenServicioEvento } from '../ordenes-servicio/entities/orden-servicio-evento.entity.js';
 import { CicloEsterilizacion } from './entities/ciclo-esterilizacion.entity.js';
 import { CreateCicloDto } from './dto/create-ciclo.dto.js';
 import { PlantaService } from './planta.service.js';
@@ -17,7 +18,7 @@ describe('PlantaService', () => {
       metodo_esterilizacion:'ETO',
       estado: EstadoOrdenServicio.EN_PLANTA,
     } as OrdenServicio;
-    const operador = { id: 8 } as User;
+    const operador = { id: 8, nombre: 'Ana', apellido: 'Operadora' } as User;
     let cicloGuardado: CicloEsterilizacion;
     const ordenesRepository = {
       findOne: vi.fn(async () => orden),
@@ -37,13 +38,18 @@ describe('PlantaService', () => {
       findOne: vi.fn(async () => cicloGuardado),
       find: vi.fn(async () => [cicloGuardado]),
     };
+    const eventosRepository = {
+      create: vi.fn((value) => value),
+      save: vi.fn(async (value) => value),
+    };
     const manager = {
-      getRepository: vi.fn((entity: typeof OrdenServicio | typeof User | typeof CicloEsterilizacion) => {
+      getRepository: vi.fn((entity: typeof OrdenServicio | typeof User | typeof CicloEsterilizacion | typeof OrdenServicioEvento) => {
         if (entity === OrdenServicio) return ordenesRepository;
         if (entity === User) return usersRepository;
         if (entity === Cotizacion) return { findOneByOrFail:async()=>({tipo_servicio:'INDUSTRIAL_ETO'}) };
-        if (entity === OrdenServicioMaterial) return {find:async()=>[{id:1}]};
+        if (entity === OrdenServicioMaterial) return {find:async()=>[{id:1,cantidad:5}]};
         if (entity === ProtocoloEsterilizacionVersion) return {findOne:async()=>({id:1,metodo:'ETO',especificaciones_json:{filas:[]}})};
+        if (entity === OrdenServicioEvento) return eventosRepository;
         return ciclosRepository;
       }),
     };
@@ -63,14 +69,16 @@ describe('PlantaService', () => {
       orden,
       ordenesRepository,
       ciclosRepository,
+      eventosRepository,
     };
   };
 
   it('creates a cycle and changes the order to PROCESADO atomically', async () => {
-    const { service, orden, ordenesRepository, ciclosRepository } =
+    const { service, orden, ordenesRepository, ciclosRepository, eventosRepository } =
       createService();
     const dto: CreateCicloDto = {
       orden_id: 21,
+      materiales_procesados: [{ material_id: 1, cantidad: 4 }],
       equipo: 'CICLO 10M68',
       fecha_esterilizacion:'2026-10-30',
       metodo: 'ETO',
@@ -92,6 +100,19 @@ describe('PlantaService', () => {
     );
     expect(orden.estado).toBe(EstadoOrdenServicio.PROCESADO);
     expect(ordenesRepository.save).toHaveBeenCalledWith(orden);
+    expect(eventosRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orden_id: 21,
+        tipo: 'PROCESAMIENTO',
+        usuario_id: 8,
+        datos_json: {
+          responsable: 'Ana Operadora',
+          ciclo_id: 34,
+          fecha_esterilizacion: '2026-10-30',
+          materiales: [{ material_id: 1, cantidad: 4 }],
+        },
+      }),
+    );
   });
 
   it('returns only orders currently in EN_PLANTA', async () => {
@@ -126,6 +147,7 @@ describe('PlantaService', () => {
       service.createCiclo(
         {
           orden_id: orden.id,
+          materiales_procesados: [{ material_id: 1, cantidad: 4 }],
           equipo: 'CICLO 10M68',
       fecha_esterilizacion:'2026-10-30',
           metodo: 'ETO',
@@ -140,6 +162,32 @@ describe('PlantaService', () => {
         8,
       ),
     ).rejects.toThrow('Solo se pueden registrar ciclos para órdenes EN_PLANTA');
+
+    expect(ciclosRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects processed quantities greater than the received quantities', async () => {
+    const { service, ciclosRepository } = createService();
+
+    await expect(
+      service.createCiclo(
+        {
+          orden_id: 21,
+          materiales_procesados: [{ material_id: 1, cantidad: 6 }],
+          equipo: 'CICLO 10M68',
+          fecha_esterilizacion: '2026-10-30',
+          metodo: 'ETO',
+          temperatura: 45,
+          humedad: 60,
+          presion: 1.2,
+          tiempo_exposicion: 120,
+          tiempo_aireacion: 30,
+          control_biologico: 'Negativo',
+          control_quimico: 'Cambio de color',
+        },
+        8,
+      ),
+    ).rejects.toThrow('La cantidad procesada no puede superar la cantidad recibida');
 
     expect(ciclosRepository.save).not.toHaveBeenCalled();
   });

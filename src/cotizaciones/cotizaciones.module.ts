@@ -13,6 +13,7 @@ import { RbacModule } from '../rbac/rbac.module.js';
 import { SolicitudAnulacion } from './entities/solicitud-anulacion.entity.js';
 import { SolicitudAnulacionService } from './solicitud-anulacion.service.js';
 import { SolicitudAnulacionController } from './solicitud-anulacion.controller.js';
+import { CotizacionItemImageService } from './cotizacion-item-image.service.js';
 
 @Module({
   imports: [
@@ -29,7 +30,11 @@ import { SolicitudAnulacionController } from './solicitud-anulacion.controller.j
     AuditoriaModule,
   ],
   controllers: [CotizacionesController, SolicitudAnulacionController],
-  providers: [CotizacionesService, SolicitudAnulacionService],
+  providers: [
+    CotizacionesService,
+    SolicitudAnulacionService,
+    CotizacionItemImageService,
+  ],
   exports: [CotizacionesService, SolicitudAnulacionService],
 })
 export class CotizacionesModule {}

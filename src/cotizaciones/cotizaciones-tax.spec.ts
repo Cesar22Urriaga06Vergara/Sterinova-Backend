@@ -9,7 +9,17 @@ describe('Authoritative IVA at quote creation', () => {
   const dto = {
     cliente_id: 1,
     tipo_servicio: 'INSUMOS',
-    items: [{ descripcion: 'A', cantidad: 3, valor_unitario: 10.55 }],
+    items: [
+      {
+        descripcion: 'A',
+        tipo_item: 'PRODUCTO',
+        categoria: 'EMPAQUES',
+        cantidad: 3,
+        valor_unitario: 10.55,
+        unidad: 'unidad',
+        precision_cantidad: 0,
+      },
+    ],
   };
   function fixture(rate = '0.050000') {
     let saved: unknown;
@@ -69,7 +79,13 @@ describe('Authoritative IVA at quote creation', () => {
   });
   it('rounds an exact half cent upwards without binary floating-point drift', async () => {
     const { service } = fixture('0.145000');
-    const quote = await service.create({ ...dto, items: [{ descripcion: 'A', cantidad: 1, valor_unitario: 1 }] } as never, quotePermission('cotizaciones.crear'));
+    const quote = await service.create(
+      {
+        ...dto,
+        items: [{ ...dto.items[0], cantidad: 1, valor_unitario: 1 }],
+      } as never,
+      quotePermission('cotizaciones.crear'),
+    );
     expect(quote.iva).toBe(0.15);
     expect(quote.total).toBe(1.15);
   });
@@ -82,6 +98,7 @@ describe('Authoritative IVA at quote creation', () => {
         iva: 0,
         subtotal: 0,
         total: 0,
+        items: [{ ...dto.items[0] }],
       }),
       { whitelist: true, forbidNonWhitelisted: true },
     );

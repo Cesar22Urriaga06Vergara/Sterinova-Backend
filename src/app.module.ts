@@ -26,6 +26,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
 import { HealthModule } from './health/health.module.js';
+import { ProductosModule } from './productos/productos.module.js';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { HealthModule } from './health/health.module.js';
     UsersModule,
     AuthModule,
     ClientesModule,
+    ProductosModule,
     CotizacionesModule,
     LogisticaModule,
     PlantaModule,

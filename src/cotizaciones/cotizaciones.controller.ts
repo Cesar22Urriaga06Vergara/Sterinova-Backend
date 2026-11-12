@@ -10,7 +10,10 @@ import {
   Put,
   Req,
   Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { PdfGeneratorService } from '../pdf/pdf-generator.service.js';
 import { CotizacionesService } from './cotizaciones.service.js';
@@ -24,7 +27,15 @@ import {
   RequirePermission,
 } from '../rbac/require-permission.decorator.js';
 import type { RbacRequest } from '../rbac/authorization.guard.js';
-import { ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiHeader,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import type { UploadedQuoteItemImage } from './cotizacion-item-image.service.js';
 
 @Controller('cotizaciones')
 @ApiTags('Cotizaciones')
@@ -142,6 +153,51 @@ export class CotizacionesController {
     @Req() request: RbacRequest,
   ) {
     return this.cotizacionesService.aprobar(id, dto.version, request.rbac);
+  }
+
+  @Put(':id/items/:itemId/imagen')
+  @UseInterceptors(
+    FileInterceptor('imagen', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  @RequirePermission('cotizaciones.editar')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { imagen: { type: 'string', format: 'binary' } },
+      required: ['imagen'],
+    },
+  })
+  @ApiOperation({
+    summary: 'Adjuntar una imagen opcional a un ítem de Insumos',
+  })
+  uploadItemImage(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('itemId', ParseIntPipe) itemId: number,
+    @UploadedFile() file: UploadedQuoteItemImage | undefined,
+    @Req() request: RbacRequest,
+  ) {
+    return this.cotizacionesService.uploadItemImage(
+      id,
+      itemId,
+      file,
+      request.rbac,
+    );
+  }
+
+  @Delete(':id/items/:itemId/imagen')
+  @RequirePermission('cotizaciones.editar')
+  @ApiOperation({ summary: 'Quitar la imagen de un ítem de Insumos' })
+  removeItemImage(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('itemId', ParseIntPipe) itemId: number,
+    @Req() request: RbacRequest,
+  ) {
+    return this.cotizacionesService.removeItemImage(
+      id,
+      itemId,
+      request.rbac,
+    );
   }
 
   @Put(':id')

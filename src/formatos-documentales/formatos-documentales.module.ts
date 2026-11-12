@@ -9,6 +9,7 @@ import { CertificadoEsterilizacion } from '../certificados/entities/certificado-
 import { FormatosDocumentalesController } from './formatos-documentales.controller.js';
 import { FormatosDocumentalesService } from './formatos-documentales.service.js';
 import { AuditoriaModule } from '../auditoria/auditoria.module.js';
+import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AuditoriaModule } from '../auditoria/auditoria.module.js';
       FormatoAsignacionesCliente,
       Cotizacion,
       CertificadoEsterilizacion,
+      OrdenServicio,
     ]),
     AuditoriaModule,
   ],

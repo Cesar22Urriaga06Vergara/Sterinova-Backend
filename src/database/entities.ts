@@ -1,4 +1,5 @@
 import { OrdenServicioMaterial } from '../ordenes-servicio/entities/orden-servicio-material.entity.js';
+import { OrdenServicioEvento } from '../ordenes-servicio/entities/orden-servicio-evento.entity.js';
 import { ProtocoloEsterilizacionVersion } from '../planta/entities/protocolo-esterilizacion-version.entity.js';
 import { CicloParametroEvaluacion } from '../planta/entities/ciclo-parametro-evaluacion.entity.js';
 import { SelloCertificacionVersion } from '../sellos/entities/sello-certificacion-version.entity.js';
@@ -21,9 +22,11 @@ import { SelloCertificacion } from '../sellos/entities/sello-certificacion.entit
 import { RbacScope, RbacScopeClosure } from '../rbac/entities/scope.entity.js';
 import { RbacRole, RbacPermission, RbacRolePermission } from '../rbac/entities/role.entity.js';
 import { RbacUserRoleAssignment, RbacPlatformOwner } from '../rbac/entities/user-role-assignment.entity.js';
+import { Producto } from '../productos/entities/producto.entity.js';
 
 export const STERINOVA_ENTITIES = [
   OrdenServicioMaterial,
+  OrdenServicioEvento,
   ProtocoloEsterilizacionVersion,
   CicloParametroEvaluacion,
   SelloCertificacionVersion,
@@ -51,4 +54,5 @@ export const STERINOVA_ENTITIES = [
   RbacRolePermission,
   RbacUserRoleAssignment,
   RbacPlatformOwner,
+  Producto,
 ];

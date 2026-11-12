@@ -349,7 +349,14 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
     const body = {
       cliente_id: clientId,
       tipo_servicio: 'LAVANDERIA',
-      items: [{ descripcion: 'Nuevo', cantidad: 1, valor_unitario: 100 }],
+      items: [{
+        descripcion: 'Nuevo',
+        tipo_item: 'SERVICIO',
+        cantidad: 1,
+        valor_unitario: 100,
+        unidad: 'servicio',
+        precision_cantidad: 0,
+      }],
     };
     const created = await request(app.getHttpServer())
       .post('/cotizaciones')
@@ -388,7 +395,14 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
     const payload = {
       cliente_id: clientId,
       tipo_servicio: 'LAVANDERIA',
-      items: [{ descripcion: 'Fiscal', cantidad: 1, valor_unitario: 100 }],
+      items: [{
+        descripcion: 'Fiscal',
+        tipo_item: 'SERVICIO',
+        cantidad: 1,
+        valor_unitario: 100,
+        unidad: 'servicio',
+        precision_cantidad: 0,
+      }],
     };
     const before = await request(app.getHttpServer())
       .post('/cotizaciones')
@@ -500,7 +514,14 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       .send({
         cliente_id: clientId,
         tipo_servicio: 'LAVANDERIA',
-        items: [{ descripcion: 'Original', cantidad: 1, valor_unitario: 100 }],
+        items: [{
+          descripcion: 'Original',
+          tipo_item: 'SERVICIO',
+          cantidad: 1,
+          valor_unitario: 100,
+          unidad: 'servicio',
+          precision_cantidad: 0,
+        }],
       })
       .expect(201);
     const id = created.body.id;
@@ -519,8 +540,24 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       tipo_servicio: 'INSUMOS',
       condiciones_comerciales: 'Contado',
       items: [
-        { descripcion: 'Reemplazo', cantidad: 2, valor_unitario: 100 },
-        { descripcion: 'Extra', cantidad: 1, valor_unitario: 20 },
+        {
+          descripcion: 'Reemplazo',
+          tipo_item: 'PRODUCTO',
+          categoria: 'EMPAQUES',
+          cantidad: 2,
+          valor_unitario: 100,
+          unidad: 'unidad',
+          precision_cantidad: 0,
+        },
+        {
+          descripcion: 'Extra',
+          tipo_item: 'PRODUCTO',
+          categoria: 'MONITOREO',
+          cantidad: 1,
+          valor_unitario: 20,
+          unidad: 'unidad',
+          precision_cantidad: 0,
+        },
       ],
     };
     await request(http)
@@ -628,7 +665,14 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       .set('Authorization', tokens.advisorB)
       .send({
         version: 1,
-        items: [{ descripcion: 'Anterior', cantidad: 2, valor_unitario: 100 }],
+        items: [{
+          descripcion: 'Anterior',
+          tipo_item: 'SERVICIO',
+          cantidad: 2,
+          valor_unitario: 100,
+          unidad: 'servicio',
+          precision_cantidad: 0,
+        }],
       })
       .expect(200);
     expect(updated.body).toMatchObject({
@@ -649,7 +693,14 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
         .set('Authorization', tokens.advisorB)
         .send({
           version: 2,
-          items: [{ descripcion: 'Rollback', cantidad: 1, valor_unitario: 1 }],
+          items: [{
+            descripcion: 'Rollback',
+            tipo_item: 'SERVICIO',
+            cantidad: 1,
+            valor_unitario: 1,
+            unidad: 'servicio',
+            precision_cantidad: 0,
+          }],
         })
         .expect(500);
     } finally {
@@ -698,7 +749,15 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
       .send({
         cliente_id: clientId,
         tipo_servicio: 'INSUMOS',
-        items: [{ descripcion: 'Antes', cantidad: 1, valor_unitario: 100 }],
+        items: [{
+          descripcion: 'Antes',
+          tipo_item: 'PRODUCTO',
+          categoria: 'EMPAQUES',
+          cantidad: 1,
+          valor_unitario: 100,
+          unidad: 'unidad',
+          precision_cantidad: 0,
+        }],
       })
       .expect(201);
     const id = created.body.id;
@@ -708,7 +767,15 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
         .set('Authorization', tokens.advisorA)
         .send({
           version: 1,
-          items: [{ descripcion: 'Despues', cantidad: 2, valor_unitario: 100 }],
+          items: [{
+            descripcion: 'Despues',
+            tipo_item: 'PRODUCTO',
+            categoria: 'EMPAQUES',
+            cantidad: 2,
+            valor_unitario: 100,
+            unidad: 'unidad',
+            precision_cantidad: 0,
+          }],
         }),
       request(http)
         .post(`/cotizaciones/${id}/emitir`)
@@ -908,9 +975,9 @@ describe('Cotizaciones pilot with real JWT, RBAC, repositories and MariaDB', () 
     const artifacts=path.resolve('storage/backups/hito4-pdfs-smoke');await mkdir(artifacts,{recursive:true});
     try {
       const quote=await request(http).post('/cotizaciones').set('Authorization',tokens.advisorA)
-        .send({cliente_id:clientId,tipo_servicio:'INDUSTRIAL_ETO',items:[{descripcion:'Servicio real de prueba',cantidad:1,valor_unitario:100}]}).expect(201);
+        .send({cliente_id:clientId,tipo_servicio:'INDUSTRIAL_ETO',items:[{descripcion:'Servicio real de prueba',tipo_item:'SERVICIO',cantidad:1,valor_unitario:100,unidad:'servicio',precision_cantidad:0}]}).expect(201);
       const issued=await request(http).post(`/cotizaciones/${quote.body.id}/emitir`).set('Authorization',tokens.advisorA).expect(201);
-      expect(issued.body.pdf_renderer_version).toBe('react-playwright-v2');
+      expect(issued.body.pdf_renderer_version).toBe('react-playwright-v3');
       expect(issued.body.snapshot_datos.sellos.icontec.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
       await writeFile(path.join(artifacts,'cotizacion.pdf'),files.get(issued.body.pdf_url)!);
       for(const tipo of ['INDUSTRIAL_ETO','INSTITUCIONAL_VAPOR'] as const){

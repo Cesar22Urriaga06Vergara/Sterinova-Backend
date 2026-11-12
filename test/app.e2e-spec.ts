@@ -130,8 +130,11 @@ describe('AppController (e2e)', () => {
             items: [
               {
                 descripcion: 'Instrumental de prueba',
+                tipo_item: 'SERVICIO',
                 cantidad: 2,
                 valor_unitario: 10000,
+                unidad: 'servicio',
+                precision_cantidad: 0,
               },
             ],
           })

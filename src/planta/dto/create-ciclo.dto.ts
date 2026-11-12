@@ -1,10 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMinSize,
+  IsArray,
   IsDateString,
   Matches,
   IsOptional,
   ValidateIf,
   Max,
+  ValidateNested,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import {
@@ -16,6 +19,21 @@ import {
   Min,
 } from 'class-validator';
 import { MetodoEsterilizacion } from '../entities/ciclo-esterilizacion.entity.js';
+
+class MaterialProcesadoDto {
+  @ApiProperty({ type: Number, minimum: 1 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  material_id: number;
+
+  @ApiProperty({ type: Number, minimum: 0 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(4294967295)
+  cantidad: number;
+}
 
 export class CreateCicloDto {
   @ApiProperty({ type: String, format: 'date' })
@@ -45,6 +63,13 @@ export class CreateCicloDto {
   @IsInt()
   @Min(1)
   orden_id: number;
+
+  @ApiProperty({ type: () => [MaterialProcesadoDto], minItems: 1 })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => MaterialProcesadoDto)
+  materiales_procesados: MaterialProcesadoDto[];
 
   @ApiProperty({ type: String })
   @IsString()

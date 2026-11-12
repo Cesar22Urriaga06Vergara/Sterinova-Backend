@@ -28,6 +28,10 @@ it('rechaza una OS agotada antes de guardar, dentro de la transacción', async (
     quotes as never,
     source as never,
     {} as never,
+    {
+      resolveOrdenServicio: vi.fn().mockResolvedValue({ id: 1 }),
+      resolveActaServicio: vi.fn().mockResolvedValue({ id: 2 }),
+    } as never,
   );
   await expect(
     service.createOrden({ cotizacion_id: 1, fecha_programada: '2026-11-09' }),
@@ -79,6 +83,10 @@ it('audits quantity discrepancies when creating a logistics order', async () => 
     quotes as never,
     source as never,
     auditoriaService as never,
+    {
+      resolveOrdenServicio: vi.fn().mockResolvedValue({ id: 1 }),
+      resolveActaServicio: vi.fn().mockResolvedValue({ id: 2 }),
+    } as never,
   );
 
   await service.createOrden(

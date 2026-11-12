@@ -49,6 +49,36 @@ export class CreateCotizacionDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  tiempo_despacho?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  transporte?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  forma_pago?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  validez_oferta?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  precio_incluye?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  precio_no_incluye?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   @IsNotEmpty()
   estado?: string;
 }

@@ -46,6 +46,15 @@ describe('PdfGeneratorService', () => {
         consecutivo: 'OS-2026-0001',
         fecha_programada: '2026-11-10',
       },
+      formato: {
+        fecha_version: '2024-10-15',
+        configuracion_json: {
+          document_code: 'R-ES-02',
+          title: 'ORDEN DE SERVICIO DE ESTERILIZACIÓN',
+          version_label: '03',
+          version_date: '2024-10-15',
+        },
+      },
       cliente: { razon_social: 'ACME S.A.S.' },
       orden: {
         metodo_esterilizacion: 'ETO',
@@ -107,6 +116,15 @@ describe('PdfGeneratorService', () => {
       const quoteItem = { id: 7, descripcion: 'Muestra', cantidad: 5, valor_unitario: 2500, valor_total: 12500 };
       const snapshot = {
         documento: { tipo: 'ORDEN_SERVICIO', consecutivo: 'OS-2026-002', fecha_programada: '2026-11-10' },
+        formato: {
+          fecha_version: '2024-10-15',
+          configuracion_json: {
+            document_code: 'R-ES-02',
+            title: 'ORDEN DE SERVICIO DE ESTERILIZACIÓN',
+            version_label: '03',
+            version_date: '2024-10-15',
+          },
+        },
         cliente: { razon_social: 'Cliente prueba', direccion: null, nit: null, telefono: null, email: null },
         orden: { metodo_esterilizacion: 'ETO', observaciones: 'Recepción parcial.' },
         cotizacion: {
@@ -175,6 +193,15 @@ describe('PdfGeneratorService', () => {
     try {
       const snapshot = {
         documento: { tipo: 'ORDEN_SERVICIO', consecutivo: 'OS-2026-003' },
+        formato: {
+          fecha_version: '2024-10-15',
+          configuracion_json: {
+            document_code: 'R-ES-02',
+            title: 'ORDEN DE SERVICIO DE ESTERILIZACIÓN',
+            version_label: '03',
+            version_date: '2024-10-15',
+          },
+        },
         cliente: { razon_social: 'Cliente prueba' },
         orden: { metodo_esterilizacion: 'ETO' },
         cotizacion: {
@@ -271,6 +298,7 @@ describe('PdfGeneratorService', () => {
             descripcion:
               `Material-${index + 1} & instrumental ` +
               'descripción extendida '.repeat(15),
+            id: index + 1,
             lote:
               index === 0
                 ? `LOTE-${index + 1}-` + 'X'.repeat(90)
@@ -286,8 +314,23 @@ describe('PdfGeneratorService', () => {
           const snapshot = {
             documento: {
               tipo: type === 'orden_servicio' ? 'ORDEN_SERVICIO' : 'ACTA_SERVICIO',
-              consecutivo: `OS-2026-${count}`,
+              consecutivo: `${type === 'orden_servicio' ? 'OS' : 'AS'}-2026-${count}`,
               fecha_programada: '2026-11-10',
+            },
+            formato: {
+              fecha_version:
+                type === 'orden_servicio' ? '2024-10-15' : '2024-11-18',
+              configuracion_json: {
+                document_code:
+                  type === 'orden_servicio' ? 'R-ES-02' : 'R-LG-04',
+                title:
+                  type === 'orden_servicio'
+                    ? 'ORDEN DE SERVICIO DE ESTERILIZACIÓN'
+                    : 'ACTA DE SERVICIO',
+                version_label: '03',
+                version_date:
+                  type === 'orden_servicio' ? '2024-10-15' : '2024-11-18',
+              },
             },
             cliente: {
               razon_social: 'Cliente de prueba S.A.S.',
@@ -313,6 +356,43 @@ describe('PdfGeneratorService', () => {
               })),
             },
             materiales: materials,
+            eventos:
+              type === 'acta_servicio'
+                ? [
+                    {
+                      tipo: 'RECEPCION_PLANTA',
+                      ocurrido_at: '2026-11-10T18:00:00.000Z',
+                      recibido_por: 'Ana Recepción',
+                      responsable: 'Auxiliar planta',
+                      materiales: materials.map((material, index) => ({
+                        material_id: index + 1,
+                        cantidad: material.cantidad + 1,
+                        cajas: 2,
+                      })),
+                    },
+                    {
+                      tipo: 'PROCESAMIENTO',
+                      ocurrido_at: '2026-11-11T18:00:00.000Z',
+                      fecha_esterilizacion: '2026-11-11',
+                      responsable: 'Ana Operadora',
+                      materiales: materials.map((material, index) => ({
+                        material_id: index + 1,
+                        cantidad: material.cantidad,
+                      })),
+                    },
+                    {
+                      tipo: 'ENTREGA_CLIENTE',
+                      ocurrido_at: '2026-11-11T19:30:00.000Z',
+                      recibido_por: 'Cliente Receptor',
+                      responsable: 'Laura Transportista',
+                      materiales: materials.map((material, index) => ({
+                        material_id: index + 1,
+                        cantidad: material.cantidad,
+                        cajas: 1,
+                      })),
+                    },
+                  ]
+                : [],
           };
           const storageKey = `logistica/OS-2026-${count}-${type}.pdf`;
           storageKeys.push(storageKey);
@@ -339,9 +419,16 @@ describe('PdfGeneratorService', () => {
           if (type === 'acta_servicio') {
             expect(html).toContain('<td class="lot">LOTE-1-');
             expect(html).toContain('overflow-wrap: anywhere');
-            expect(html).not.toContain('10/11/2026');
+            expect(html).toContain('10/11/2026');
+            expect(html).toContain('Ana Recepción');
+            expect(html).toContain('Ana Operadora');
+            expect(html).toContain('11/11/2026');
+            expect(html).toContain('PROCESADO');
+            expect(html).toContain('Cliente Receptor');
+            expect(html).toContain('TOTAL CAJAS RECIBIDAS');
+            expect(html).toContain('13:00');
             expect(html).not.toContain('Observación extensa.');
-            expect(html).toContain('No. __________');
+            expect(html).toContain(`No. AS-2026-${count}`);
           } else {
             const formatCurrency = (value: number) =>
               new Intl.NumberFormat('es-CO', {

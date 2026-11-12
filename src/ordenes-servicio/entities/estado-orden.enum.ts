@@ -4,5 +4,6 @@ export enum EstadoOrdenServicio {
   RECOGIDO = 'RECOGIDO',
   EN_PLANTA = 'EN_PLANTA',
   PROCESADO = 'PROCESADO',
+  ENTREGADO = 'ENTREGADO',
   CANCELADO = 'CANCELADO',
 }

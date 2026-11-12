@@ -119,6 +119,7 @@ it('rechaza transiciones de estado no permitidas', async () => {
       })),
     } as never,
     { create: vi.fn() } as never,
+    {} as never,
   );
 
   await expect(

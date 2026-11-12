@@ -14,6 +14,8 @@ import { FormatosDocumentales } from './entities/formatos-documentales.entity.js
 import { TipoServicioCotizacion } from '../cotizaciones/entities/tipo-servicio.enum.js';
 
 export const CERTIFICATE_FORMAT_KEY = 'CERTIFICADO_ESTERILIZACION';
+export const ORDER_FORMAT_KEY = 'ORDEN_SERVICIO';
+export const ACTA_FORMAT_KEY = 'ACTA_SERVICIO';
 
 @Injectable()
 export class FormatoResolverService {
@@ -87,5 +89,28 @@ export class FormatoResolverService {
     manager: EntityManager,
   ): Promise<FormatoVersiones> {
     return this.resolve(CERTIFICATE_FORMAT_KEY, clientId, manager);
+  }
+
+  resolveOrdenServicio(manager?: EntityManager): Promise<FormatoVersiones> {
+    return this.resolve(ORDER_FORMAT_KEY, null, manager);
+  }
+
+  resolveActaServicio(manager?: EntityManager): Promise<FormatoVersiones> {
+    return this.resolve(ACTA_FORMAT_KEY, null, manager);
+  }
+
+  async resolvePinnedVersion(
+    versionId: number,
+    manager?: EntityManager,
+  ): Promise<FormatoVersiones> {
+    const version = await (manager ?? this.dataSource.manager)
+      .getRepository(FormatoVersiones)
+      .findOne({ where: { id: versionId } });
+    if (!version) {
+      throw new NotFoundException(
+        `No existe la versión documental vinculada #${versionId}`,
+      );
+    }
+    return version;
   }
 }

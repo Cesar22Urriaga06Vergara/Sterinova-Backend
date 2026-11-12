@@ -59,6 +59,23 @@ describe('OpenAPI route contract (e2e)', () => {
         .get('/api/docs-json')
         .expect(200);
       const contract = response.body as typeof document;
+      const schemas = contract.components?.schemas ?? {};
+      expect(schemas.UpdateEstadoOrdenDto).toMatchObject({
+        properties: {
+          estado: { enum: expect.arrayContaining(['PROCESADO', 'ENTREGADO']) },
+          evento: {
+            allOf: [{ $ref: '#/components/schemas/EventoOrdenDto' }],
+          },
+        },
+      });
+      expect(schemas.CreateCicloDto).toMatchObject({
+        properties: {
+          materiales_procesados: {
+            items: { $ref: '#/components/schemas/MaterialProcesadoDto' },
+          },
+        },
+        required: expect.arrayContaining(['materiales_procesados']),
+      });
       const documented = new Set<string>();
       for (const [path, operations] of Object.entries(contract.paths)) {
         for (const method of Object.keys(operations ?? {})) {
