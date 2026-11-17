@@ -24,19 +24,20 @@ function fixture(overrides = {}) {
     save: vi.fn(async (value) => value),
   };
   const items = { delete: vi.fn(), create: vi.fn((value) => value) };
+  const clientes = { findOne: vi.fn() };
   const manager = {
     getRepository: (entity) => (entity === Cotizacion ? repo : items),
   };
   const service = new CotizacionesService(
     repo as never,
     items as never,
-    { findOne: vi.fn() } as never,
+    clientes as never,
     { transaction: async (work) => work(manager) } as never,
     {} as never,
     {} as never,
     {} as never,
   );
-  return { service, quote, repo, items };
+  return { service, quote, repo, items, clientes };
 }
 const access = () => quotePermission('cotizaciones.editar');
 describe('internal approval authorization', () => {
@@ -119,6 +120,23 @@ describe('draft editing', () => {
     ).rejects.toMatchObject({ status: 409 });
     expect(items.delete).not.toHaveBeenCalled();
   });
+  it('rechaza mover un borrador a un cliente de otro ámbito', async () => {
+    const { service, repo, clientes } = fixture({ scope_id: 10 });
+    clientes.findOne.mockResolvedValue({ id: 8, scope_id: 11 });
+    await expect(
+      service.update(1, { version: 1, cliente_id: 8 }, access()),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('permite cambiar a un cliente del mismo ámbito', async () => {
+    const { service, repo, quote, clientes } = fixture({ scope_id: 10 });
+    clientes.findOne.mockResolvedValue({ id: 8, scope_id: 10 });
+    await service.update(1, { version: 1, cliente_id: 8 }, access());
+    expect(quote.cliente_id).toBe(8);
+    expect(repo.save).toHaveBeenCalled();
+  });
+
   it('replaces items and calculates using the stored rate', async () => {
     const { service, quote } = fixture();
     await service.update(

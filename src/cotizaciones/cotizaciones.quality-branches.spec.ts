@@ -123,20 +123,4 @@ describe('CotizacionesService critical branch coverage', () => {
       expect.objectContaining({ cliente_id: 3 }),
     );
   });
-
-  it('blocks deletion of an emitted quote but removes a draft quote', async () => {
-    const emitted = serviceFor({ fecha_emision: new Date() });
-    await expect(
-      emitted.service.remove(7, quotePermission('cotizaciones.eliminar')),
-    ).rejects.toBeInstanceOf(ConflictException);
-    expect(emitted.repository.remove).not.toHaveBeenCalled();
-
-    const draft = serviceFor({ fecha_emision: null });
-    await expect(
-      draft.service.remove(7, quotePermission('cotizaciones.eliminar')),
-    ).resolves.toEqual({
-      message: 'Cotización #7 eliminada',
-    });
-    expect(draft.repository.remove).toHaveBeenCalledWith(draft.current);
-  });
 });

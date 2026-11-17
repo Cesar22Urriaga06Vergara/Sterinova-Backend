@@ -320,3 +320,40 @@ describe('LogisticaService operational quantity audit', () => {
     ]);
   });
 });
+
+describe('LogisticaService order creation scope', () => {
+  it('limits the source quote to the authorized scope', async () => {
+    const findOne = vi.fn().mockResolvedValue(null);
+    const manager = {
+      getRepository: () => ({ findOne }),
+    };
+    const service = new LogisticaService(
+      {} as never,
+      {} as never,
+      {
+        transaction: async (work: (value: unknown) => Promise<unknown>) =>
+          work(manager),
+      } as never,
+      {} as never,
+      {} as never,
+    );
+    const access: PermissionContext = {
+      permission: 'logistica.ordenes.crear',
+      policy: { userId: 8, scopeIds: [7], ownScopeIds: [] },
+      resourceScopeIds: [7],
+    };
+
+    await expect(
+      service.createOrden(
+        { cotizacion_id: 99, fecha_programada: '2026-11-10' },
+        8,
+        access,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    const options = findOne.mock.calls[0][0];
+    expect(options.where).toHaveLength(1);
+    expect(options.where[0]).toMatchObject({ id: 99 });
+    expect(options.where[0].scope_id).toBeDefined();
+  });
+});

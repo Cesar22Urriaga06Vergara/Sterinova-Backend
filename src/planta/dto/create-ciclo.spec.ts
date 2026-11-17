@@ -4,6 +4,7 @@ import { CreateCicloDto } from './create-ciclo.dto.js';
 
 const base = {
   orden_id: 1,
+  materiales_procesados: [{ material_id: 5, cantidad: 10 }],
   equipo: 'E03',
   metodo: 'ETO',
   temperatura: 55,

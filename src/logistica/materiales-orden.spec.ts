@@ -123,6 +123,6 @@ it('rechaza transiciones de estado no permitidas', async () => {
   );
 
   await expect(
-    service.updateEstado(7, { estado: EstadoOrdenServicio.EN_PLANTA }, 10),
+    service.updateEstado(7, { estado: EstadoOrdenServicio.ENTREGADO }, 10),
   ).rejects.toThrow(/Transición de estado no permitida/i);
 });

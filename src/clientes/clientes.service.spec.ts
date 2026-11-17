@@ -1,4 +1,5 @@
 import { QueryFailedError, type Repository } from 'typeorm';
+import { ForbiddenException } from '@nestjs/common';
 import { ClientesService } from './clientes.service.js';
 import { Cliente } from './entities/cliente.entity.js';
 import { CreateClienteDto } from './dto/create-cliente.dto.js';
@@ -49,6 +50,22 @@ describe('ClientesService.bulk', () => {
       expect.objectContaining({ nit: '901' }),
     ]);
     expect(result).toEqual({ imported: 1, skipped: 1 });
+  });
+
+  it('rechaza la eliminación física de clientes por trazabilidad', async () => {
+    const clientesRepository = {
+      findOne: vi.fn(),
+      remove: vi.fn(),
+    };
+    const service = new ClientesService(
+      clientesRepository as unknown as Repository<Cliente>,
+    );
+
+    await expect(service.remove(5, access)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(clientesRepository.findOne).not.toHaveBeenCalled();
+    expect(clientesRepository.remove).not.toHaveBeenCalled();
   });
 
   it('recupera un NIT duplicado concurrente e inserta los demás clientes', async () => {

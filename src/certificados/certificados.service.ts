@@ -1,5 +1,4 @@
 import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
-import { resourceWhere } from '../rbac/resource-access.js';
 import { BadRequestException } from '@nestjs/common';
 import { fechaVencimiento } from './fecha-vencimiento.js';
 import { prepararInformacionTecnica } from './informacion-tecnica.js';
@@ -8,13 +7,20 @@ import type { EvaluacionParametroDto } from '../calidad/dto/evaluacion-parametro
 import { siguienteConsecutivo } from '../documentos/consecutivo.js';
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import type { DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  In,
+  type DataSource,
+  type EntityManager,
+  type FindOptionsWhere,
+  type Repository,
+} from 'typeorm';
 import { CertificadoEsterilizacion } from './entities/certificado-esterilizacion.entity.js';
 import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecutivos.entity.js';
 import { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
@@ -36,6 +42,37 @@ const CERTIFICATE_RELATIONS = [
   'cicloEsterilizacion.operador',
   'aprobador',
 ];
+
+/**
+ * El certificado no duplica ámbito: se autoriza por el ciclo que lo originó.
+ * Registros sin ámbito, o con un ámbito no concedido, quedan denegados.
+ */
+function certificateWhere(
+  access: PermissionContext,
+  id?: number,
+): FindOptionsWhere<CertificadoEsterilizacion>[] {
+  const { scopeIds, ownScopeIds, userId } = access.policy;
+  if (userId === null || !Number.isSafeInteger(userId) || userId < 1)
+    throw new ForbiddenException('Falta contexto autorizado de certificados');
+  const base = id === undefined ? {} : { id };
+  const branches: FindOptionsWhere<CertificadoEsterilizacion>[] = [];
+  if (scopeIds.length)
+    branches.push({
+      ...base,
+      cicloEsterilizacion: { scope_id: In([...scopeIds]) },
+    });
+  if (ownScopeIds.length)
+    branches.push({
+      ...base,
+      cicloEsterilizacion: {
+        scope_id: In([...ownScopeIds]),
+        operador_id: userId,
+      },
+    });
+  if (!branches.length)
+    throw new ForbiddenException('Sin ámbito autorizado');
+  return branches;
+}
 
 @Injectable()
 export class CertificadosService {
@@ -276,7 +313,7 @@ export class CertificadosService {
 
   findAll(access?: PermissionContext): Promise<CertificadoEsterilizacion[]> {
     return this.certificadoRepository.find({
-      ...(access ? {where: resourceWhere(access, {}, 'operador_id').map(cicloEsterilizacion => ({cicloEsterilizacion}))} : {}),
+      ...(access ? { where: certificateWhere(access) } : {}),
       relations: [
         'cicloEsterilizacion',
         'cicloEsterilizacion.orden',
@@ -292,7 +329,7 @@ export class CertificadosService {
 
   async findOne(id: number, access?: PermissionContext): Promise<CertificadoEsterilizacion> {
     const certificado = await this.certificadoRepository.findOne({
-      where: access ? resourceWhere(access, {}, 'operador_id').map(cicloEsterilizacion => ({id, cicloEsterilizacion})) : { id },
+      where: access ? certificateWhere(access, id) : { id },
       relations: CERTIFICATE_RELATIONS,
     });
     if (!certificado) {
@@ -305,7 +342,7 @@ export class CertificadosService {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(CertificadoEsterilizacion);
       const certificate = await repository.findOne({
-        where: access ? resourceWhere(access, {}, 'operador_id').map(cicloEsterilizacion => ({id, cicloEsterilizacion})) : { id },
+        where: access ? certificateWhere(access, id) : { id },
         relations: CERTIFICATE_RELATIONS,
         lock: { mode: 'pessimistic_write' },
       });

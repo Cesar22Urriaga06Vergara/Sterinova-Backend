@@ -4,7 +4,6 @@ import {
   IsArray,
   ArrayNotEmpty,
   IsEnum,
-  IsNotEmpty,
   IsNumber,
   IsInt,
   Min,
@@ -76,9 +75,4 @@ export class CreateCotizacionDto {
   @IsString()
   precio_no_incluye?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  estado?: string;
 }

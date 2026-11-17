@@ -28,6 +28,8 @@ import { AddQuoteCommercialConditions1794500000000 } from './migrations/17945000
 import { AddActaEventsAndLogisticsFormats1794600000000 } from './migrations/1794600000000-AddActaEventsAndLogisticsFormats.js';
 import { AddProductCatalog1794700000000 } from './migrations/1794700000000-AddProductCatalog.js';
 import { AddQuoteItemCatalogSnapshots1794800000000 } from './migrations/1794800000000-AddQuoteItemCatalogSnapshots.js';
+import { EnableGeneralManager1794900000000 } from './migrations/1794900000000-EnableGeneralManager.js';
+import { RevokeQuoteDeletion1795000000000 } from './migrations/1795000000000-RevokeQuoteDeletion.js';
 
 /** Shared by the CLI and isolated migration rehearsals; does not load environment variables. */
 export const DATABASE_MIGRATIONS = [
@@ -61,4 +63,6 @@ export const DATABASE_MIGRATIONS = [
   AddActaEventsAndLogisticsFormats1794600000000,
   AddProductCatalog1794700000000,
   AddQuoteItemCatalogSnapshots1794800000000,
+  EnableGeneralManager1794900000000,
+  RevokeQuoteDeletion1795000000000,
 ];

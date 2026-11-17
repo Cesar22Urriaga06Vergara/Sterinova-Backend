@@ -196,7 +196,7 @@ export class PlantaService {
       const { materiales_procesados: _, ...cicloDto } = dto;
       const ciclo = ciclosRepository.create({
         ...cicloDto,
-        scope_id: access ? creationScope(access) : orden.scope_id,
+        scope_id: access ? creationScope(access, orden.scope_id) : orden.scope_id,
         protocolo_version_id: protocolo.id,
         tiempo_secado:
           dto.tiempo_secado == null ? null : String(dto.tiempo_secado),

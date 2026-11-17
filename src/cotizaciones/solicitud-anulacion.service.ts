@@ -55,6 +55,13 @@ export class SolicitudAnulacionService {
       }
       this.assertAnulable(quote);
       const repo = manager.getRepository(SolicitudAnulacion);
+      // The quote lock serializes requests for the same cancellation.
+      const pending = await repo.findOneBy({
+        cotizacion_id: cotizacionId,
+        estado: EstadoSolicitudAnulacion.PENDIENTE,
+      });
+      if (pending)
+        throw new ConflictException('La cotización ya tiene una solicitud pendiente');
       return repo.save(
         repo.create({
           cotizacion_id: cotizacionId,
@@ -105,6 +112,12 @@ export class SolicitudAnulacionService {
         lock: { mode: 'pessimistic_write' },
       });
       if (!request) throw new NotFoundException('Solicitud no encontrada');
+      // Separation of duties: accumulating roles must never allow self-approval.
+      if (request.creador_id === aprobadorId) {
+        throw new ForbiddenException(
+          'El solicitante no puede resolver su propia solicitud de anulación',
+        );
+      }
       const quotes = manager.getRepository(Cotizacion);
       const quote = await quotes.findOne({
         where: { id: request.cotizacion_id },

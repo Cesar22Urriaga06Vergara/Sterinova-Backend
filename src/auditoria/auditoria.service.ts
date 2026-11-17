@@ -4,6 +4,7 @@ import { Between, LessThanOrEqual, MoreThanOrEqual, type EntityManager, type Rep
 import { Auditoria, AccionAuditoria } from './entities/auditoria.entity.js';
 
 export type CreateAuditoriaEntry = {
+  scope_id?: number;
   usuario_id: number | null;
   entidad: string;
   entidad_id: number | null;

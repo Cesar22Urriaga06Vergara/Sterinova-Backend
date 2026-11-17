@@ -7,6 +7,7 @@ describe('CreateCicloDto validation', () => {
   it('transforms numeric process parameters and accepts a valid cycle', async () => {
     const dto = plainToInstance(CreateCicloDto, {
       orden_id: '21',
+      materiales_procesados: [{ material_id: '7', cantidad: '12' }],
       equipo: 'CICLO 10M68',
       fecha_esterilizacion:'2026-10-30',
       metodo: 'ETO',

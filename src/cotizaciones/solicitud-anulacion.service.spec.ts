@@ -20,6 +20,7 @@ function fixture() {
   };
   const requests = {
     findOne: vi.fn(async () => request),
+    findOneBy: vi.fn(async () => null as typeof request | null),
     find: vi.fn(async () => [request]),
     create: vi.fn((value) => value),
     save: vi.fn(async (value) => value),
@@ -50,6 +51,13 @@ function fixture() {
 }
 
 describe('SolicitudAnulacionService', () => {
+  it('rechaza otra solicitud pendiente sin duplicar la anulación', async () => {
+    const { service, requests, request } = fixture();
+    requests.findOneBy.mockResolvedValue(request);
+    await expect(service.crearSolicitud(1, 7, 'Reintento'))
+      .rejects.toMatchObject({ status: 409 });
+    expect(requests.save).not.toHaveBeenCalled();
+  });
   it('exige el permiso específico de creación', async () => {
     const { service, rbac } = fixture();
     await service.crearSolicitud(1, 7, 'Error');
@@ -137,6 +145,25 @@ describe('SolicitudAnulacionService', () => {
       expect.objectContaining({ estado: 'ANULADA' }),
     );
     expect(requests.save).toHaveBeenCalledOnce();
+  });
+
+  it('no permite que el solicitante resuelva su propia anulación', async () => {
+    const { service, request, quotes, requests } = fixture();
+    request.creador_id = 8;
+    await expect(
+      service.resolverSolicitud(10, 8, Estado.APROBADA, 'Validado'),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(quotes.save).not.toHaveBeenCalled();
+    expect(requests.save).not.toHaveBeenCalled();
+  });
+
+  it('tampoco permite que el solicitante rechace su propia solicitud', async () => {
+    const { service, request, requests } = fixture();
+    request.creador_id = 8;
+    await expect(
+      service.resolverSolicitud(10, 8, Estado.RECHAZADA, 'No procede'),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(requests.save).not.toHaveBeenCalled();
   });
 
   it.each([{ scopeIds: [3] }, { scopeIds: [] }])(

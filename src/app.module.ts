@@ -27,10 +27,12 @@ import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
 import { HealthModule } from './health/health.module.js';
 import { ProductosModule } from './productos/productos.module.js';
+import { GerenciaModule } from './gerencia/gerencia.module.js';
 
 @Module({
   imports: [
     TasasFiscalesModule,
+    GerenciaModule,
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',

@@ -76,7 +76,10 @@ export class ClientesController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar cliente' })
-  @ApiResponse({ status: 200, description: 'Cliente eliminado' })
+  @ApiResponse({
+    status: 403,
+    description: 'La eliminación de clientes está prohibida; use la inactivación',
+  })
   @RequirePermission('clientes.eliminar')
   remove(@Param('id', ParseIntPipe) id: number, @Req() request: RbacRequest) {
     return this.clientesService.remove(id, request.rbac);

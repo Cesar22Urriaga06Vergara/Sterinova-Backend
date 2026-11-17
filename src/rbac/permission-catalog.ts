@@ -1,5 +1,7 @@
 /** Recognized action identifiers. Recognition never activates a persisted grant or implements an endpoint. */
 export const PERMISSION_CATALOG = [
+  { code: 'gerencia.metricas.ver', module: 'gerencia', label: 'Consultar métricas y actividad gerencial' },
+  { code: 'gerencia.administradores.gestionar', module: 'gerencia', label: 'Gestionar administradores de áreas' },
   {
     code: 'solicitudes_anulacion.crear',
     module: 'comercial',

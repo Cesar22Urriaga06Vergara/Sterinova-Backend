@@ -125,9 +125,11 @@ en una transacción auditada e idempotente. No contiene IDs de usuarios de desar
 - Las concesiones vigentes se consultan por solicitud; el nombre de rol del JWT no concede acceso al piloto.
 - Listado, detalle, edición, eliminación, previsualización, emisión y descarga filtran en SQL.
   Un ID fuera del ámbito/propiedad devuelve 404; ausencia de concesión devuelve 403; sin sesión devuelve 401.
-- El creador se obtiene de la sesión. El ámbito se selecciona únicamente entre concesiones válidas.
-  `x-scope-id` puede acotar las solicitudes y es obligatorio al crear cuando existen varios ámbitos elegibles.
-  Con un solo ámbito se selecciona automáticamente. GLOBAL no es un ámbito de creación de documentos.
+- El creador se obtiene de la sesión. El ámbito de creación se deriva del recurso, sin selector de área:
+  la cotización se crea en el ámbito del cliente elegido, la orden en el de su cotización y el ciclo en el
+  de su orden; clientes y productos se crean en el ámbito DEPARTMENT autorizado (único elegible o único
+  DEPARTMENT entre varios). `x-scope-id` es solo un filtro opcional que acota y nunca amplía; si el recurso
+  no determina un ámbito elegible, la creación se rechaza. GLOBAL no es un ámbito de creación de documentos.
 - SuperAdmin conserva lectura global por concesiones explícitas. Emisor Comercial puede emitir dentro de
   su ámbito exacto; esa concesión no amplía sus permisos OWN de consulta comercial.
 - Los demás módulos conservan su modelo anterior, incluidos sus riesgos conocidos. Este piloto no corrige

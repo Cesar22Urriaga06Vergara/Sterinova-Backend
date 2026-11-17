@@ -9,6 +9,21 @@ import { JwtStrategy } from './jwt.strategy.js';
 import { UserRole } from '../../test/fixtures/legacy-user-role.js';
 
 describe('JWT authentication guard', () => {
+  it.each([undefined, null, 0, -1, 1.5, '7', Number.MAX_SAFE_INTEGER + 1])(
+    'rejects an invalid JWT subject before querying users: %s',
+    async (sub) => {
+      const usersService = { findActiveById: vi.fn(async () => ({
+        id: 7, email: 'user@example.com', password_version: 1,
+      })) };
+      const strategy = new JwtStrategy(
+        { get: () => 'jwt-secret-for-test-at-least-32-chars' } as never,
+        usersService as never,
+      );
+      await expect(strategy.validate({ sub, password_version: 1 } as never))
+        .rejects.toMatchObject({ status: 401 });
+      expect(usersService.findActiveById).not.toHaveBeenCalled();
+    },
+  );
   it.each(['login', 'completePasswordReset'] as const)(
     'allows the public auth route %s',
     (route) => {

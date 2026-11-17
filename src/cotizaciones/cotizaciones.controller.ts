@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Header,
   Param,
@@ -30,6 +31,7 @@ import type { RbacRequest } from '../rbac/authorization.guard.js';
 import {
   ApiBody,
   ApiConsumes,
+  ApiForbiddenResponse,
   ApiHeader,
   ApiOperation,
   ApiResponse,
@@ -52,7 +54,7 @@ export class CotizacionesController {
     name: 'x-scope-id',
     required: false,
     description:
-      'Ámbito autorizado. Obligatorio al crear si la cuenta tiene varios ámbitos posibles.',
+      'Ámbito autorizado opcional; solo acota la operación. Al crear, el ámbito se deriva del cliente de la cotización.',
     schema: { type: 'integer', minimum: 1 },
   })
   @ApiOperation({ summary: 'Crear cotización' })
@@ -217,10 +219,15 @@ export class CotizacionesController {
   }
 
   @Delete(':id')
-  @RequirePermission('cotizaciones.eliminar')
-  @ApiOperation({ summary: 'Eliminar cotización' })
-  @ApiResponse({ status: 200, description: 'Cotización eliminada' })
-  remove(@Param('id', ParseIntPipe) id: number, @Req() request: RbacRequest) {
-    return this.cotizacionesService.remove(id, request.rbac);
+  @ApiForbiddenResponse({ description: 'Eliminación de cotizaciones denegada. Las cotizaciones se conservan; usar la solicitud de anulación cuando corresponda.' })
+  // No permission is granted for quote deletion. The scoped guard denies this
+  // route and the handler fails closed to keep the historical record intact.
+  async remove(
+    @Param('id', ParseIntPipe) _id: number,
+    @Req() _request: RbacRequest,
+  ): Promise<void> {
+    throw new ForbiddenException(
+      'La eliminación de cotizaciones no está autorizada; usa la solicitud de anulación cuando corresponda',
+    );
   }
 }

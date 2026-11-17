@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { DataSource, type EntityManager } from 'typeorm';
 import { User } from '../users/entities/user.entity.js';
 import { RbacScope } from './entities/scope.entity.js';
 import { compileAuthorizationPolicy } from './authorization-policy.js';
@@ -14,6 +14,7 @@ import type {
   AuthorizationSubject,
   ResourceAccess,
   RoleAssignment,
+  ScopeKind,
 } from './authorization.types.js';
 import {
   PERMISSION_CATALOG,
@@ -26,6 +27,7 @@ export type PermissionContext = {
   policy: AuthorizationPolicy;
   scopeId?: number;
   resourceScopeIds: readonly number[];
+  resourceScopes?: readonly { id: number; kind: ScopeKind }[];
 };
 
 type GrantRow = {
@@ -45,17 +47,17 @@ type GrantRow = {
 export class RbacAuthorizationService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
-  private async loadSubject(userId: number) {
+  private async loadSubject(userId: number, source: DataSource | EntityManager = this.dataSource) {
     if (!Number.isSafeInteger(userId) || userId < 1)
       throw new UnauthorizedException();
-    const user = await this.dataSource
+    const user = await source
       .getRepository(User)
       .findOne({ where: { id: userId, activo: true } });
     if (!user)
       throw new UnauthorizedException('Usuario inactivo o inexistente');
     const [scopes, rows] = await Promise.all([
-      this.dataSource.getRepository(RbacScope).find(),
-      this.dataSource.query(
+      source.getRepository(RbacScope).find(),
+      source.query(
         `
         SELECT a.role_id AS roleId, a.scope_id AS scopeId, a.active AS assignmentActive,
           r.active AS roleActive, r.code AS roleCode, r.name AS roleName,
@@ -223,10 +225,11 @@ export class RbacAuthorizationService {
     userId: number,
     permission: string,
     scopeHeader?: string | string[],
+    manager?: EntityManager,
   ): Promise<PermissionContext> {
     if (!isPermissionCode(permission))
       throw new ForbiddenException('Permiso no reconocido');
-    const { subject, scopes } = await this.loadSubject(userId);
+    const { subject, scopes } = await this.loadSubject(userId, manager);
     const policy = this.compile(subject, permission, scopes);
     if (!policy.scopeIds.length && !policy.ownScopeIds.length)
       throw new ForbiddenException('Sin permiso en un ámbito activo');
@@ -241,9 +244,15 @@ export class RbacAuthorizationService {
       policy.ownScopeIds = policy.ownScopeIds.filter((id) => id === scopeId);
     }
     const allowedIds = new Set([...policy.scopeIds, ...policy.ownScopeIds]);
-    const resourceScopeIds = scopes
+    const resourceScopes = scopes
       .filter(({ id, kind }) => kind !== 'GLOBAL' && allowedIds.has(id))
-      .map(({ id }) => id);
-    return { permission, policy, scopeId, resourceScopeIds };
+      .map(({ id, kind }) => ({ id, kind }));
+    return {
+      permission,
+      policy,
+      scopeId,
+      resourceScopeIds: resourceScopes.map(({ id }) => id),
+      resourceScopes,
+    };
   }
 }

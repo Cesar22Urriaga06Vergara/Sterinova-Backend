@@ -31,6 +31,15 @@ node_modules/
 *.tmp
 *.temp
 *.log
+/*.pdf
 /.playwright-mcp/
 /test-results/
 /playwright-report/
+
+# AI/dev tool artifacts
+.qwen/
+/QODER_BACKEND.md
+/dev
+
+# Institutional example formats (development reference only)
+/docs/ejemplos-formatos/

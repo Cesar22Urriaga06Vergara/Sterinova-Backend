@@ -1,6 +1,6 @@
 import { resourceWhere, creationScope } from '../rbac/resource-access.js';
 import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, QueryFailedError, Repository } from 'typeorm';
 import { Cliente } from './entities/cliente.entity.js';
@@ -105,9 +105,10 @@ export class ClientesService {
     return this.clientesRepository.save(cliente);
   }
 
-  async remove(id: number, access: PermissionContext): Promise<{ message: string }> {
-    const cliente = await this.findOne(id, access);
-    await this.clientesRepository.remove(cliente);
-    return { message: `Cliente #${id} eliminado` };
+  async remove(id: number, _access: PermissionContext): Promise<{ message: string }> {
+    // Business rule M2: client records are historical; deletion is never allowed.
+    throw new ForbiddenException(
+      `El cliente #${id} no se puede eliminar; use la inactivación`,
+    );
   }
 }

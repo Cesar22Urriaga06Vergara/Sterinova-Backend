@@ -176,12 +176,12 @@ export class CotizacionesService {
     dto: CreateCotizacionDto,
     access: PermissionContext,
   ): Promise<Cotizacion> {
-    const scopeId = quoteCreationScope(access);
     if (!dto.items?.length)
       throw new BadRequestException(
         'La cotización debe incluir al menos un ítem',
       );
-    await this.clientesService.findOne(dto.cliente_id, { ...access, policy: {...access.policy, scopeIds: [...new Set([...access.policy.scopeIds, ...access.policy.ownScopeIds])], ownScopeIds: []} });
+    const cliente = await this.clientesService.findOne(dto.cliente_id, { ...access, policy: {...access.policy, scopeIds: [...new Set([...access.policy.scopeIds, ...access.policy.ownScopeIds])], ownScopeIds: []} });
+    const scopeId = quoteCreationScope(access, cliente.scope_id);
     const prefix = this.prefix(dto.tipo_servicio);
     const saved = await this.dataSource.transaction(async (manager) => {
       const tax = await resolveCurrentIva(manager);
@@ -247,7 +247,8 @@ export class CotizacionesService {
         validez_oferta: dto.validez_oferta ?? null,
         precio_incluye: dto.precio_incluye ?? null,
         precio_no_incluye: dto.precio_no_incluye ?? null,
-        estado: dto.estado ?? 'Borrador',
+        // Every quote starts as a draft; approval is a separate, audited step.
+        estado: 'Borrador',
         subtotal,
         iva,
         iva_tasa: tax.tasa,
@@ -765,7 +766,11 @@ export class CotizacionesService {
           'Incluya nuevamente los ítems al cambiar el tipo de cotización',
         );
       if (dto.cliente_id !== undefined) {
-        await this.clientesService.findOne(dto.cliente_id, { ...access, policy: {...access.policy, scopeIds: [...new Set([...access.policy.scopeIds, ...access.policy.ownScopeIds])], ownScopeIds: []} });
+        const cliente = await this.clientesService.findOne(dto.cliente_id, { ...access, policy: {...access.policy, scopeIds: [...new Set([...access.policy.scopeIds, ...access.policy.ownScopeIds])], ownScopeIds: []} });
+        if (cliente.scope_id !== cotizacion.scope_id)
+          throw new ForbiddenException(
+            'No puede cambiar el cliente a otro ámbito; cree una cotización nueva en el ámbito correspondiente',
+          );
         cotizacion.cliente_id = dto.cliente_id;
         // Avoid persisting the previous relation over the new foreign key.
         cotizacion.cliente = undefined as never;
@@ -844,33 +849,4 @@ export class CotizacionesService {
     return updated;
   }
 
-  async remove(
-    id: number,
-    access: PermissionContext,
-  ): Promise<{ message: string }> {
-    const imageKeys: string[] = [];
-    const result = await this.dataSource.transaction(async (manager) => {
-      const repository = manager.getRepository(Cotizacion);
-      const cotizacion = await repository.findOne({
-        where: quoteWhere(access, 'cotizaciones.eliminar', id),
-        relations: ['items'],
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!cotizacion)
-        throw new NotFoundException(`Cotización #${id} no encontrada`);
-      if (cotizacion.fecha_emision)
-        throw new ConflictException(
-          'No se puede eliminar una cotización emitida',
-        );
-      imageKeys.push(
-        ...(cotizacion.items ?? [])
-          .map((item) => item.imagen_key)
-          .filter((key): key is string => Boolean(key)),
-      );
-      await repository.remove(cotizacion);
-      return { message: `Cotización #${id} eliminada` };
-    });
-    for (const key of imageKeys) await this.deleteImageBestEffort(key);
-    return result;
-  }
 }

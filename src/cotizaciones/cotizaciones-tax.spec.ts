@@ -68,6 +68,14 @@ describe('Authoritative IVA at quote creation', () => {
       iva_version_id: 9,
     });
   });
+  it('creates every quote as a draft even when a caller injects another state', async () => {
+    const { service } = fixture();
+    const quote = await service.create(
+      { ...dto, estado: 'APROBADA' } as never,
+      quotePermission('cotizaciones.crear'),
+    );
+    expect(quote.estado).toBe('Borrador');
+  });
   it('rejects an outdated preview version instead of silently changing the price', async () => {
     const { service } = fixture();
     await expect(
@@ -93,6 +101,7 @@ describe('Authoritative IVA at quote creation', () => {
     const errors = await validate(
       plainToInstance(CreateCotizacionDto, {
         ...dto,
+        estado: 'APROBADA',
         iva_tasa: '0',
         iva_version_id: 1,
         iva: 0,
@@ -103,6 +112,7 @@ describe('Authoritative IVA at quote creation', () => {
       { whitelist: true, forbidNonWhitelisted: true },
     );
     expect(errors.map((error) => error.property).sort()).toEqual([
+      'estado',
       'iva',
       'iva_tasa',
       'iva_version_id',

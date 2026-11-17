@@ -31,6 +31,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    if (!Number.isSafeInteger(payload.sub) || payload.sub < 1)
+      throw new UnauthorizedException('Identidad de sesión inválida');
     const user = await this.usersService.findActiveById(payload.sub);
     if (!user) throw new UnauthorizedException('Usuario inactivo o inexistente');
     if (

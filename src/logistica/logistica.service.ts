@@ -12,7 +12,7 @@ import {
   OrdenServicioEvento,
   TipoEventoOrden,
 } from '../ordenes-servicio/entities/orden-servicio-evento.entity.js';
-import { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
+import { CicloEsterilizacion, EstadoCicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
 import {
   BadRequestException,
   ConflictException,
@@ -54,6 +54,7 @@ const TRANSICIONES_ESTADO: Record<
 > = {
   [EstadoOrdenServicio.PENDIENTE]: [
     EstadoOrdenServicio.EN_RUTA,
+    EstadoOrdenServicio.EN_PLANTA,
     EstadoOrdenServicio.CANCELADO,
   ],
   [EstadoOrdenServicio.EN_RUTA]: [
@@ -115,7 +116,9 @@ export class LogisticaService {
       const quotes = manager.getRepository(Cotizacion);
       const orders = manager.getRepository(OrdenServicio);
       const cotizacion = await quotes.findOne({
-        where: { id: dto.cotizacion_id },
+        where: access
+          ? resourceWhere<Cotizacion>(access, { id: dto.cotizacion_id })
+          : { id: dto.cotizacion_id },
         lock: { mode: 'pessimistic_write' },
       });
       if (!cotizacion) throw new NotFoundException('Cotización no encontrada');
@@ -192,7 +195,7 @@ export class LogisticaService {
           ),
           consecutivo: `OS-${year}-${numero}`,
           cotizacion_id: dto.cotizacion_id,
-          scope_id: access ? creationScope(access) : cotizacion.scope_id,
+          scope_id: access ? creationScope(access, cotizacion.scope_id) : cotizacion.scope_id,
           creador_id: usuarioId,
           fecha_programada: dto.fecha_programada,
           estado: EstadoOrdenServicio.PENDIENTE,
@@ -394,6 +397,32 @@ export class LogisticaService {
         );
       }
       validarTransicionEstado(estadoAnterior, dto.estado);
+      if (estadoAnterior === dto.estado) {
+        throw new ConflictException(
+          `La orden ya se encuentra en estado ${dto.estado}`,
+        );
+      }
+      if (
+        dto.estado === EstadoOrdenServicio.ENTREGADO &&
+        orden.metodo_esterilizacion
+      ) {
+        const cycles = await manager.getRepository(CicloEsterilizacion).find({
+          where: { orden_id: id },
+          relations: ['certificado'],
+        });
+        if (
+          !cycles.length ||
+          cycles.some(
+            (cycle) =>
+              cycle.estado !== EstadoCicloEsterilizacion.APROBADO ||
+              !cycle.certificado,
+          )
+        ) {
+          throw new ConflictException(
+            'No se puede entregar la orden: todos sus ciclos deben estar aprobados y certificados',
+          );
+        }
+      }
       const eventoTipo = EVENTO_POR_ESTADO[dto.estado];
       let eventoDatos: EventoOrdenDatos | undefined;
       if (eventoTipo) {
@@ -419,6 +448,15 @@ export class LogisticaService {
           throw new BadRequestException(
             'Registre una cantidad para cada material de la orden, sin repetir materiales',
           );
+        }
+        if (eventoTipo === 'ENTREGA_CLIENTE') {
+          const received = new Map(orderMaterials.map(({ id, cantidad }) => [id, cantidad]));
+          if (evento.materiales.some(({ material_id, cantidad }) =>
+            cantidad > received.get(material_id)!,
+          ))
+            throw new BadRequestException(
+              'La cantidad entregada no puede superar la cantidad recibida',
+            );
         }
         eventoDatos = {
           responsable: evento.responsable.trim(),

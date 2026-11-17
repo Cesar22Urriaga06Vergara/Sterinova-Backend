@@ -659,8 +659,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Cliente eliminado"
+          "403": {
+            "description": "La eliminación de clientes está prohibida; use la inactivación"
           }
         },
         "security": [
@@ -908,7 +908,7 @@
           {
             "name": "x-scope-id",
             "in": "header",
-            "description": "Ámbito autorizado. Obligatorio al crear si la cuenta tiene varios ámbitos posibles.",
+            "description": "Ámbito autorizado opcional; solo acota la operación. Al crear, el ámbito se deriva del cliente de la cotización.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -3028,9 +3028,6 @@
             "type": "string"
           },
           "precio_no_incluye": {
-            "type": "string"
-          },
-          "estado": {
             "type": "string"
           }
         },
