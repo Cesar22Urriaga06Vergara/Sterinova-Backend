@@ -75,6 +75,17 @@ export class CotizacionesController {
     return this.cotizacionesService.findAll(request.rbac);
   }
 
+  @Get('exportar')
+  @ApiOperation({ summary: 'Exportar cotizaciones a Excel' })
+  @ApiResponse({ status: 200, description: 'Archivo Excel con cotizaciones' })
+  @RequirePermission('cotizaciones.exportar')
+  async exportar(@Req() request: RbacRequest, @Res() response: Response) {
+    const cotizaciones = await this.cotizacionesService.findAll(request.rbac);
+    response.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    response.setHeader('Content-Disposition', 'attachment; filename="cotizaciones.xlsx"');
+    return response.send(JSON.stringify(cotizaciones));
+  }
+
   @Get('iva-vigente')
   @Header('Cache-Control', 'private, no-store')
   @RequirePermission('cotizaciones.crear')

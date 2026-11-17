@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, Min, Matches } from 'class-validator';
+import { IsInt, Min, Matches, IsNotEmpty } from 'class-validator';
 import { MaterialOrdenDto } from './material-orden.dto.js';
 import { IsArray, ValidateNested, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -26,6 +26,15 @@ export class CreateOrdenDto {
 
   @ApiProperty({
     type: String,
+    description:
+      'Orden de Compra del cliente o referencia de autorización del Jefe de Área (obligatoria para crear la orden).',
+  })
+  @IsString()
+  @IsNotEmpty()
+  orden_compra_cliente: string;
+
+  @ApiProperty({
+    type: String,
     format: 'date',
     pattern: '^\\d{4}-\\d{2}-\\d{2}$',
     example: '2026-11-10',
@@ -34,6 +43,7 @@ export class CreateOrdenDto {
   })
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   @IsDateString({ strict: true })
+  @IsNotEmpty()
   fecha_programada: string;
 
   @IsOptional()

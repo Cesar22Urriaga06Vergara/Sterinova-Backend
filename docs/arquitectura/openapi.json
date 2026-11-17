@@ -63,6 +63,293 @@
         "x-required-permission": "tasas_fiscales.gestionar"
       }
     },
+    "/gerencia/resumen": {
+      "get": {
+        "operationId": "GerenciaController_resumen",
+        "parameters": [
+          {
+            "name": "desde",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-13",
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasta",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-13",
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope_id",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resumen y serie diaria gerencial; importes cotizados y emitidos, sin ingresos cobrados",
+        "tags": [
+          "Gerencia"
+        ],
+        "x-required-permission": "gerencia.metricas.ver"
+      }
+    },
+    "/gerencia/detalle": {
+      "get": {
+        "operationId": "GerenciaController_detalle",
+        "parameters": [
+          {
+            "name": "desde",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-13",
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasta",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-13",
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope_id",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "indicador",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "cotizaciones_creadas",
+                "cotizaciones_emitidas",
+                "ordenes_creadas",
+                "ciclos_realizados",
+                "ciclos_aprobados",
+                "ciclos_rechazados",
+                "certificados_emitidos",
+                "entregas",
+                "cotizaciones_borrador",
+                "cotizaciones_por_emitir",
+                "ordenes_abiertas",
+                "calidad_por_revisar"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Detalle paginado de un indicador usando las mismas fechas y ámbitos del resumen",
+        "tags": [
+          "Gerencia"
+        ],
+        "x-required-permission": "gerencia.metricas.ver"
+      }
+    },
+    "/gerencia/administradores/catalogo": {
+      "get": {
+        "operationId": "GerenciaAdministradoresController_catalogo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gerencia"
+        ],
+        "x-required-permission": "gerencia.administradores.gestionar"
+      }
+    },
+    "/gerencia/administradores": {
+      "get": {
+        "operationId": "GerenciaAdministradoresController_listar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gerencia"
+        ],
+        "x-required-permission": "gerencia.administradores.gestionar"
+      },
+      "post": {
+        "operationId": "GerenciaAdministradoresController_crear",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearAdministradorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear cuenta y asignación de administrador de área de forma atómica",
+        "tags": [
+          "Gerencia"
+        ],
+        "x-required-permission": "gerencia.administradores.gestionar"
+      }
+    },
+    "/gerencia/administradores/{userId}/asignaciones": {
+      "post": {
+        "operationId": "GerenciaAdministradoresController_asignar",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AsignarAdministradorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gerencia"
+        ],
+        "x-required-permission": "gerencia.administradores.gestionar"
+      }
+    },
+    "/gerencia/administradores/{userId}/asignaciones/{assignmentId}": {
+      "delete": {
+        "operationId": "GerenciaAdministradoresController_retirar",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "assignmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retirar solo esta pertenencia; conserva cuenta, otras áreas e historial",
+        "tags": [
+          "Gerencia"
+        ],
+        "x-required-permission": "gerencia.administradores.gestionar"
+      }
+    },
+    "/auditoria": {
+      "get": {
+        "operationId": "AuditoriaController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consultar auditoría paginada (solo Admin)",
+        "tags": [
+          "Auditoría"
+        ],
+        "x-required-permission": "auditoria.ver"
+      }
+    },
     "/users": {
       "get": {
         "operationId": "UsersController_findAll",
@@ -373,27 +660,6 @@
           "UserRoles"
         ],
         "x-required-permission": "asignaciones.gestionar"
-      }
-    },
-    "/auditoria": {
-      "get": {
-        "operationId": "AuditoriaController_findAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Consultar auditoría paginada (solo Admin)",
-        "tags": [
-          "Auditoría"
-        ],
-        "x-required-permission": "auditoria.ver"
       }
     },
     "/auth/me": {
@@ -1066,20 +1332,13 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Cotización eliminada"
+          "403": {
+            "description": "Eliminación de cotizaciones denegada. Las cotizaciones se conservan; usar la solicitud de anulación cuando corresponda."
           }
         },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Eliminar cotización",
         "tags": [
           "Cotizaciones"
-        ],
-        "x-required-permission": "cotizaciones.eliminar"
+        ]
       }
     },
     "/cotizaciones/{id}/previsualizar": {
@@ -1884,6 +2143,64 @@
         "x-required-permission": "logistica.ordenes.ver"
       }
     },
+    "/logistica/ordenes/{id}/documentos-emitidos": {
+      "get": {
+        "operationId": "LogisticaController_listarDocumentosEmitidos",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Logistica"
+        ],
+        "x-required-permission": "logistica.ordenes.ver"
+      }
+    },
+    "/logistica/documentos-emitidos/{id}/pdf": {
+      "get": {
+        "operationId": "LogisticaController_descargarDocumentoEmitido",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Logistica"
+        ],
+        "x-required-permission": "logistica.ordenes.ver"
+      }
+    },
     "/logistica/ordenes/{id}/estado": {
       "put": {
         "operationId": "LogisticaController_updateEstado",
@@ -1921,6 +2238,131 @@
           "Logistica"
         ],
         "x-required-permission": "logistica.ordenes.cambiar_estado"
+      }
+    },
+    "/logistica/ordenes/{id}/recepcion": {
+      "post": {
+        "operationId": "RecepcionController_createRecepcion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecepcionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Recepcion"
+        ],
+        "x-required-permission": "logistica.recepciones.registrar"
+      },
+      "get": {
+        "operationId": "RecepcionController_findRecepcionByOrden",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Recepcion"
+        ],
+        "x-required-permission": "logistica.ordenes.ver"
+      }
+    },
+    "/logistica/recepciones": {
+      "get": {
+        "operationId": "RecepcionController_findAllRecepciones",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Recepcion"
+        ],
+        "x-required-permission": "logistica.ordenes.ver"
+      }
+    },
+    "/logistica/ordenes/{id}/recepcion/estado": {
+      "patch": {
+        "operationId": "RecepcionController_updateRecepcionEstado",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecepcionEstadoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Recepcion"
+        ],
+        "x-required-permission": "logistica.recepciones.registrar"
       }
     },
     "/planta/protocolos": {
@@ -2671,6 +3113,74 @@
           "motivo"
         ]
       },
+      "CrearAdministradorDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          },
+          "password": {
+            "type": "string",
+            "minLength": 10,
+            "writeOnly": true
+          },
+          "apellido": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "cargo": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "celular": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "email_contacto": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          },
+          "role_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "scope_id": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "nombre",
+          "email",
+          "password",
+          "role_id",
+          "scope_id"
+        ]
+      },
+      "AsignarAdministradorDto": {
+        "type": "object",
+        "properties": {
+          "role_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "scope_id": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "role_id",
+          "scope_id"
+        ]
+      },
       "CreateUserDto": {
         "type": "object",
         "properties": {}
@@ -3296,6 +3806,10 @@
             "type": "number",
             "minimum": 1
           },
+          "orden_compra_cliente": {
+            "type": "string",
+            "description": "Orden de Compra del cliente o referencia de autorización del Jefe de Área (obligatoria para crear la orden)."
+          },
           "fecha_programada": {
             "type": "string",
             "format": "date",
@@ -3306,6 +3820,7 @@
         },
         "required": [
           "cotizacion_id",
+          "orden_compra_cliente",
           "fecha_programada"
         ]
       },
@@ -3416,6 +3931,66 @@
                 "$ref": "#/components/schemas/EventoOrdenDto"
               }
             ]
+          }
+        },
+        "required": [
+          "estado"
+        ]
+      },
+      "CreateRecepcionDto": {
+        "type": "object",
+        "properties": {
+          "orden_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "numero_remision_factura": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "fecha_hora_recepcion": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-17T10:30:00.000Z",
+            "description": "Fecha y hora real de recepción física del material."
+          },
+          "sede_origen": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "evidencias": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "RECIBIDO_PARCIAL",
+              "RECIBIDO_COMPLETO",
+              "RECHAZADO"
+            ]
+          }
+        },
+        "required": [
+          "orden_id",
+          "fecha_hora_recepcion",
+          "sede_origen",
+          "estado"
+        ]
+      },
+      "UpdateRecepcionEstadoDto": {
+        "type": "object",
+        "properties": {
+          "estado": {
+            "type": "string",
+            "enum": [
+              "RECIBIDO_PARCIAL",
+              "RECIBIDO_COMPLETO",
+              "RECHAZADO"
+            ]
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 1000
           }
         },
         "required": [

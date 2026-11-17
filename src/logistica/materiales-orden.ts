@@ -75,8 +75,8 @@ export function prepararMateriales(
       );
     if (
       !m.descripcion?.trim() ||
-      !Number.isInteger(m.cantidad) ||
-      m.cantidad < 1 ||
+      !Number.isFinite(m.cantidad) ||
+      m.cantidad <= 0 ||
       m.cantidad > 4294967295
     )
       throw new BadRequestException(

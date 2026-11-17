@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { CreateOrdenDto } from './dto/create-orden.dto.js';
 import { LogisticaService } from './logistica.service.js';
 import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
+import { EstadoCotizacion } from '../cotizaciones/entities/estado-cotizacion.enum.js';
 
 @Controller('logistica/ordenes')
 class ContractController {
@@ -23,7 +24,11 @@ describe('fecha_programada: contrato DATE', () => {
     'acepta la fecha civil %s',
     async (fecha) => {
       const dto = await pipe.transform(
-        { cotizacion_id: 1, fecha_programada: fecha },
+        {
+          cotizacion_id: 1,
+          fecha_programada: fecha,
+          orden_compra_cliente: 'OC-2026-0001',
+        },
         {
           type: 'body',
           metatype: CreateOrdenDto,
@@ -73,9 +78,7 @@ describe('fecha_programada: contrato DATE', () => {
   it('persiste y devuelve el mismo día sin conversiones horarias', async () => {
     const fecha = '2028-02-29';
     const orders = {
-      findOne: vi
-        .fn()
-        .mockResolvedValueOnce(null)
+      findOne: vi.fn()
         .mockImplementation(async () => saved),
       create: vi.fn((value) => value),
       save: vi.fn(async (value) => {
@@ -90,7 +93,10 @@ describe('fecha_programada: contrato DATE', () => {
         if (entity.name === 'OrdenServicio') return orders;
         if (entity.name === 'Cotizacion')
           return {
-            findOne: async () => ({ estado: 'APROBADA', tipo_servicio: 'ETO' }),
+            findOne: async () => ({
+              estado: EstadoCotizacion.ACEPTADA_CLIENTE,
+              tipo_servicio: 'ETO',
+            }),
           };
         if (entity.name === 'CotizacionItem') return { find: async () => [] };
         return { findOne: async () => ({ ultimo_valor: '0' }) };
@@ -109,6 +115,7 @@ describe('fecha_programada: contrato DATE', () => {
     const result = await service.createOrden({
       cotizacion_id: 1,
       fecha_programada: fecha,
+      orden_compra_cliente: 'OC-2026-0001',
     });
     expect(orders.save).toHaveBeenCalledWith(
       expect.objectContaining({ fecha_programada: fecha }),

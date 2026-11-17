@@ -1,9 +1,11 @@
 import type { RbacRequest } from '../rbac/authorization.guard.js';
+import { Request } from 'express';
 import { RequirePermission, ScopedPermissions } from '../rbac/require-permission.decorator.js';
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Req } from '@nestjs/common';
 import { ApproveCycleDto } from './dto/approve-cycle.dto.js';
 import { RejectCycleDto } from './dto/reject-cycle.dto.js';
 import { CalidadService } from './calidad.service.js';
+import { UsersService } from '../users/users.service.js';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 type AuthenticatedRequest = RbacRequest;
@@ -12,7 +14,10 @@ type AuthenticatedRequest = RbacRequest;
 @ApiTags('Calidad')
 @ScopedPermissions()
 export class CalidadController {
-  constructor(private readonly calidadService: CalidadService) {}
+  constructor(
+    private readonly calidadService: CalidadService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Get('pendientes')
   @ApiOperation({ summary: 'Listar ciclos pendientes de revisión' })
@@ -35,11 +40,18 @@ export class CalidadController {
   @ApiResponse({ status: 201, description: 'Ciclo aprobado' })
   @ApiResponse({ status: 400, description: 'Datos o contraseña inválidos' })
   @RequirePermission('calidad.aprobar')
-  aprobar(
+  async aprobar(
     @Body() dto: ApproveCycleDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.calidadService.aprobar(dto, request.user.id, request.rbac);
+    const user = await this.usersService.findById(request.user.id);
+    return this.calidadService.aprobar(
+      dto,
+      request.user.id,
+      request.rbac,
+      (request as unknown as Request).ip,
+      user?.cargo ?? undefined,
+    );
   }
 
   @Post('rechazar')
@@ -47,10 +59,17 @@ export class CalidadController {
   @ApiResponse({ status: 201, description: 'Ciclo rechazado' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
   @RequirePermission('calidad.rechazar')
-  rechazar(
+  async rechazar(
     @Body() dto: RejectCycleDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.calidadService.rechazar(dto, request.user.id, request.rbac);
+    const user = await this.usersService.findById(request.user.id);
+    return this.calidadService.rechazar(
+      dto,
+      request.user.id,
+      request.rbac,
+      (request as unknown as Request).ip,
+      user?.cargo ?? undefined,
+    );
   }
 }

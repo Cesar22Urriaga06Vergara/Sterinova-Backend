@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Repository } from 'typeorm';
+import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 import { SelloCertificacion } from './entities/sello-certificacion.entity.js';
 import { CreateSelloCertificacionDto } from './dto/create-sello-certificacion.dto.js';
 import { UpdateSelloCertificacionDto } from './dto/update-sello-certificacion.dto.js';
@@ -25,7 +26,7 @@ function detectImage(buffer: Buffer): { extension: 'png' | 'jpg'; mimeType: stri
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
     return { extension: 'jpg', mimeType: 'image/jpeg' };
   }
-  throw new BadRequestException('La imagen debe ser un archivo PNG o JPG válido');
+  throw new BadRequestException('La imagen del sello debe ser un archivo PNG o JPG válido');
 }
 
 @Injectable()
@@ -39,11 +40,15 @@ export class SellosService {
     private readonly sellosRepository: Repository<SelloCertificacion>,
   ) {}
 
-  findAll(): Promise<SelloCertificacion[]> {
+  async findAll(context: PermissionContext): Promise<SelloCertificacion[]> {
     return this.sellosRepository.find({ order: { orden: 'ASC', id: 'ASC' } });
   }
 
-  async create(dto: CreateSelloCertificacionDto, file?: UploadedImage): Promise<SelloCertificacion> {
+  async create(
+    dto: CreateSelloCertificacionDto,
+    file?: UploadedImage,
+    context?: PermissionContext,
+  ): Promise<SelloCertificacion> {
     if (!file?.buffer?.length) throw new BadRequestException('La imagen del sello es obligatoria');
     const imagen_key = await this.saveImage(file.buffer);
     try {
@@ -60,7 +65,12 @@ export class SellosService {
     }
   }
 
-  async update(id: number, dto: UpdateSelloCertificacionDto, file?: UploadedImage): Promise<SelloCertificacion> {
+  async update(
+    id: number,
+    dto: UpdateSelloCertificacionDto,
+    file?: UploadedImage,
+    context?: PermissionContext,
+  ): Promise<SelloCertificacion> {
     const sello = await this.findOne(id);
     if (dto.nombre_norma !== undefined) sello.nombre_norma = dto.nombre_norma.trim();
     if (dto.numero_licencia !== undefined) sello.numero_licencia = dto.numero_licencia.trim();
@@ -77,13 +87,13 @@ export class SellosService {
     }
   }
 
-  async deactivate(id: number): Promise<SelloCertificacion> {
+  async deactivate(id: number, context?: PermissionContext): Promise<SelloCertificacion> {
     const sello = await this.findOne(id);
     sello.activo = false;
     return this.sellosRepository.save(sello);
   }
 
-  async getImage(id: number): Promise<{ buffer: Buffer; mimeType: string }> {
+  async getImage(id: number, context: PermissionContext): Promise<{ buffer: Buffer; mimeType: string }> {
     const sello = await this.findOne(id);
     const resolvedPath = path.resolve(this.storagePath, sello.imagen_key);
     if (!resolvedPath.startsWith(`${this.storagePath}${path.sep}`)) {
@@ -112,4 +122,5 @@ export class SellosService {
     await writeFile(path.join(this.storagePath, key), buffer, { flag: 'wx' });
     return key;
   }
+
 }

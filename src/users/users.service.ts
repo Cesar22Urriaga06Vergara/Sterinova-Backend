@@ -1,11 +1,12 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, type EntityManager } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -104,11 +105,10 @@ export class UsersService {
       const user = await repository.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
       if (!user) throw new NotFoundException(`Usuario #${id} no encontrado`);
 
+      await this.assertNotProtected(repository, id);
+
       if (dto.email !== undefined) {
-        const email = dto.email.trim().toLowerCase();
-        const existing = await repository.findOne({ where: { email } });
-        if (existing && existing.id !== id) throw new ConflictException('Ya existe un usuario con ese correo');
-        user.email = email;
+        throw new ForbiddenException('La identidad (correo) no puede modificarse; use el restablecimiento de contraseña');
       }
       if (dto.nombre !== undefined) user.nombre = dto.nombre.trim();
       if (dto.apellido !== undefined) user.apellido = dto.apellido?.trim() || null;
@@ -132,12 +132,23 @@ export class UsersService {
       const repository = manager.getRepository(User);
       const user = await repository.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
       if (!user) throw new NotFoundException(`Usuario #${id} no encontrado`);
-      if (!activo && user.activo) {
+
+      if (!activo) {
+        await this.assertNotProtected(repository, id);
         await this.assertAnotherActiveAdmin(repository, id);
       }
       user.activo = activo;
       return toPublicUser(await repository.save(user));
     });
+  }
+
+  private async assertNotProtected(repository: Repository<User>, userId: number): Promise<void> {
+    const protectedRows = await repository.manager.query(
+      `SELECT 1 AS protected FROM rbac_platform_owner WHERE user_id=? UNION ALL SELECT 1 AS protected FROM rbac_user_role_assignments a JOIN rbac_scopes s ON s.id=a.scope_id WHERE a.user_id=? AND a.active=1 AND s.kind='GLOBAL' LIMIT 1`,
+      [userId, userId],
+    );
+    if (protectedRows.length)
+      throw new ForbiddenException('La cuenta global requiere administración técnica');
   }
 
   private async assertAnotherActiveAdmin(repository: Repository<User>, excludedId: number): Promise<void> {
@@ -151,5 +162,38 @@ export class UsersService {
       .setLock('pessimistic_write')
       .getMany();
     if (!admins.length) throw new ConflictException('Debe permanecer al menos un Admin activo');
+  }
+
+  async createWithAssignment(
+    createUserDto: CreateUserDto,
+    assignment: { role_id: number; scope_id: number },
+    actorId: number,
+  ): Promise<PublicUser> {
+    return this.usersRepository.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(User);
+      const email = createUserDto.email.trim().toLowerCase();
+      if (await repo.findOne({ where: { email } })) {
+        throw new ConflictException('Ya existe un usuario con ese correo');
+      }
+      const password_hash = await bcrypt.hash(createUserDto.password, 10);
+      const user = repo.create({
+        nombre: createUserDto.nombre.trim(),
+        apellido: createUserDto.apellido?.trim() || null,
+        email,
+        email_contacto: createUserDto.email_contacto?.trim().toLowerCase() || null,
+        cargo: createUserDto.cargo?.trim() || null,
+        celular: createUserDto.celular?.trim() || null,
+        password_hash,
+        password_version: 1,
+        activo: false,
+      });
+      const saved = await repo.save(user);
+      await manager.query(
+        `INSERT INTO rbac_user_role_assignments (user_id, role_id, scope_id, active) VALUES (?, ?, ?, 1)`,
+        [saved.id, assignment.role_id, assignment.scope_id],
+      );
+      saved.activo = true;
+      return toPublicUser(await repo.save(saved));
+    });
   }
 }

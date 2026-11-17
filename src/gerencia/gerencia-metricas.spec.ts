@@ -111,6 +111,19 @@ describe('gerencia metrics', () => {
     ).rejects.toMatchObject({ status: 403 });
     expect(source.transaction).not.toHaveBeenCalled();
   });
+
+  it('allows GLOBAL scope selection to mean all accessible areas for Gerente General', () => {
+    const ggAccess = {
+      permission: 'gerencia.metricas.ver',
+      policy: { userId: 7, scopeIds: [1, 2, 3], ownScopeIds: [] },
+      resourceScopeIds: [2, 3],
+    } as const;
+    // Requesting GLOBAL (id=1) should expand to all accessible areas (2, 3)
+    expect(metricScopeIds(ggAccess as never, 1)).toEqual([2, 3]);
+    // No scope requested with GLOBAL in policy should also expand to all accessible
+    expect(metricScopeIds(ggAccess as never)).toEqual([2, 3]);
+  });
+
   it('adds multiple states within a day and keeps current pending work separate from period activity', async () => {
     const manager = {
       query: vi.fn(async (sql, params) =>

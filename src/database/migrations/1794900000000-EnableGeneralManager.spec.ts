@@ -8,19 +8,18 @@ describe('general manager activation migration', () => {
         : [],
     );
     await new EnableGeneralManager1794900000000().up({ query } as never);
-    expect(DATABASE_MIGRATIONS.at(-1)).toBe(EnableGeneralManager1794900000000);
+    expect(DATABASE_MIGRATIONS).toContain(EnableGeneralManager1794900000000);
     const grants = query.mock.calls
       .filter(([sql]) => sql.startsWith('INSERT INTO rbac_role_permissions'))
       .map(([, params]) => params?.[1]);
     expect(grants).toContain('gerencia.metricas.ver');
     expect(grants).toContain('gerencia.administradores.gestionar');
+    expect(grants).toContain('usuarios.identidad.gestionar');
+    expect(grants).toContain('asignaciones.gestionar');
     for (const permission of [
       'roles.gestionar',
-      'asignaciones.gestionar',
-      'usuarios.identidad.gestionar',
       'calidad.aprobar',
       'cotizaciones.aprobar_interna',
-      'formatos.versiones.aprobar',
     ])
       expect(grants).not.toContain(permission);
     expect(

@@ -49,6 +49,24 @@ describe('CertificadosService scope isolation', () => {
     );
   });
 
+  it('never selects commercial quote amounts for certificate readers', async () => {
+    const repository = { find: vi.fn(async () => []) };
+    await serviceWith(repository).findAll(access([10]));
+
+    const options = repository.find.mock.calls[0][0];
+    const cotizacion =
+      options.select.cicloEsterilizacion.orden.cotizacion;
+    expect(cotizacion.total).toBeUndefined();
+    expect(cotizacion.subtotal).toBeUndefined();
+    expect(cotizacion.iva).toBeUndefined();
+    expect(cotizacion.condiciones_comerciales).toBeUndefined();
+    expect(cotizacion.items.valor_unitario).toBeUndefined();
+    expect(cotizacion.items.valor_total).toBeUndefined();
+    expect(options.loadEagerRelations).toBe(false);
+    expect(cotizacion.consecutivo).toBe(true);
+    expect(cotizacion.items.cantidad).toBe(true);
+  });
+
   it('limits own-scope grants to cycles operated by that user', async () => {
     const repository = {
       findOne: vi.fn(async () => ({ id: 8, ciclo_id: 3 })),

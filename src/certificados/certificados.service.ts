@@ -31,17 +31,67 @@ import {
   PdfGeneratorService,
 } from '../pdf/pdf-generator.service.js';
 import { User } from '../users/entities/user.entity.js';
+import {
+  CICLO_OPERATIVO,
+  COTIZACION_CON_ITEMS,
+  ORDEN_CON_COTIZACION,
+  USUARIO_OPERATIVO,
+} from '../common/proyeccion-operativa.js';
 
 const SEQUENCE_NAME = 'certificado_esterilizacion';
-const CERTIFICATE_RELATIONS = [
-  'cicloEsterilizacion',
-  'cicloEsterilizacion.orden',
-  'cicloEsterilizacion.orden.cotizacion',
-  'cicloEsterilizacion.orden.cotizacion.cliente',
-  'cicloEsterilizacion.orden.cotizacion.items',
-  'cicloEsterilizacion.operador',
-  'aprobador',
-];
+/**
+ * Operational projection: Calidad executes on technical data, not on the
+ * commercial terms of the quote. Items are loaded without unit prices and the
+ * eager loading of the quote items is disabled.
+ */
+const CERTIFICATE_OPERATIVO = {
+  id: true,
+  elaborado_por_id: true,
+  verificado_por_id: true,
+  elaborado_at: true,
+  verificado_at: true,
+  fecha_esterilizacion: true,
+  fecha_vencimiento: true,
+  consecutivo: true,
+  token_publico: true,
+  ciclo_id: true,
+  orden_id: true,
+  equipo: true,
+  ciclo: true,
+  parametros_tecnicos: true,
+  controles_biologicos: true,
+  estado: true,
+  aprobador_id: true,
+  aprobado_at: true,
+  version_formato_id: true,
+  snapshot_datos: true,
+  pdf_url: true,
+  hash_pdf: true,
+  pdf_renderer_version: true,
+  fecha_emision: true,
+  created_at: true,
+} as const;
+
+const CERTIFICATE_RELATIONS = {
+  cicloEsterilizacion: {
+    orden: { cotizacion: { cliente: true, items: true }, materiales: true },
+    operador: true,
+  },
+  aprobador: true,
+} as const;
+
+const CERTIFICATE_SELECT = {
+  ...CERTIFICATE_OPERATIVO,
+  cicloEsterilizacion: {
+    ...CICLO_OPERATIVO,
+    orden: {
+      ...ORDEN_CON_COTIZACION,
+      cotizacion: COTIZACION_CON_ITEMS,
+    },
+    operador: USUARIO_OPERATIVO,
+  },
+  aprobador: USUARIO_OPERATIVO,
+} as const;
 
 /**
  * El certificado no duplica ámbito: se autoriza por el ciclo que lo originó.
@@ -314,15 +364,9 @@ export class CertificadosService {
   findAll(access?: PermissionContext): Promise<CertificadoEsterilizacion[]> {
     return this.certificadoRepository.find({
       ...(access ? { where: certificateWhere(access) } : {}),
-      relations: [
-        'cicloEsterilizacion',
-        'cicloEsterilizacion.orden',
-        'cicloEsterilizacion.orden.cotizacion',
-        'cicloEsterilizacion.orden.cotizacion.cliente',
-        'cicloEsterilizacion.orden.cotizacion.items',
-        'cicloEsterilizacion.operador',
-        'aprobador',
-      ],
+      relations: CERTIFICATE_RELATIONS,
+      select: CERTIFICATE_SELECT,
+      loadEagerRelations: false,
       order: { id: 'DESC' },
     });
   }
@@ -331,6 +375,8 @@ export class CertificadosService {
     const certificado = await this.certificadoRepository.findOne({
       where: access ? certificateWhere(access, id) : { id },
       relations: CERTIFICATE_RELATIONS,
+      select: CERTIFICATE_SELECT,
+      loadEagerRelations: false,
     });
     if (!certificado) {
       throw new NotFoundException(`Certificado #${id} no encontrado`);
@@ -398,22 +444,43 @@ export class CertificadosService {
 
   async validarToken(token: string) {
     const certificado = await this.certificadoRepository.findOne({
-      where: { token_publico: token, estado: 'Aprobado' },
+      where: { token_publico: token },
+      relations: [
+        'cicloEsterilizacion',
+        'cicloEsterilizacion.orden',
+        'cicloEsterilizacion.orden.cotizacion',
+        'cicloEsterilizacion.orden.cotizacion.cliente',
+      ],
     });
     if (!certificado) {
       throw new NotFoundException('No se encontró un certificado válido');
     }
     const fechaEmision = certificado.aprobado_at ?? certificado.created_at;
     const document = certificado.snapshot_datos?.documento as
-      Record<string, unknown> | undefined;
+      | Record<string, unknown>
+      | undefined;
     const vencimiento =
       certificado.fecha_vencimiento ?? document?.fecha_vencimiento ?? null;
+    const hoy = new Date().toISOString().slice(0, 10);
+    let estadoCalculado = certificado.estado;
+    if (certificado.estado === 'Anulado') {
+      estadoCalculado = 'Anulado';
+    } else if (vencimiento && vencimiento < hoy) {
+      estadoCalculado = 'Vencido';
+    } else if (certificado.estado === 'Aprobado') {
+      estadoCalculado = 'Vigente';
+    }
+    const cliente = certificado.cicloEsterilizacion?.orden?.cotizacion?.cliente;
     return {
-      valido: true,
+      valido: estadoCalculado === 'Vigente',
       equipo: certificado.equipo,
       fecha_emision: fechaEmision,
       fecha_vencimiento: vencimiento,
-      estado: certificado.estado,
+      estado: estadoCalculado,
+      cliente: cliente
+        ? { razon_social: cliente.razon_social }
+        : null,
+      consecutivo: certificado.consecutivo,
     };
   }
 }

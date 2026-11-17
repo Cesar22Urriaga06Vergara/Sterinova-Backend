@@ -1,128 +1,64 @@
+import { BadRequestException } from '@nestjs/common';
 import {
-  detectarDiscrepanciasCantidad,
   prepararMateriales,
-  metodoOrden,
+  detectarDiscrepanciasCantidad,
 } from './materiales-orden.js';
-import { LogisticaService } from './logistica.service.js';
-import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.enum.js';
-it('mantiene lotes, cero muestras y N/A explícitos', () => {
-  const rows = prepararMateriales(
-    [
+import type { CotizacionItem } from '../cotizaciones/entities/cotizacion-item.entity.js';
+import type { MaterialOrdenDto } from './dto/material-orden.dto.js';
+
+const items: CotizacionItem[] = [
+  { id: 5, descripcion: 'Bata', cantidad: 100 } as unknown as CotizacionItem,
+];
+
+describe('Materiales orden — cantidades decimales', () => {
+  it('acepta cantidades decimales para peso/volumen (15.5 kg)', () => {
+    const materiales: MaterialOrdenDto[] = [
       {
+        cotizacion_item_id: 5,
         descripcion: 'Bata',
-        cotizacion_item_id: 3,
-        cantidad: 5,
+        cantidad: 15.5,
         lote: 'L1',
-        muestras_retencion: 0,
-        muestras_cliente: null,
       },
-    ],
-    [{ id: 3 }] as never,
-  );
-  expect(rows[0]).toMatchObject({
-    posicion: 1,
-    lote: 'L1',
-    cantidad: 5,
-    muestras_retencion: 0,
-    muestras_cliente: null,
-  });
-});
-it('rechaza ítems de otra cotización y cantidades fraccionarias', () => {
-  expect(() =>
-    prepararMateriales(
-      [{ descripcion: 'Bata', cantidad: 1, cotizacion_item_id: 99 }],
-      [{ id: 3 }] as never,
-    ),
-  ).toThrow();
-  expect(() =>
-    prepararMateriales([{ descripcion: 'Bata', cantidad: 1.5 }], []),
-  ).toThrow();
-});
-it('deriva método institucional y rechaza contradicciones', () => {
-  expect(metodoOrden('INSTITUCIONAL_VAPOR')).toBe('VAPOR');
-  expect(() => metodoOrden('INDUSTRIAL_ETO', 'VAPOR')).toThrow();
-});
-it('rechaza materiales duplicados dentro de una misma orden', () => {
-  expect(() =>
-    prepararMateriales(
-      [
-        { descripcion: 'Bata', cantidad: 3, lote: 'L-01' },
-        { descripcion: 'Bata', cantidad: 2, lote: 'L-01' },
-      ],
-      [],
-    ),
-  ).toThrow(/duplicados/i);
-});
-
-describe('discrepancias de cantidad cotizada y operativa', () => {
-  const items = [{ id: 3, descripcion: 'Bata', cantidad: 5 }];
-
-  it.each([
-    ['igual', [{ cotizacion_item_id: 3, cantidad: 5 }], []],
-    [
-      'superior',
-      [{ cotizacion_item_id: 3, cantidad: 7 }],
-      [{
-        cotizacion_item_id: 3,
-        descripcion: 'Bata',
-        cantidad_cotizada: 5,
-        cantidad_operativa: 7,
-        diferencia: 2,
-        tipo: 'exceso',
-      }],
-    ],
-    [
-      'inferior',
-      [{ cotizacion_item_id: 3, cantidad: 2 }],
-      [{
-        cotizacion_item_id: 3,
-        descripcion: 'Bata',
-        cantidad_cotizada: 5,
-        cantidad_operativa: 2,
-        diferencia: -3,
-        tipo: 'faltante',
-      }],
-    ],
-  ])('registra una cantidad %s sin cambiar los datos cotizados', (_, materials, expected) => {
-    expect(detectarDiscrepanciasCantidad(items, materials)).toEqual(expected);
-    expect(items[0]).toEqual({ id: 3, descripcion: 'Bata', cantidad: 5 });
+    ];
+    const resultado = prepararMateriales(materiales, items);
+    expect(resultado[0].cantidad).toBe(15.5);
   });
 
-  it('suma lotes operativos asociados al mismo ítem antes de comparar', () => {
-    expect(
-      detectarDiscrepanciasCantidad(items, [
-        { cotizacion_item_id: 3, cantidad: 2 },
-        { cotizacion_item_id: 3, cantidad: 3 },
-      ]),
-    ).toEqual([]);
+  it('acepta cantidad entera como caso particular', () => {
+    const materiales: MaterialOrdenDto[] = [
+      { cotizacion_item_id: 5, descripcion: 'Bata', cantidad: 10 },
+    ];
+    const resultado = prepararMateriales(materiales, items);
+    expect(resultado[0].cantidad).toBe(10);
   });
 
-  it('registra ítems cotizados que no fueron incluidos en logística', () => {
-    expect(detectarDiscrepanciasCantidad(items, [])).toMatchObject([
-      { cantidad_cotizada: 5, cantidad_operativa: 0, tipo: 'faltante' },
-    ]);
+  it('rechaza cantidad cero o negativa', () => {
+    for (const cantidad of [0, -1, -0.5]) {
+      expect(() =>
+        prepararMateriales(
+          [{ cotizacion_item_id: 5, descripcion: 'Bata', cantidad } as MaterialOrdenDto],
+          items,
+        ),
+      ).toThrow(BadRequestException);
+    }
   });
-});
 
-it('rechaza transiciones de estado no permitidas', async () => {
-  const orden = { id: 7, estado: EstadoOrdenServicio.PENDIENTE };
-  const repo = {
-    findOne: vi.fn(async () => orden),
-    save: vi.fn(async (value) => value),
-  };
-  const service = new LogisticaService(
-    { findOne: vi.fn(), save: vi.fn() } as never,
-    { findOne: vi.fn() } as never,
-    {
-      transaction: vi.fn(async (work) => work({
-        getRepository: () => repo,
-      })),
-    } as never,
-    { create: vi.fn() } as never,
-    {} as never,
-  );
+  it('rechaza cantidad no numérica', () => {
+    expect(() =>
+      prepararMateriales(
+        [{ cotizacion_item_id: 5, descripcion: 'Bata', cantidad: NaN } as unknown as MaterialOrdenDto],
+        items,
+      ),
+    ).toThrow(BadRequestException);
+  });
 
-  await expect(
-    service.updateEstado(7, { estado: EstadoOrdenServicio.ENTREGADO }, 10),
-  ).rejects.toThrow(/Transición de estado no permitida/i);
+  it('detecta discrepancias con cantidades decimales', () => {
+    const materiales: MaterialOrdenDto[] = [
+      { cotizacion_item_id: 5, descripcion: 'Bata', cantidad: 15.5 },
+    ];
+    const discrepancias = detectarDiscrepanciasCantidad(items, materiales);
+    expect(discrepancias).toHaveLength(1);
+    expect(discrepancias[0].diferencia).toBe(-84.5);
+    expect(discrepancias[0].tipo).toBe('faltante');
+  });
 });

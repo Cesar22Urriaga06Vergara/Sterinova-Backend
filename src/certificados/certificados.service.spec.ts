@@ -96,8 +96,15 @@ describe('CertificadosService', () => {
     const certificateRepository = {
       findOne: vi.fn(async () => ({
         equipo: 'E03', estado: 'Aprobado', aprobado_at: new Date('2026-11-01T12:00:00Z'),
-        cliente: { razon_social: 'Confidencial S.A.', nit: '900123456' },
-        cicloEsterilizacion: { metodo: 'ETO' },
+        consecutivo: 'CE-0000042',
+        cicloEsterilizacion: {
+          metodo: 'ETO',
+          orden: {
+            cotizacion: {
+              cliente: { razon_social: 'Confidencial S.A.', nit: '900123456' },
+            },
+          },
+        },
       })),
     };
     const service = new CertificadosService(certificateRepository as never, {} as never, {} as never, {} as never);
@@ -109,9 +116,12 @@ describe('CertificadosService', () => {
       equipo: 'E03',
       fecha_emision: new Date('2026-11-01T12:00:00Z'),
       fecha_vencimiento: null,
-      estado: 'Aprobado',
+      estado: 'Vigente',
+      cliente: { razon_social: 'Confidencial S.A.' },
+      consecutivo: 'CE-0000042',
     });
-    expect(JSON.stringify(result)).not.toMatch(/Confidencial|900123456|ETO/);
+    // Datos sensibles (nit, método) no se exponen por QR.
+    expect(JSON.stringify(result)).not.toMatch(/900123456|ETO/);
   });
 
   it('does not persist a certificate if PDF rendering times out', async () => {

@@ -23,6 +23,10 @@ import { RbacScope, RbacScopeClosure } from '../rbac/entities/scope.entity.js';
 import { RbacRole, RbacPermission, RbacRolePermission } from '../rbac/entities/role.entity.js';
 import { RbacUserRoleAssignment, RbacPlatformOwner } from '../rbac/entities/user-role-assignment.entity.js';
 import { Producto } from '../productos/entities/producto.entity.js';
+import { DocumentoEmitido } from '../logistica/entities/documento-emitido.entity.js';
+import { DocumentoEvento } from '../logistica/entities/documento-evento.entity.js';
+import { RecepcionItem } from '../logistica/entities/recepcion-item.entity.js';
+import { RecepcionLogistica } from '../logistica/entities/recepcion-logistica.entity.js';
 
 export const STERINOVA_ENTITIES = [
   OrdenServicioMaterial,
@@ -55,4 +59,8 @@ export const STERINOVA_ENTITIES = [
   RbacUserRoleAssignment,
   RbacPlatformOwner,
   Producto,
+  DocumentoEmitido,
+  DocumentoEvento,
+  RecepcionLogistica,
+  RecepcionItem,
 ];

@@ -29,7 +29,7 @@ class MaterialProcesadoDto {
 
   @ApiProperty({ type: Number, minimum: 0 })
   @Type(() => Number)
-  @IsInt()
+  @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0)
   @Max(4294967295)
   cantidad: number;

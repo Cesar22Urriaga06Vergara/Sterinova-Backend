@@ -20,7 +20,17 @@ import {
   CicloEsterilizacion,
   EstadoCicloEsterilizacion,
 } from './entities/ciclo-esterilizacion.entity.js';
+import { CicloMaterialProcesado } from './entities/ciclo-material-procesado.entity.js';
 import { CreateCicloDto } from './dto/create-ciclo.dto.js';
+import {
+  CICLO_OPERATIVO,
+  COTIZACION_CON_CLIENTE,
+  MATERIAL_OPERATIVO,
+  ORDEN_CON_COTIZACION,
+  ORDEN_OPERATIVA,
+  PROTOCOLO_OPERATIVO,
+  USUARIO_OPERATIVO,
+} from '../common/proyeccion-operativa.js';
 
 @Injectable()
 export class PlantaService {
@@ -29,7 +39,17 @@ export class PlantaService {
   findOrdenesEnPlanta(access?: PermissionContext): Promise<OrdenServicio[]> {
     return this.dataSource.getRepository(OrdenServicio).find({
       where: access ? resourceWhere<OrdenServicio>(access, {estado: EstadoOrdenServicio.EN_PLANTA}) : { estado: EstadoOrdenServicio.EN_PLANTA },
-      relations: ['cotizacion', 'cotizacion.cliente', 'materiales'],
+      relations: {
+        cotizacion: { cliente: true },
+        materiales: true,
+      },
+      select: {
+        ...ORDEN_OPERATIVA,
+        cotizacion: COTIZACION_CON_CLIENTE,
+        materiales: MATERIAL_OPERATIVO,
+      },
+      // Quote items are eager and carry unit prices.
+      loadEagerRelations: false,
       order: { id: 'DESC' },
     });
   }
@@ -37,14 +57,18 @@ export class PlantaService {
   findCiclos(access?: PermissionContext): Promise<CicloEsterilizacion[]> {
     return this.dataSource.getRepository(CicloEsterilizacion).find({
       ...(access ? {where: resourceWhere<CicloEsterilizacion>(access, {}, 'operador_id')} : {}),
-      relations: [
-        'orden',
-        'orden.cotizacion',
-        'orden.cotizacion.cliente',
-        'operador',
-        'orden.materiales',
-        'protocolo_version',
-      ],
+      relations: {
+        orden: { cotizacion: { cliente: true }, materiales: true },
+        operador: true,
+        protocolo_version: true,
+      },
+      select: {
+        ...CICLO_OPERATIVO,
+        orden: ORDEN_CON_COTIZACION,
+        operador: USUARIO_OPERATIVO,
+        protocolo_version: PROTOCOLO_OPERATIVO,
+      },
+      loadEagerRelations: false,
       order: { id: 'DESC' },
     });
   }
@@ -139,7 +163,7 @@ export class PlantaService {
       if (
         cantidadesProcesadas.some(
           ({ cantidad }) =>
-            !Number.isSafeInteger(cantidad) ||
+            !Number.isFinite(cantidad) ||
             cantidad < 0 ||
             cantidad > 4294967295,
         )
@@ -193,6 +217,42 @@ export class PlantaService {
         throw new BadRequestException(
           'La presion negativa solo corresponde a EtO',
         );
+      // Rastreo del acumulado por material de orden: una orden puede
+      // distribuirse en varios ciclos mientras quede cantidad pendiente.
+      const ciclosPrevios = await manager
+        .getRepository(CicloEsterilizacion)
+        .find({ where: { orden_id: orden.id }, select: ['id'] });
+      const idsCiclosPrevios = ciclosPrevios.map((c) => c.id);
+      const acumuladoPorMaterial = new Map<number, number>();
+      if (idsCiclosPrevios.length) {
+        const filasAcumulado = await manager.query(
+          `SELECT orden_servicio_material_id AS material_id,
+                  SUM(cantidad_procesada) AS cantidad_procesada
+             FROM ciclos_materiales_procesados
+            WHERE ciclo_id IN (?)
+            GROUP BY orden_servicio_material_id`,
+          [idsCiclosPrevios],
+        );
+        for (const fila of filasAcumulado as Array<{
+          material_id: number;
+          cantidad_procesada: string;
+        }>) {
+          acumuladoPorMaterial.set(
+            fila.material_id,
+            Number(fila.cantidad_procesada),
+          );
+        }
+      }
+      for (const { material_id, cantidad } of cantidadesProcesadas) {
+        const recibido = materialesPorId.get(material_id)?.cantidad ?? 0;
+        const pendiente =
+          recibido - (acumuladoPorMaterial.get(material_id) ?? 0);
+        if (cantidad > pendiente) {
+          throw new BadRequestException(
+            `No queda cantidad pendiente para el material #${material_id} (recibido ${recibido}, pendiente ${pendiente})`,
+          );
+        }
+      }
       const { materiales_procesados: _, ...cicloDto } = dto;
       const ciclo = ciclosRepository.create({
         ...cicloDto,
@@ -211,7 +271,27 @@ export class PlantaService {
       });
       const saved = await ciclosRepository.save(ciclo);
 
-      orden.estado = EstadoOrdenServicio.PROCESADO;
+      // Registra el acumulado procesado por material de orden para el ciclo.
+      await manager
+        .getRepository(CicloMaterialProcesado)
+        .insert(
+          cantidadesProcesadas.map(({ material_id, cantidad }) => ({
+            ciclo_id: saved.id,
+            orden_servicio_material_id: material_id,
+            cantidad_procesada: cantidad,
+          })),
+        );
+      // La orden se cierra solo cuando todos sus materiales están completos.
+      const completo = materiales.every((material) => {
+        const previo = acumuladoPorMaterial.get(material.id) ?? 0;
+        const nuevo = cantidadesProcesadas.find(
+          (m) => m.material_id === material.id,
+        )?.cantidad ?? 0;
+        return previo + nuevo >= material.cantidad;
+      });
+      orden.estado = completo
+        ? EstadoOrdenServicio.PROCESADO
+        : EstadoOrdenServicio.EN_PLANTA;
       await ordenesRepository.save(orden);
       const eventosRepository = manager.getRepository(OrdenServicioEvento);
       await eventosRepository.save(
@@ -236,14 +316,18 @@ export class PlantaService {
 
       const result = await ciclosRepository.findOne({
         where: { id: saved.id },
-        relations: [
-          'orden',
-          'orden.cotizacion',
-          'orden.cotizacion.cliente',
-          'operador',
-          'orden.materiales',
-          'protocolo_version',
-        ],
+        relations: {
+          orden: { cotizacion: { cliente: true }, materiales: true },
+          operador: true,
+          protocolo_version: true,
+        },
+        select: {
+          ...CICLO_OPERATIVO,
+          orden: ORDEN_CON_COTIZACION,
+          operador: USUARIO_OPERATIVO,
+          protocolo_version: PROTOCOLO_OPERATIVO,
+        },
+        loadEagerRelations: false,
       });
       if (!result) {
         throw new NotFoundException(`Ciclo #${saved.id} no encontrado`);

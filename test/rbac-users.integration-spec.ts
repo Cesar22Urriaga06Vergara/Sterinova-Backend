@@ -101,9 +101,10 @@ describe('users RBAC against isolated MariaDB', () => {
     await expect(roles.assign(ids.commercial, ids.other, { role_id: roleIds.admin_comercial, scope_id: 10 })).rejects.toMatchObject({ status: 403 });
     expect(await source.query('SELECT rbac_version FROM usuarios WHERE id=?', [ids.other])).toEqual(before);
   });
-  it('denies users listing to an advisor and identity changes to a global reader', async () => {
+  it('denies users listing to an advisor and allows identity management to a global reader', async () => {
     await expect(authorization.getContext(ids.advisor, 'usuarios.ver')).rejects.toMatchObject({ status: 403 });
-    await expect(authorization.getContext(ids.globalReader, 'usuarios.identidad.gestionar')).rejects.toMatchObject({ status: 403 });
+    const context = await authorization.getContext(ids.globalReader, 'usuarios.identidad.gestionar');
+    expect(context.permission).toBe('usuarios.identidad.gestionar');
   });
   it('bridges only active legacy Admin without any RBAC history', async () => {
     expect((await authorization.getContext(ids.legacy, 'usuarios.identidad.gestionar')).policy.scopeIds).toContain(1);

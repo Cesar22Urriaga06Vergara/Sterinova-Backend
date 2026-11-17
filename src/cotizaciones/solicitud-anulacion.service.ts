@@ -8,11 +8,16 @@ import {
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { RbacAuthorizationService } from '../rbac/rbac-authorization.service.js';
+import { AuditoriaService } from '../auditoria/auditoria.service.js';
+import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
 import {
   SolicitudAnulacion,
   EstadoSolicitudAnulacion,
 } from './entities/solicitud-anulacion.entity.js';
 import { Cotizacion } from './entities/cotizacion.entity.js';
+import { EstadoCotizacion } from './entities/estado-cotizacion.enum.js';
+import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
+import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.enum.js';
 import { canAccessResource } from '../rbac/authorization-policy.js';
 
 @Injectable()
@@ -22,6 +27,7 @@ export class SolicitudAnulacionService {
     private readonly rbac: RbacAuthorizationService,
     @InjectRepository(SolicitudAnulacion)
     private readonly solicitudes: Repository<SolicitudAnulacion>,
+    private readonly auditoria: AuditoriaService,
   ) {}
 
   async crearSolicitud(
@@ -136,8 +142,45 @@ export class SolicitudAnulacionService {
       }
       if (estado === EstadoSolicitudAnulacion.APROBADA) {
         this.assertAnulable(quote);
-        quote.estado = 'ANULADA';
+        const estadoAnterior = quote.estado;
+        // Una cotización con órdenes de servicio activas (no canceladas)
+        // no puede anularse: habría que cancelar las órdenes primero
+        // (reglas-maestras M3 resp. 36; M4 resp. 56/57).
+        const ordenesActivas = await manager
+          .getRepository(OrdenServicio)
+          .find({
+            where: {
+              cotizacion_id: quote.id,
+              estado: In([
+                EstadoOrdenServicio.PENDIENTE,
+                EstadoOrdenServicio.EN_RUTA,
+                EstadoOrdenServicio.RECOGIDO,
+                EstadoOrdenServicio.EN_PLANTA,
+                EstadoOrdenServicio.PROCESADO,
+                EstadoOrdenServicio.ENTREGADO,
+              ]),
+            },
+          });
+        if (ordenesActivas.length) {
+          throw new ConflictException(
+            'No se puede anular una cotización con órdenes de servicio activas; cancele las órdenes primero',
+          );
+        }
+        quote.estado = EstadoCotizacion.ANULADA;
         await quotes.save(quote);
+        await this.auditoria.create({
+          scope_id: quote.scope_id ?? null,
+          usuario_id: aprobadorId,
+          entidad: 'cotizacion',
+          entidad_id: quote.id,
+          accion: AccionAuditoria.ANULAR,
+          detalle: {
+            motivo: request.motivo,
+            observacion_resolucion: observacion.trim(),
+            estado_anterior: estadoAnterior,
+            estado_nuevo: 'ANULADA',
+          },
+        });
       }
       request.estado = estado;
       request.aprobador_id = aprobadorId;

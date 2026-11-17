@@ -31,7 +31,7 @@ export class OrdenServicioMaterial {
   @Column({ type: 'varchar', length: 150, nullable: true }) referencia:
     string | null;
   @Column({ type: 'varchar', length: 150, nullable: true }) lote: string | null;
-  @Column({ type: 'int', unsigned: true }) cantidad: number;
+  @Column({ type: 'decimal', precision: 12, scale: 3, unsigned: true }) cantidad: number;
   @Column({ type: 'varchar', length: 255, nullable: true }) empaque:
     string | null;
   @Column({ type: 'int', unsigned: true, nullable: true }) muestras_retencion:

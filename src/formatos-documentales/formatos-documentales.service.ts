@@ -29,6 +29,7 @@ import { CreateFormatoVersionDto } from './dto/create-formato-version.dto.js';
 import { UpdateFormatoDocumentalDto } from './dto/update-formato-documental.dto.js';
 import { UpdateFormatoVersionDto } from './dto/update-formato-version.dto.js';
 import { UpdateFormatoVersionStateDto } from './dto/update-formato-version-state.dto.js';
+import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 
 type VersionEditorFields = {
   codigo?: string;
@@ -105,18 +106,37 @@ export class FormatosDocumentalesService {
     private readonly auditoriaService: AuditoriaService,
   ) {}
 
-  findAll(): Promise<FormatosDocumentales[]> {
-    return this.formatosRepository.find({
-      relations: { versiones: true },
-      order: { id: 'ASC' },
-    });
+  async findAll(context: PermissionContext): Promise<FormatosDocumentales[]> {
+    const qb = this.formatosRepository
+      .createQueryBuilder('f')
+      .leftJoinAndSelect('f.versiones', 'v')
+      .orderBy('f.id', 'ASC');
+    if (context.policy.scopeIds.length > 0) {
+      qb.where('v.scope_id IN (:...scopeIds)', {
+        scopeIds: context.policy.scopeIds,
+      });
+    } else {
+      qb.where('1 = 0');
+    }
+    return qb.getMany();
   }
 
-  async findOne(id: number): Promise<FormatosDocumentales> {
-    const format = await this.formatosRepository.findOne({
-      where: { id },
-      relations: { versiones: true },
-    });
+  async findOne(
+    id: number,
+    context: PermissionContext,
+  ): Promise<FormatosDocumentales> {
+    const qb = this.formatosRepository
+      .createQueryBuilder('f')
+      .leftJoinAndSelect('f.versiones', 'v')
+      .where('f.id = :id', { id });
+    if (context.policy.scopeIds.length > 0) {
+      qb.andWhere('v.scope_id IN (:...scopeIds)', {
+        scopeIds: context.policy.scopeIds,
+      });
+    } else {
+      qb.andWhere('1 = 0');
+    }
+    const format = await qb.getOne();
     if (!format) {
       throw new NotFoundException(`Formato documental #${id} no encontrado`);
     }
@@ -126,6 +146,7 @@ export class FormatosDocumentalesService {
   async create(
     dto: CreateFormatoDocumentalDto,
     usuarioId: number,
+    context: PermissionContext,
   ): Promise<FormatosDocumentales> {
     if (
       dto.tipo_documento === TipoDocumentoFormato.COTIZACION &&
@@ -202,6 +223,7 @@ export class FormatosDocumentalesService {
     id: number,
     dto: UpdateFormatoDocumentalDto,
     usuarioId: number,
+    context: PermissionContext,
   ): Promise<FormatosDocumentales> {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(FormatosDocumentales);
@@ -228,7 +250,11 @@ export class FormatosDocumentalesService {
     });
   }
 
-  async remove(id: number, usuarioId: number): Promise<{ message: string }> {
+  async remove(
+    id: number,
+    usuarioId: number,
+    context: PermissionContext,
+  ): Promise<{ message: string }> {
     return this.dataSource.transaction(async (manager) => {
       const formats = manager.getRepository(FormatosDocumentales);
       const versions = manager.getRepository(FormatoVersiones);
@@ -286,6 +312,7 @@ export class FormatosDocumentalesService {
     id: number,
     dto: CreateFormatoVersionDto,
     usuarioId: number,
+    context: PermissionContext,
   ): Promise<FormatoVersiones> {
     return this.dataSource.transaction(async (manager) => {
       const formats = manager.getRepository(FormatosDocumentales);
@@ -339,6 +366,7 @@ export class FormatosDocumentalesService {
     versionId: number,
     dto: UpdateFormatoVersionDto,
     usuarioId: number,
+    context: PermissionContext,
   ): Promise<FormatoVersiones> {
     return this.dataSource.transaction(async (manager) => {
       const formats = manager.getRepository(FormatosDocumentales);
@@ -397,6 +425,7 @@ export class FormatosDocumentalesService {
     versionId: number,
     dto: UpdateFormatoVersionStateDto,
     usuarioId: number,
+    context: PermissionContext,
   ): Promise<FormatoVersiones> {
     return this.dataSource.transaction(async (manager) => {
       const versions = manager.getRepository(FormatoVersiones);

@@ -9,6 +9,7 @@ import { OrdenServicioEvento } from '../ordenes-servicio/entities/orden-servicio
 import { CicloEsterilizacion } from './entities/ciclo-esterilizacion.entity.js';
 import { CreateCicloDto } from './dto/create-ciclo.dto.js';
 import { PlantaService } from './planta.service.js';
+import { CicloMaterialProcesado } from './entities/ciclo-material-procesado.entity.js';
 
 describe('PlantaService', () => {
   const createService = () => {
@@ -25,6 +26,10 @@ describe('PlantaService', () => {
       find: vi.fn(async () => [orden]),
       save: vi.fn(async (value: OrdenServicio) => value),
     };
+    const cicloMaterialesRepository = {
+      find: vi.fn(async () => []),
+      insert: vi.fn(async () => undefined),
+    };
     const usersRepository = {
       findOneBy: vi.fn(async () => operador),
       findOne: vi.fn(async () => operador),
@@ -36,22 +41,24 @@ describe('PlantaService', () => {
         return cicloGuardado;
       }),
       findOne: vi.fn(async () => cicloGuardado),
-      find: vi.fn(async () => [cicloGuardado]),
+      find: vi.fn(async () => []),
     };
     const eventosRepository = {
       create: vi.fn((value) => value),
       save: vi.fn(async (value) => value),
     };
     const manager = {
-      getRepository: vi.fn((entity: typeof OrdenServicio | typeof User | typeof CicloEsterilizacion | typeof OrdenServicioEvento) => {
+      getRepository: vi.fn((entity: typeof OrdenServicio | typeof User | typeof CicloEsterilizacion | typeof OrdenServicioEvento | typeof CicloMaterialProcesado) => {
         if (entity === OrdenServicio) return ordenesRepository;
         if (entity === User) return usersRepository;
         if (entity === Cotizacion) return { findOneByOrFail:async()=>({tipo_servicio:'INDUSTRIAL_ETO'}) };
         if (entity === OrdenServicioMaterial) return {find:async()=>[{id:1,cantidad:5}]};
         if (entity === ProtocoloEsterilizacionVersion) return {findOne:async()=>({id:1,metodo:'ETO',especificaciones_json:{filas:[]}})};
         if (entity === OrdenServicioEvento) return eventosRepository;
+        if (entity === CicloMaterialProcesado) return cicloMaterialesRepository;
         return ciclosRepository;
       }),
+      query: vi.fn(async () => []),
     };
     const dataSource = {
       getRepository: vi.fn((entity: typeof OrdenServicio | typeof CicloEsterilizacion) =>
@@ -70,11 +77,13 @@ describe('PlantaService', () => {
       ordenesRepository,
       ciclosRepository,
       eventosRepository,
+      cicloMaterialesRepository,
+      manager,
     };
   };
 
-  it('creates a cycle and changes the order to PROCESADO atomically', async () => {
-    const { service, orden, ordenesRepository, ciclosRepository, eventosRepository } =
+  it('creates a cycle and keeps the order EN_PLANTA while quantity remains pending', async () => {
+    const { service, orden, ordenesRepository, ciclosRepository, eventosRepository, cicloMaterialesRepository } =
       createService();
     const dto: CreateCicloDto = {
       orden_id: 21,
@@ -98,8 +107,15 @@ describe('PlantaService', () => {
     expect(ciclosRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({ orden_id: 21, operador_id: 8 }),
     );
-    expect(orden.estado).toBe(EstadoOrdenServicio.PROCESADO);
+    // 4 de 5 recibidos: queda pendiente, la orden no se cierra
+    expect(orden.estado).toBe(EstadoOrdenServicio.EN_PLANTA);
     expect(ordenesRepository.save).toHaveBeenCalledWith(orden);
+    // Se registra el acumulado por material de orden
+    expect(cicloMaterialesRepository.insert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ ciclo_id: 34, orden_servicio_material_id: 1, cantidad_procesada: 4 }),
+      ]),
+    );
     expect(eventosRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
         orden_id: 21,
@@ -113,6 +129,73 @@ describe('PlantaService', () => {
         },
       }),
     );
+  });
+
+  it('completes the order to PROCESADO when a second cycle consumes the pending quantity', async () => {
+    const { service, orden, ordenesRepository, ciclosRepository, manager, cicloMaterialesRepository } =
+      createService();
+    // El ciclo previo ya procesó 4 de 5 recibidos
+    manager.query = vi.fn(async () => [
+      { material_id: 1, cantidad_procesada: '4' },
+    ]);
+    ciclosRepository.find = vi.fn(async () => [{ id: 34 }]);
+
+    const dto: CreateCicloDto = {
+      orden_id: 21,
+      materiales_procesados: [{ material_id: 1, cantidad: 1 }],
+      equipo: 'CICLO 10M68-B',
+      fecha_esterilizacion:'2026-10-31',
+      metodo: 'ETO',
+      temperatura: 45,
+      humedad: 60,
+      presion: 1.2,
+      tiempo_exposicion: 120,
+      tiempo_aireacion: 30,
+      control_biologico: 'Negativo',
+      control_quimico: 'Cambio de color',
+    };
+
+    const result = await service.createCiclo(dto, 8);
+
+    expect(result.id).toBe(34);
+    expect(orden.estado).toBe(EstadoOrdenServicio.PROCESADO);
+    expect(ordenesRepository.save).toHaveBeenCalledWith(orden);
+    expect(cicloMaterialesRepository.insert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ cantidad_procesada: 1 }),
+      ]),
+    );
+  });
+
+  it('rejects a cycle when no quantity remains pending for any material', async () => {
+    const { service, manager, ciclosRepository } = createService();
+    // Ya se procesaron las 5 unidades recibidas (ciclo previo existe)
+    ciclosRepository.find = vi.fn(async () => [{ id: 34 }]);
+    manager.query = vi.fn(async () => [
+      { material_id: 1, cantidad_procesada: '5' },
+    ]);
+
+    await expect(
+      service.createCiclo(
+        {
+          orden_id: 21,
+          materiales_procesados: [{ material_id: 1, cantidad: 1 }],
+          equipo: 'CICLO 10M68-C',
+          fecha_esterilizacion:'2026-11-01',
+          metodo: 'ETO',
+          temperatura: 45,
+          humedad: 60,
+          presion: 1.2,
+          tiempo_exposicion: 120,
+          tiempo_aireacion: 30,
+          control_biologico: 'Negativo',
+          control_quimico: 'Cambio de color',
+        },
+        8,
+      ),
+    ).rejects.toThrow(/no queda cantidad pendiente/i);
+
+    expect(ciclosRepository.save).not.toHaveBeenCalled();
   });
 
   it('returns only orders currently in EN_PLANTA', async () => {
@@ -134,9 +217,52 @@ describe('PlantaService', () => {
 
     expect(ciclosRepository.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        relations: expect.arrayContaining(['orden', 'operador']),
+        relations: expect.objectContaining({
+          orden: expect.anything(),
+          operador: expect.anything(),
+        }),
       }),
     );
+  });
+
+  it('never selects commercial quote amounts for Planta operators', async () => {
+    const { service, ordenesRepository } = createService();
+
+    await service.findOrdenesEnPlanta();
+
+    const options = ordenesRepository.find.mock.calls[0][0];
+    const cotizacion = options.select.cotizacion;
+    expect(cotizacion.total).toBeUndefined();
+    expect(cotizacion.subtotal).toBeUndefined();
+    expect(cotizacion.iva).toBeUndefined();
+    expect(cotizacion.condiciones_comerciales).toBeUndefined();
+    expect(cotizacion.precio_incluye).toBeUndefined();
+    expect(cotizacion.precio_no_incluye).toBeUndefined();
+    expect(cotizacion.forma_pago).toBeUndefined();
+    expect(cotizacion.validez_oferta).toBeUndefined();
+    expect(cotizacion.snapshot_datos).toBeUndefined();
+    // Eager quote items carry unit prices; they must not be loaded.
+    expect(options.loadEagerRelations).toBe(false);
+    expect(cotizacion.id).toBe(true);
+    expect(cotizacion.consecutivo).toBe(true);
+    expect(cotizacion.cliente.razon_social).toBe(true);
+  });
+
+  it('never selects commercial quote amounts when listing cycles', async () => {
+    const { service, ciclosRepository } = createService();
+
+    await service.findCiclos();
+
+    const options = ciclosRepository.find.mock.calls[0][0];
+    const cotizacion = options.select.orden.cotizacion;
+    expect(cotizacion.total).toBeUndefined();
+    expect(cotizacion.subtotal).toBeUndefined();
+    expect(cotizacion.iva).toBeUndefined();
+    expect(cotizacion.condiciones_comerciales).toBeUndefined();
+    expect(options.loadEagerRelations).toBe(false);
+    expect(cotizacion.consecutivo).toBe(true);
+    expect(options.select.orden.materiales.cantidad).toBe(true);
+    expect(options.select.operador.nombre).toBe(true);
   });
 
   it('rejects cycle registration when the order is not in EN_PLANTA', async () => {

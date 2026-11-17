@@ -76,6 +76,7 @@ describe('format version editing', () => {
         version_label: '05.1',
       },
       42,
+      { userId: null, scopeIds: [], ownScopeIds: [] },
     );
 
     expect(version.configuracion_json).toMatchObject({
@@ -98,6 +99,7 @@ describe('format version editing', () => {
       format.id,
       { fecha_version: '2026-12-01', responsable: 'Calidad' },
       42,
+      { userId: null, scopeIds: [], ownScopeIds: [] },
     );
 
     expect(created).toMatchObject({

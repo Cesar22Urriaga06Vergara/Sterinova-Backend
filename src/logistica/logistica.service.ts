@@ -1,5 +1,6 @@
 import { resourceWhere, creationScope } from '../rbac/resource-access.js';
 import { CotizacionItem } from '../cotizaciones/entities/cotizacion-item.entity.js';
+import { EstadoCotizacion } from '../cotizaciones/entities/estado-cotizacion.enum.js';
 import {
   detectarDiscrepanciasCantidad,
   prepararMateriales,
@@ -22,7 +23,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, type EntityManager } from 'typeorm';
 import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
 import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.enum.js';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
@@ -39,6 +40,10 @@ import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 import { canAccessResource } from '../rbac/authorization-policy.js';
 import { FormatoResolverService } from '../formatos-documentales/formato-resolver.service.js';
 import { FormatoVersiones } from '../formatos-documentales/entities/formato-versiones.entity.js';
+import { DocumentoEmitido } from './entities/documento-emitido.entity.js';
+import { DocumentoEvento } from './entities/documento-evento.entity.js';
+import { CreateDocumentoEmitidoDto } from './dto/create-documento-emitido.dto.js';
+import { CreateDocumentoEventoDto } from './dto/documento-evento.dto.js';
 
 const EVENTO_POR_ESTADO: Partial<
   Record<EstadoOrdenServicio, TipoEventoOrden>
@@ -97,6 +102,10 @@ export class LogisticaService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly auditoriaService: AuditoriaService,
     private readonly formatoResolver: FormatoResolverService,
+    @InjectRepository(DocumentoEmitido)
+    private readonly documentosEmitidosRepository: Repository<DocumentoEmitido>,
+    @InjectRepository(DocumentoEvento)
+    private readonly documentosEventosRepository: Repository<DocumentoEvento>,
   ) {}
 
   async createOrden(
@@ -122,16 +131,14 @@ export class LogisticaService {
         lock: { mode: 'pessimistic_write' },
       });
       if (!cotizacion) throw new NotFoundException('Cotización no encontrada');
-      if (cotizacion.estado !== 'APROBADA') {
+      if (cotizacion.estado !== EstadoCotizacion.ACEPTADA_CLIENTE) {
         throw new BadRequestException(
-          'Solo se pueden generar órdenes desde cotizaciones APROBADAS',
+          'Solo se pueden generar órdenes desde cotizaciones ACEPTADA_CLIENTE (aceptadas por el cliente)',
         );
       }
-      if (
-        await orders.findOne({ where: { cotizacion_id: dto.cotizacion_id } })
-      ) {
-        throw new ConflictException(
-          'La cotización ya tiene una orden de servicio',
+      if (!dto.orden_compra_cliente?.trim()) {
+        throw new BadRequestException(
+          'La Orden de Compra del cliente es obligatoria para crear la orden',
         );
       }
       const [orderFormat, actaFormat] = await Promise.all([
@@ -186,6 +193,14 @@ export class LogisticaService {
         .getRepository(CotizacionItem)
         .find({ where: { cotizacion_id: dto.cotizacion_id } });
       const materiales = prepararMateriales(dto.materiales ?? [], items);
+      // One quote may serve several orders (sedes or partial deliveries), but
+      // the contracted quantity is never allocated twice (hoja de ruta D15).
+      await this.assertSaldoDisponible(
+        manager,
+        dto.cotizacion_id,
+        items,
+        materiales,
+      );
       const discrepancias = detectarDiscrepanciasCantidad(items, materiales);
       const savedOrder = await orders.save(
         orders.create({
@@ -202,6 +217,7 @@ export class LogisticaService {
           acta_consecutivo: `AS-${year}-${actaConsecutivo.numero}`,
           formato_orden_version_id: orderFormat.id,
           formato_acta_version_id: actaFormat.id,
+          orden_compra_cliente: dto.orden_compra_cliente.trim(),
           conductor_asignado: dto.conductor_asignado ?? null,
           vehiculo_placa: dto.vehiculo_placa ?? null,
           observaciones: dto.observaciones ?? null,
@@ -229,6 +245,55 @@ export class LogisticaService {
       return savedOrder;
     });
     return this.findOne(saved.id);
+  }
+
+  /**
+   * Quantities already assigned to other orders of the same quote. Cancelled
+   * orders release their quantities because they never entered the operation.
+   */
+  private async cantidadesAsignadas(
+    manager: EntityManager,
+    cotizacionId: number,
+  ): Promise<Map<number, number>> {
+    const rows = (await manager.query(
+      `SELECT m.cotizacion_item_id AS item_id, SUM(m.cantidad) AS cantidad
+         FROM ordenes_servicio_materiales m
+         INNER JOIN ordenes_servicio o ON o.id = m.orden_id
+        WHERE o.cotizacion_id = ? AND o.estado <> ?
+        GROUP BY m.cotizacion_item_id`,
+      [cotizacionId, EstadoOrdenServicio.CANCELADO],
+    )) as Array<{ item_id: number | string; cantidad: number | string }>;
+    return new Map(
+      (rows ?? []).map((row) => [Number(row.item_id), Number(row.cantidad)]),
+    );
+  }
+
+  /** The new order cannot allocate more than the pending contracted quantity. */
+  private async assertSaldoDisponible(
+    manager: EntityManager,
+    cotizacionId: number,
+    items: Array<{ id: number; cantidad: number; descripcion: string }>,
+    materiales: Array<{
+      cotizacion_item_id: number | null;
+      cantidad: number;
+      descripcion: string;
+    }>,
+  ): Promise<void> {
+    const asignadas = await this.cantidadesAsignadas(manager, cotizacionId);
+    for (const material of materiales) {
+      if (material.cotizacion_item_id == null) continue;
+      const item = items.find(
+        (candidate) => candidate.id === material.cotizacion_item_id,
+      );
+      if (!item) continue;
+      const cotizada = Number(item.cantidad);
+      const pendiente =
+        cotizada - (asignadas.get(material.cotizacion_item_id) ?? 0);
+      if (material.cantidad > pendiente)
+        throw new ConflictException(
+          `La cantidad de «${material.descripcion}» excede el saldo pendiente de la cotización`,
+        );
+    }
   }
 
   async updateMateriales(
@@ -568,14 +633,9 @@ export class LogisticaService {
       },
       cotizacion: {
         tipo_servicio: orden.cotizacion?.tipo_servicio,
-        subtotal: orden.cotizacion?.subtotal,
-        iva: orden.cotizacion?.iva,
-        total: orden.cotizacion?.total,
         items: (orden.cotizacion?.items ?? []).map((item) => ({
           id: item.id,
           cantidad: item.cantidad,
-          valor_unitario: item.valor_unitario,
-          valor_total: item.valor_total,
         })),
       },
       orden: {
@@ -585,6 +645,8 @@ export class LogisticaService {
         conductor_asignado: orden.conductor_asignado ?? null,
         vehiculo_placa: orden.vehiculo_placa ?? null,
         observaciones: orden.observaciones ?? null,
+        observaciones_recepcion: orden.observaciones_recepcion ?? null,
+        observaciones_cliente: orden.observaciones_cliente ?? null,
       },
       materiales: (orden.materiales ?? []).map((material) => ({
         id: material.id,
@@ -609,19 +671,184 @@ export class LogisticaService {
     };
   }
 
-  async findCotizacionesAprobadasSinOrden(access: PermissionContext): Promise<Cotizacion[]> {
+  /**
+   * Approved quotes that still have pending quantity to deliver. A quote can
+   * serve several orders (sedes or partial deliveries), so availability is
+   * derived from the pending balance, not from the existence of an order.
+   */
+  async findCotizacionesAprobadasConSaldo(
+    access: PermissionContext,
+  ): Promise<Cotizacion[]> {
     const aprobadas = await this.cotizacionesRepository.find({
-      where: resourceWhere<Cotizacion>(access, { estado: 'APROBADA' }),
+      where: resourceWhere<Cotizacion>(access, { estado: EstadoCotizacion.ACEPTADA_CLIENTE }),
       select: {id:true,consecutivo:true,tipo_servicio:true,estado:true,cliente_id:true},
       relations: ['cliente'],
       order: { id: 'DESC' },
     });
 
-    const ordenes = await this.ordenesRepository.find({
-      select: ['cotizacion_id'],
-    });
-    const usados = new Set(ordenes.map((o) => o.cotizacion_id));
+    const asignadas = await this.cantidadesAsignadasPorCotizacion();
 
-    return aprobadas.filter((c) => !usados.has(c.id));
+    return aprobadas.filter((cotizacion) =>
+      (cotizacion.items ?? []).some((item) => {
+        const pendiente =
+          Number(item.cantidad) - (asignadas.get(`${cotizacion.id}:${item.id}`) ?? 0);
+        return pendiente > 0;
+      }),
+    );
+  }
+
+  private async cantidadesAsignadasPorCotizacion(): Promise<Map<string, number>> {
+    const rows = (await this.dataSource.query(
+      `SELECT o.cotizacion_id AS cotizacion_id, m.cotizacion_item_id AS item_id, SUM(m.cantidad) AS cantidad
+         FROM ordenes_servicio_materiales m
+         INNER JOIN ordenes_servicio o ON o.id = m.orden_id
+        WHERE o.estado <> ?
+        GROUP BY o.cotizacion_id, m.cotizacion_item_id`,
+      [EstadoOrdenServicio.CANCELADO],
+    )) as Array<{
+      cotizacion_id: number | string;
+      item_id: number | string;
+      cantidad: number | string;
+    }>;
+    return new Map(
+      (rows ?? []).map((row) => [
+        `${row.cotizacion_id}:${row.item_id}`,
+        Number(row.cantidad),
+      ]),
+    );
+  }
+
+  async crearDocumentoEmitido(
+    dto: CreateDocumentoEmitidoDto,
+    usuarioId: number,
+    pdfHash?: string | null,
+  ): Promise<DocumentoEmitido> {
+    return this.dataSource.transaction(async (manager) => {
+      const documentosRepo = manager.getRepository(DocumentoEmitido);
+      const eventosRepo = manager.getRepository(DocumentoEvento);
+
+      const existente = await documentosRepo.findOne({
+        where: { tipo: dto.tipo, consecutivo: dto.consecutivo },
+      });
+      if (existente)
+        throw new ConflictException(
+          `Ya existe un documento emitido ${dto.tipo} con consecutivo ${dto.consecutivo}`,
+        );
+
+      const emitido = documentosRepo.create({
+        tipo: dto.tipo,
+        consecutivo: dto.consecutivo,
+        formato_version_id: dto.formato_version_id,
+        snapshot_json: dto.snapshot_json,
+        pdf_storage_key: dto.pdf_storage_key ?? null,
+        pdf_hash: pdfHash ?? null,
+        fecha_emision: new Date(dto.fecha_emision),
+        usuario_id: dto.usuario_id,
+        estado: dto.estado ?? 'EMITIDO',
+        orden_id: dto.orden_id ?? null,
+      });
+      const saved = await documentosRepo.save(emitido);
+
+      await eventosRepo.save(
+        eventosRepo.create({
+          documento_emitido_id: saved.id,
+          tipo_evento: 'EMISION',
+          usuario_id: dto.usuario_id,
+          fecha: new Date(dto.fecha_emision),
+          motivo: 'Emisión inicial del documento',
+          datos_json: { consecutivo: dto.consecutivo, tipo: dto.tipo },
+        }),
+      );
+
+      await this.auditoriaService.create(
+        {
+          usuario_id: dto.usuario_id,
+          entidad: 'documento_emitido',
+          entidad_id: saved.id,
+          accion: AccionAuditoria.CREAR,
+          detalle: {
+            tipo: dto.tipo,
+            consecutivo: dto.consecutivo,
+            estado: saved.estado,
+          },
+        },
+        manager,
+      );
+
+      return saved;
+    });
+  }
+
+  async findDocumentosEmitidosPorOrden(
+    ordenId: number,
+    access?: PermissionContext,
+  ): Promise<DocumentoEmitido[]> {
+    return this.documentosEmitidosRepository.find({
+      where: access
+        ? resourceWhere<DocumentoEmitido>(access, { orden_id: ordenId })
+        : { orden_id: ordenId },
+      order: { fecha_emision: 'DESC' },
+    });
+  }
+
+  async findDocumentoEmitidoByConsecutivo(
+    tipo: 'ORDEN' | 'ACTA',
+    consecutivo: string,
+  ): Promise<DocumentoEmitido | null> {
+    return this.documentosEmitidosRepository.findOne({
+      where: { tipo, consecutivo },
+    });
+  }
+
+  async registrarEventoDocumento(
+    documentoEmitidoId: number,
+    dto: CreateDocumentoEventoDto,
+  ): Promise<DocumentoEvento> {
+    const documento = await this.documentosEmitidosRepository.findOne({
+      where: { id: documentoEmitidoId },
+    });
+    if (!documento)
+      throw new NotFoundException(
+        `Documento emitido #${documentoEmitidoId} no encontrado`,
+      );
+
+    return this.dataSource.transaction(async (manager) => {
+      const eventosRepo = manager.getRepository(DocumentoEvento);
+
+      // Anulación o corrección invalida el documento anterior
+      if (dto.tipo_evento === 'ANULACION') {
+        documento.estado = 'ANULADO';
+      } else if (dto.tipo_evento === 'CORRECCION') {
+        documento.estado = 'CORREGIDO';
+      }
+      await manager.getRepository(DocumentoEmitido).save(documento);
+
+      const evento = eventosRepo.create({
+        documento_emitido_id: documentoEmitidoId,
+        tipo_evento: dto.tipo_evento,
+        usuario_id: dto.usuario_id,
+        fecha: new Date(dto.fecha),
+        motivo: dto.motivo ?? null,
+        datos_json: dto.datos_json ?? null,
+      });
+      const saved = await eventosRepo.save(evento);
+
+      await this.auditoriaService.create(
+        {
+          usuario_id: dto.usuario_id,
+          entidad: 'documento_evento',
+          entidad_id: saved.id,
+          accion: AccionAuditoria.CREAR,
+          detalle: {
+            documentoEmitidoId: documentoEmitidoId,
+            tipo_evento: dto.tipo_evento,
+            estado_nuevo: documento.estado,
+          },
+        },
+        manager,
+      );
+
+      return saved;
+    });
   }
 }

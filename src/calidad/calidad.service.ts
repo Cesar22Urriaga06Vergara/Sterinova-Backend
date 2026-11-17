@@ -65,7 +65,13 @@ export class CalidadService {
     return cycle;
   }
 
-  async aprobar(dto: ApproveCycleDto, aprobadorId: number, access?: PermissionContext) {
+  async aprobar(
+    dto: ApproveCycleDto,
+    aprobadorId: number,
+    access?: PermissionContext,
+    ip?: string,
+    cargo?: string,
+  ) {
     const passwordValida = await this.authService.verifyPassword(
       aprobadorId,
       dto.password,
@@ -127,6 +133,8 @@ export class CalidadService {
             detalle: {
               estado_anterior: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD,
               estado_nuevo: cycle.estado,
+              ...(ip ? { ip } : {}),
+              ...(cargo ? { cargo } : {}),
             },
           },
           manager,
@@ -166,7 +174,13 @@ export class CalidadService {
     }
   }
 
-  async rechazar(dto: RejectCycleDto, revisorId: number, access?: PermissionContext) {
+  async rechazar(
+    dto: RejectCycleDto,
+    revisorId: number,
+    access?: PermissionContext,
+    ip?: string,
+    cargo?: string,
+  ) {
     const motivo = dto.motivo.trim();
     if (!motivo) {
       await this.recordFailedAttempt({
@@ -238,6 +252,8 @@ export class CalidadService {
               estado_anterior: EstadoCicloEsterilizacion.PENDIENTE_CALIDAD,
               estado_nuevo: cycle.estado,
               evaluaciones: dto.evaluaciones ?? [],
+              ...(ip ? { ip } : {}),
+              ...(cargo ? { cargo } : {}),
             },
           },
           manager,

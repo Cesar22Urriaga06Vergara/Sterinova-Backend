@@ -1,4 +1,5 @@
 import { LogisticaService } from './logistica.service.js';
+import { EstadoCotizacion } from '../cotizaciones/entities/estado-cotizacion.enum.js';
 
 it('rechaza una OS agotada antes de guardar, dentro de la transacción', async () => {
   const orders = {
@@ -11,7 +12,7 @@ it('rechaza una OS agotada antes de guardar, dentro de la transacción', async (
     save: vi.fn(),
   };
   const quotes = {
-    findOne: vi.fn(async () => ({ id: 1, estado: 'APROBADA' })),
+    findOne: vi.fn(async () => ({ id: 1, estado: EstadoCotizacion.ACEPTADA_CLIENTE })),
   };
   const manager = {
     query: vi.fn(),
@@ -34,7 +35,7 @@ it('rechaza una OS agotada antes de guardar, dentro de la transacción', async (
     } as never,
   );
   await expect(
-    service.createOrden({ cotizacion_id: 1, fecha_programada: '2026-11-09' }),
+    service.createOrden({ cotizacion_id: 1, fecha_programada: '2026-11-09', orden_compra_cliente: 'OC-2026-0001' }),
   ).rejects.toMatchObject({ response: { code: 'CONSECUTIVO_AGOTADO' } });
   expect(source.transaction).toHaveBeenCalled();
   expect(orders.save).not.toHaveBeenCalled();
@@ -55,7 +56,7 @@ it('audits quantity discrepancies when creating a logistics order', async () => 
   };
   const quotes = {
     findOne: vi.fn(async () => ({
-      estado: 'APROBADA',
+      estado: EstadoCotizacion.ACEPTADA_CLIENTE,
       tipo_servicio: 'INDUSTRIAL_ETO',
       scope_id: 2,
       creador_id: 3,
@@ -93,8 +94,9 @@ it('audits quantity discrepancies when creating a logistics order', async () => 
     {
       cotizacion_id: 1,
       fecha_programada: '2026-11-09',
+      orden_compra_cliente: 'OC-2026-0001',
       materiales: [
-        { cotizacion_item_id: 5, descripcion: 'Bata', cantidad: 7 },
+        { cotizacion_item_id: 5, descripcion: 'Bata', cantidad: 3 },
       ],
     },
     42,
@@ -112,9 +114,9 @@ it('audits quantity discrepancies when creating a logistics order', async () => 
             cotizacion_item_id: 5,
             descripcion: 'Bata',
             cantidad_cotizada: 5,
-            cantidad_operativa: 7,
-            diferencia: 2,
-            tipo: 'exceso',
+            cantidad_operativa: 3,
+            diferencia: -2,
+            tipo: 'faltante',
           },
         ],
       },

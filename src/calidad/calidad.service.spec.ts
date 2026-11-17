@@ -79,6 +79,38 @@ describe('CalidadService', () => {
     }), expect.anything());
   });
 
+  it('registra IP y cargo del aprobador en la auditoría de aprobación', async () => {
+    const { service, auditoriaService } = createService();
+
+    await service.aprobar(
+      { ciclo_id: 12, password: 'calidad-pass' },
+      7,
+      undefined,
+      '203.0.113.45',
+      'Analista de Calidad',
+    );
+
+    const [entry] = auditoriaService.create.mock.calls[0];
+    expect(entry.detalle.ip).toBe('203.0.113.45');
+    expect(entry.detalle.cargo).toBe('Analista de Calidad');
+  });
+
+  it('registra IP y cargo del revisor en la auditoría de rechazo', async () => {
+    const { service, auditoriaService } = createService();
+
+    await service.rechazar(
+      { ciclo_id: 12, motivo: 'Revisar parámetro' },
+      7,
+      undefined,
+      '203.0.113.46',
+      'Analista de Calidad',
+    );
+
+    const [entry] = auditoriaService.create.mock.calls[0];
+    expect(entry.detalle.ip).toBe('203.0.113.46');
+    expect(entry.detalle.cargo).toBe('Analista de Calidad');
+  });
+
   it('rejects approval when the password confirmation is invalid', async () => {
     const { service, dataSource } = createService({ passwordValid: false });
 

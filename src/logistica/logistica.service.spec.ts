@@ -3,6 +3,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { LogisticaService } from './logistica.service.js';
+import { EstadoCotizacion } from '../cotizaciones/entities/estado-cotizacion.enum.js';
 import { TipoServicioCotizacion } from '../cotizaciones/entities/tipo-servicio.enum.js';
 import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.enum.js';
 import type { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
@@ -52,7 +53,7 @@ describe('LogisticaService PDF snapshot', () => {
           telefono: null,
           email: null,
         },
-        items: [{ id: 8, valor_unitario: 1000 }],
+        items: [{ id: 8, cantidad: 1 }],
       },
       materiales: [
         {
@@ -77,11 +78,11 @@ describe('LogisticaService PDF snapshot', () => {
     });
     expect(snapshot.cotizacion).toMatchObject({
       tipo_servicio: TipoServicioCotizacion.INDUSTRIAL_ETO,
-      subtotal: 1000,
-      iva: 190,
-      total: 1190,
-      items: [{ id: 8, valor_unitario: 1000 }],
+      items: [{ id: 8, cantidad: 1 }],
     });
+    expect(snapshot.cotizacion).not.toHaveProperty('subtotal');
+    expect(snapshot.cotizacion).not.toHaveProperty('iva');
+    expect(snapshot.cotizacion).not.toHaveProperty('total');
     expect(snapshot.materiales[0]).toMatchObject({
       descripcion: 'Bata',
       lote: null,
@@ -200,17 +201,25 @@ describe('LogisticaService PDF snapshot', () => {
 });
 
 describe('LogisticaService approved quotes', () => {
-  it('limits quotes without an order to the authorized scope', async () => {
+  it('limits quotes with pending quantity to the authorized scope', async () => {
     const quotesRepository = {
-      find: vi.fn().mockResolvedValue([{ id: 5, scope_id: 7 }]),
+      find: vi.fn().mockResolvedValue([
+        {
+          id: 5,
+          scope_id: 7,
+          estado: EstadoCotizacion.ACEPTADA_CLIENTE,
+          items: [{ id: 3, cantidad: 10 }],
+        },
+      ]),
     };
     const ordersRepository = {
       find: vi.fn().mockResolvedValue([]),
     };
+    const dataSource = { query: vi.fn().mockResolvedValue([]) };
     const scopedService = new LogisticaService(
       ordersRepository as never,
       quotesRepository as never,
-      {} as never,
+      dataSource as never,
       {} as never,
       {} as never,
     );
@@ -220,11 +229,11 @@ describe('LogisticaService approved quotes', () => {
       resourceScopeIds: [7],
     };
 
-    await scopedService.findCotizacionesAprobadasSinOrden(access);
+    await scopedService.findCotizacionesAprobadasConSaldo(access);
 
     const options = quotesRepository.find.mock.calls[0][0];
     expect(options.where).toHaveLength(1);
-    expect(options.where[0]).toMatchObject({ estado: 'APROBADA' });
+    expect(options.where[0]).toMatchObject({ estado: EstadoCotizacion.ACEPTADA_CLIENTE });
     expect(options.where[0].scope_id).toBeDefined();
   });
 });

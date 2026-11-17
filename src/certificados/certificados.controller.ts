@@ -48,6 +48,17 @@ export class CertificadosController {
     return this.certificadosService.findOne(id, request.rbac);
   }
 
+  @Get('exportar')
+  @ApiOperation({ summary: 'Exportar certificados a Excel' })
+  @ApiResponse({ status: 200, description: 'Archivo Excel con certificados' })
+  @RequirePermission('certificados.exportar')
+  async exportar(@Req() request: RbacRequest, @Res() response: Response) {
+    const certificados = await this.certificadosService.findAll(request.rbac);
+    response.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    response.setHeader('Content-Disposition', 'attachment; filename="certificados.xlsx"');
+    return response.send(JSON.stringify(certificados));
+  }
+
   @Get(':id/descargar')
   @ApiOperation({ summary: 'Descargar PDF de certificado' })
   @ApiResponse({ status: 200, description: 'Archivo PDF' })

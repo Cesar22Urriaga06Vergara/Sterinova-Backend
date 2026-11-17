@@ -1,3 +1,4 @@
+import type { RbacRequest } from '../rbac/authorization.guard.js';
 import { RequirePermission, ScopedPermissions } from '../rbac/require-permission.decorator.js';
 import {
   Body,
@@ -17,8 +18,6 @@ import { UpdateFormatoVersionDto } from './dto/update-formato-version.dto.js';
 import { UpdateFormatoVersionStateDto } from './dto/update-formato-version-state.dto.js';
 import { FormatosDocumentalesService } from './formatos-documentales.service.js';
 
-type AuthenticatedRequest = { user: { id: number } };
-
 @Controller('formatos-documentales')
 @ScopedPermissions()
 export class FormatosDocumentalesController {
@@ -28,23 +27,27 @@ export class FormatosDocumentalesController {
 
   @Get()
   @RequirePermission('formatos.ver')
-  findAll() {
-    return this.formatosDocumentalesService.findAll();
+  findAll(@Req() request: RbacRequest) {
+    return this.formatosDocumentalesService.findAll(request.rbac);
   }
 
   @Get(':id')
   @RequirePermission('formatos.ver')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.formatosDocumentalesService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @Req() request: RbacRequest) {
+    return this.formatosDocumentalesService.findOne(id, request.rbac);
   }
 
   @Post()
   @RequirePermission('formatos.crear')
   create(
     @Body() dto: CreateFormatoDocumentalDto,
-    @Req() request: AuthenticatedRequest,
+    @Req() request: RbacRequest,
   ) {
-    return this.formatosDocumentalesService.create(dto, request.user.id);
+    return this.formatosDocumentalesService.create(
+      dto,
+      request.user.id,
+      request.rbac,
+    );
   }
 
   @Put(':id')
@@ -52,18 +55,23 @@ export class FormatosDocumentalesController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateFormatoDocumentalDto,
-    @Req() request: AuthenticatedRequest,
+    @Req() request: RbacRequest,
   ) {
-    return this.formatosDocumentalesService.update(id, dto, request.user.id);
+    return this.formatosDocumentalesService.update(
+      id,
+      dto,
+      request.user.id,
+      request.rbac,
+    );
   }
 
   @Delete(':id')
   @RequirePermission('formatos.eliminar')
   remove(
     @Param('id', ParseIntPipe) id: number,
-    @Req() request: AuthenticatedRequest,
+    @Req() request: RbacRequest,
   ) {
-    return this.formatosDocumentalesService.remove(id, request.user.id);
+    return this.formatosDocumentalesService.remove(id, request.user.id, request.rbac);
   }
 
   @Post(':id/versiones')
@@ -71,12 +79,13 @@ export class FormatosDocumentalesController {
   createVersion(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateFormatoVersionDto,
-    @Req() request: AuthenticatedRequest,
+    @Req() request: RbacRequest,
   ) {
     return this.formatosDocumentalesService.createVersion(
       id,
       dto,
       request.user.id,
+      request.rbac,
     );
   }
 
@@ -86,13 +95,14 @@ export class FormatosDocumentalesController {
     @Param('id', ParseIntPipe) id: number,
     @Param('versionId', ParseIntPipe) versionId: number,
     @Body() dto: UpdateFormatoVersionDto,
-    @Req() request: AuthenticatedRequest,
+    @Req() request: RbacRequest,
   ) {
     return this.formatosDocumentalesService.updateVersion(
       id,
       versionId,
       dto,
       request.user.id,
+      request.rbac,
     );
   }
 
@@ -102,13 +112,15 @@ export class FormatosDocumentalesController {
     @Param('id', ParseIntPipe) id: number,
     @Param('versionId', ParseIntPipe) versionId: number,
     @Body() dto: UpdateFormatoVersionStateDto,
-    @Req() request: AuthenticatedRequest,
+    @Req() request: RbacRequest,
   ) {
     return this.formatosDocumentalesService.updateVersionState(
       id,
       versionId,
       dto,
       request.user.id,
+      request.rbac,
     );
   }
+
 }

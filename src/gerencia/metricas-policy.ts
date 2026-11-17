@@ -81,13 +81,18 @@ export function metricScopeIds(access: PermissionContext, requested?: number) {
     Number(access.policy.userId) < 1
   )
     throw new ForbiddenException('Falta permiso de consulta gerencial');
+  // If user has GLOBAL scope (id=1) in their policy, treat it as "all accessible areas"
+  const hasGlobal = access.policy.scopeIds.includes(1);
+  const resourceIds = hasGlobal ? access.policy.scopeIds.filter((id) => id !== 1) : access.resourceScopeIds;
   const ids = [
     ...new Set(
-      access.resourceScopeIds.filter((id) =>
-        access.policy.scopeIds.includes(id),
-      ),
+      resourceIds.filter((id) => access.policy.scopeIds.includes(id)),
     ),
   ];
+  // If requested is GLOBAL (1) and user has GLOBAL in policy, allow it (expand to all)
+  if (requested === 1 && hasGlobal) {
+    return ids;
+  }
   if (!ids.length || (requested !== undefined && !ids.includes(requested)))
     throw new ForbiddenException('Área no autorizada para consulta gerencial');
   return requested === undefined ? ids : [requested];

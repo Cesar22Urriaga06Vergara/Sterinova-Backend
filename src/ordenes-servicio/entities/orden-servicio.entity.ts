@@ -69,8 +69,12 @@ export class OrdenServicio {
   @Column({ type: 'int', nullable: true })
   formato_acta_version_id: number | null;
 
-  @Column({ type: 'int', unique: true })
+  // One quote may serve several orders (sedes or partial deliveries).
+  @Column({ type: 'int' })
   cotizacion_id: number;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  orden_compra_cliente: string | null;
 
   // Civil date (YYYY-MM-DD), not an instant; keep DATE and string semantics.
   @Column({ type: 'date' })
@@ -91,6 +95,12 @@ export class OrdenServicio {
 
   @Column({ type: 'text', nullable: true })
   observaciones: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  observaciones_recepcion: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  observaciones_cliente: string | null;
 
   @CreateDateColumn()
   created_at: Date;

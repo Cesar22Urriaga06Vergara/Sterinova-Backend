@@ -21,6 +21,8 @@ import { STERINOVA_ENTITIES } from './database/entities.js';
 import { PdfModule } from './pdf/pdf.module.js';
 import { FormatosDocumentalesModule } from './formatos-documentales/formatos-documentales.module.js';
 import { AuditoriaModule } from './auditoria/auditoria.module.js';
+import { AmbitoModule } from './rbac/ambitos/ambitos.module.js';
+import { RevocacionModule } from './rbac/revocacion/revocacion.module.js';
 import { SellosModule } from './sellos/sellos.module.js';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
@@ -100,6 +102,8 @@ import { GerenciaModule } from './gerencia/gerencia.module.js';
     PdfModule,
     FormatosDocumentalesModule,
     AuditoriaModule,
+    AmbitoModule,
+    RevocacionModule,
     SellosModule,
     HealthModule,
     RbacModule,

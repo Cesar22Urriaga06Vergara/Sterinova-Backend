@@ -119,7 +119,7 @@ function buildLogisticDocumentHtml(
     String(quote?.tipo_servicio ?? '').replace(/_/g, ' '),
   );
   const logoBase = process.env.PDF_RENDER_BASE_URL ??
-    process.env.FRONTEND_INTERNAL_URL ?? 'http://localhost:3000';
+    process.env.FRONTEND_INTERNAL_URL ?? 'http://localhost:3004';
   const logoUrl = escapeHtml(new URL('/Logo1.png', logoBase).toString());
   const certificationUrl = escapeHtml(
     new URL('/certificaciones-icontec-iqnet.jpeg', logoBase).toString(),
@@ -562,7 +562,7 @@ export class PdfGeneratorService implements OnModuleDestroy {
     const baseUrl =
       process.env.PDF_RENDER_BASE_URL ??
       process.env.FRONTEND_INTERNAL_URL ??
-      'http://localhost:3000';
+      'http://localhost:3004';
     return {
       type: documentType,
       url: new URL(`/internal/pdf/${documentType}`, baseUrl).toString(),

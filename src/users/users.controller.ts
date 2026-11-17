@@ -46,10 +46,11 @@ export class UsersController {
     await this.userRoles.authorizeIdentity(request.user.id, request.rbac);
     await this.userRoles.authorize(request.user.id);
     if (!dto.role_id || !dto.scope_id) throw new BadRequestException('Selecciona un perfil RBAC y su ámbito');
-    // An incomplete creation stays disabled and cannot grant legacy access.
-    const user = await this.usersService.create(dto, false);
-    await this.userRoles.assign(request.user.id, user.id, { role_id: dto.role_id, scope_id: dto.scope_id });
-    return this.usersService.setActive(user.id, true, request.user.id);
+    return this.usersService.createWithAssignment(
+      dto,
+      { role_id: dto.role_id, scope_id: dto.scope_id },
+      request.user.id,
+    );
   }
 
   @Patch(':id')

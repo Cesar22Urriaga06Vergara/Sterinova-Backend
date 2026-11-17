@@ -3,19 +3,31 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
 import { OrdenServicioEvento } from '../ordenes-servicio/entities/orden-servicio-evento.entity.js';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
+import { DocumentoEmitido } from './entities/documento-emitido.entity.js';
+import { DocumentoEvento } from './entities/documento-evento.entity.js';
+import { RecepcionLogistica } from './entities/recepcion-logistica.entity.js';
 import { LogisticaController } from './logistica.controller.js';
+import { RecepcionController } from './recepcion.controller.js';
 import { LogisticaService } from './logistica.service.js';
+import { RecepcionService } from './recepcion.service.js';
 import { AuditoriaModule } from '../auditoria/auditoria.module.js';
 import { FormatosDocumentalesModule } from '../formatos-documentales/formatos-documentales.module.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([OrdenServicio, OrdenServicioEvento, Cotizacion]),
+    TypeOrmModule.forFeature([
+      OrdenServicio,
+      OrdenServicioEvento,
+      Cotizacion,
+      DocumentoEmitido,
+      DocumentoEvento,
+      RecepcionLogistica,
+    ]),
     AuditoriaModule,
     FormatosDocumentalesModule,
   ],
-  controllers: [LogisticaController],
-  providers: [LogisticaService],
-  exports: [LogisticaService],
+  controllers: [LogisticaController, RecepcionController],
+  providers: [LogisticaService, RecepcionService],
+  exports: [LogisticaService, RecepcionService],
 })
 export class LogisticaModule {}

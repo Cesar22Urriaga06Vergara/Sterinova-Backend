@@ -23,10 +23,15 @@ export class EnableGeneralManager1794900000000 implements MigrationInterface {
     ];
     for (const [code, label] of capabilities) {
       await runner.query(
-        "INSERT INTO rbac_permissions(code,module,label,active,is_dynamic) VALUES(?,'gerencia',?,1,0)",
+        "INSERT INTO rbac_permissions(code,module,label,active,is_dynamic) VALUES(?,'gerencia',?,1,0) ON DUPLICATE KEY UPDATE active=1",
         [code, label],
       );
     }
+    // planta.protocolos.ver se siembra como permiso futuro inactivo; Gerencia
+    // lo necesita activo para consultar protocolos (matriz §9).
+    await runner.query(
+      "UPDATE rbac_permissions SET active=1 WHERE code='planta.protocolos.ver'",
+    );
     // The approved managerial role supervises and delegates; it does not approve
     // technical work or inherit platform privileges, including older grants.
     await runner.query('DELETE FROM rbac_role_permissions WHERE role_id=?', [
@@ -36,6 +41,8 @@ export class EnableGeneralManager1794900000000 implements MigrationInterface {
       'gerencia.metricas.ver',
       'gerencia.administradores.gestionar',
       'usuarios.ver',
+      'usuarios.identidad.gestionar',
+      'asignaciones.gestionar',
       'clientes.ver',
       'cotizaciones.ver',
       'logistica.cotizaciones_disponibles.ver',
@@ -48,11 +55,12 @@ export class EnableGeneralManager1794900000000 implements MigrationInterface {
       'certificados.descargar',
       'auditoria.ver',
       'formatos.ver',
+      'formatos.versiones.aprobar',
       'sellos.ver',
     ];
     for (const permission of permissions)
       await runner.query(
-        "INSERT INTO rbac_role_permissions(role_id,permission_code,resource_access,include_descendants) VALUES(?,?,'SCOPE',1)",
+        "INSERT INTO rbac_role_permissions(role_id,permission_code,resource_access,include_descendants) VALUES(?,?,'SCOPE',1) ON DUPLICATE KEY UPDATE resource_access='SCOPE',include_descendants=1",
         [role.id, permission],
       );
     await runner.query('UPDATE rbac_roles SET name=?,active=1 WHERE id=?', [
@@ -63,7 +71,7 @@ export class EnableGeneralManager1794900000000 implements MigrationInterface {
     // into a platform administrator or altering the other standard profiles.
     for (const [permission] of capabilities)
       await runner.query(
-        "INSERT INTO rbac_role_permissions(role_id,permission_code,resource_access,include_descendants) SELECT id,?,'SCOPE',1 FROM rbac_roles WHERE code='superadmin' AND kind='PLATFORM'",
+        "INSERT INTO rbac_role_permissions(role_id,permission_code,resource_access,include_descendants) SELECT id,?,'SCOPE',1 FROM rbac_roles WHERE code='superadmin' AND kind='PLATFORM' ON DUPLICATE KEY UPDATE resource_access='SCOPE',include_descendants=1",
         [permission],
       );
   }

@@ -17,6 +17,7 @@ export enum AccionAuditoria {
   EMITIR = 'emitir',
   PUBLICAR = 'publicar',
   ELIMINAR = 'eliminar',
+  ANULAR = 'anular',
   LOGIN_EXITOSO = 'login_exitoso',
   LOGIN_FALLIDO = 'login_fallido',
   APROBAR = 'aprobar',

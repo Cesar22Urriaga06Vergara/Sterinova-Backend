@@ -13,6 +13,7 @@ import {
 import { Cliente } from '../../clientes/entities/cliente.entity.js';
 import { CotizacionItem } from './cotizacion-item.entity.js';
 import { TipoServicioCotizacion } from './tipo-servicio.enum.js';
+import { EstadoCotizacion } from './estado-cotizacion.enum.js';
 import { FormatoVersiones } from '../../formatos-documentales/entities/formato-versiones.entity.js';
 import { User } from '../../users/entities/user.entity.js';
 import { RbacScope } from '../../rbac/entities/scope.entity.js';
@@ -80,8 +81,8 @@ export class Cotizacion {
   @Column({ type: 'int', default: 1 })
   version: number;
 
-  @Column({ default: 'Borrador' })
-  estado: string;
+  @Column({ type: 'enum', enum: EstadoCotizacion, default: EstadoCotizacion.BORRADOR })
+  estado: EstadoCotizacion;
 
   @Column({ type: 'decimal', precision: 14, scale: 2, default: 0 })
   subtotal: number;

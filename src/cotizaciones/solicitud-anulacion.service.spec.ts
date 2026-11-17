@@ -13,6 +13,7 @@ function fixture() {
     aprobador_id: null,
     fecha_resolucion: null,
     observacion_resolucion: null,
+    motivo: 'Error comercial',
   };
   const quotes = {
     findOne: vi.fn(async () => quote),
@@ -25,6 +26,11 @@ function fixture() {
     create: vi.fn((value) => value),
     save: vi.fn(async (value) => value),
   };
+  const ordenes = {
+    find: vi.fn(async () => []),
+    findOne: vi.fn(async () => null),
+  };
+  const auditoria = { create: vi.fn().mockResolvedValue(undefined) };
   const rbac = {
     getContext: vi.fn(async (userId: number, permission: string) => ({
       policy: {
@@ -38,7 +44,11 @@ function fixture() {
   const source = {
     transaction: vi.fn(async (work) =>
       work({
-        getRepository: (entity) => (entity === Cotizacion ? quotes : requests),
+        getRepository: (entity) => {
+          if (entity === Cotizacion) return quotes;
+          if (entity.name === 'OrdenServicio') return ordenes;
+          return requests;
+        },
       }),
     ),
   };
@@ -46,8 +56,9 @@ function fixture() {
     source as never,
     rbac as never,
     requests as never,
+    auditoria as never,
   );
-  return { service, quote, request, quotes, requests, rbac, source };
+  return { service, quote, request, quotes, requests, ordenes, auditoria, rbac, source };
 }
 
 describe('SolicitudAnulacionService', () => {
@@ -230,5 +241,54 @@ describe('SolicitudAnulacionService', () => {
       status: 403,
     });
     expect(requests.find).not.toHaveBeenCalled();
+  });
+
+  it('bloquea la anulación si la cotización tiene órdenes activas', async () => {
+    const { service, ordenes, auditoria } = fixture();
+    ordenes.find.mockResolvedValue([
+      { id: 101, estado: 'EN_PLANTA', cotizacion_id: 1 },
+    ]);
+    await expect(
+      service.resolverSolicitud(10, 8, Estado.APROBADA, 'Ya en ruta'),
+    ).rejects.toMatchObject({ status: 409 });
+    // El intento bloqueado no se anula ni se audita
+    expect(auditoria.create).not.toHaveBeenCalled();
+  });
+
+  it('aprueba y audita la anulación cuando no hay órdenes activas', async () => {
+    const { service, auditoria, ordenes, quotes, requests } = fixture();
+    ordenes.find.mockResolvedValue([]);
+    await expect(
+      service.resolverSolicitud(10, 8, Estado.APROBADA, 'Error comercial'),
+    ).resolves.toMatchObject({
+      estado: Estado.APROBADA,
+      aprobador_id: 8,
+      observacion_resolucion: 'Error comercial',
+    });
+    expect(quotes.save).toHaveBeenCalledWith(
+      expect.objectContaining({ estado: 'ANULADA' }),
+    );
+    expect(auditoria.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entidad: 'cotizacion',
+        entidad_id: 1,
+        accion: 'anular',
+        usuario_id: 8,
+        detalle: expect.objectContaining({
+          motivo: 'Error comercial',
+          observacion_resolucion: 'Error comercial',
+        }),
+      }),
+    );
+    expect(requests.save).toHaveBeenCalledOnce();
+  });
+
+  it('no audita ni cambia estado al rechazar', async () => {
+    const { service, auditoria, quotes } = fixture();
+    await expect(
+      service.resolverSolicitud(10, 8, Estado.RECHAZADA, 'No procede'),
+    ).resolves.toMatchObject({ estado: Estado.RECHAZADA });
+    expect(quotes.save).not.toHaveBeenCalled();
+    expect(auditoria.create).not.toHaveBeenCalled();
   });
 });

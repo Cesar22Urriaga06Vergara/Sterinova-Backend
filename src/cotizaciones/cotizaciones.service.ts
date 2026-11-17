@@ -12,6 +12,7 @@ import {
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import type { DataSource, Repository } from 'typeorm';
 import { Cotizacion } from './entities/cotizacion.entity.js';
+import { EstadoCotizacion } from './entities/estado-cotizacion.enum.js';
 import { CotizacionItem } from './entities/cotizacion-item.entity.js';
 import { Producto } from '../productos/entities/producto.entity.js';
 import { buildCotizacionItem } from './cotizacion-item-builder.js';
@@ -248,7 +249,7 @@ export class CotizacionesService {
         precio_incluye: dto.precio_incluye ?? null,
         precio_no_incluye: dto.precio_no_incluye ?? null,
         // Every quote starts as a draft; approval is a separate, audited step.
-        estado: 'Borrador',
+        estado: EstadoCotizacion.BORRADOR,
         subtotal,
         iva,
         iva_tasa: tax.tasa,
@@ -423,7 +424,7 @@ export class CotizacionesService {
       access,
       'cotizaciones.emitir',
     );
-    if (quote.estado === 'ANULADA')
+    if (quote.estado === EstadoCotizacion.ANULADA)
       throw new ConflictException('No se puede emitir una cotización anulada');
     if (quote.fecha_emision) return quote;
     this.assertInternallyApproved(quote);
@@ -439,7 +440,7 @@ export class CotizacionesService {
         });
         if (!current)
           throw new NotFoundException(`Cotización #${id} no encontrada`);
-        if (current.estado === 'ANULADA')
+        if (current.estado === EstadoCotizacion.ANULADA)
           throw new ConflictException('No se puede emitir una cotización anulada');
         if (current.fecha_emision) return;
         this.assertInternallyApproved(current);
@@ -509,7 +510,7 @@ export class CotizacionesService {
 
   private assertInternallyApproved(quote: Cotizacion): void {
     if (
-      (quote.estado ?? '').toString().toUpperCase() !== 'APROBADA' ||
+      quote.estado !== EstadoCotizacion.APROBADA ||
       quote.creador_id == null ||
       quote.aprobador_interno_id == null ||
       quote.aprobado_internamente_at == null ||
@@ -535,7 +536,7 @@ export class CotizacionesService {
       throw new BadRequestException('La versión indicada es inválida');
     if (
       quote.fecha_emision ||
-      (quote.estado ?? '').toString().toUpperCase() !== 'BORRADOR' ||
+      quote.estado !== EstadoCotizacion.BORRADOR ||
       quote.version !== version
     )
       throw new ConflictException(
@@ -590,7 +591,7 @@ export class CotizacionesService {
       );
       this.assertCommercialConditions(quote);
 
-      quote.estado = 'APROBADA';
+      quote.estado = EstadoCotizacion.APROBADA;
       quote.aprobador_interno_id = access.policy.userId!;
       quote.aprobado_internamente_at = new Date();
       quote.version += 1;
@@ -601,7 +602,7 @@ export class CotizacionesService {
   private assertImageEditable(quote: Cotizacion): void {
     if (
       quote.fecha_emision ||
-      quote.estado.toUpperCase() !== 'BORRADOR'
+      quote.estado !== EstadoCotizacion.BORRADOR
     )
       throw new ConflictException(
         'Solo se pueden modificar imágenes de cotizaciones en borrador',
@@ -746,7 +747,7 @@ export class CotizacionesService {
         throw new NotFoundException(`Cotización #${id} no encontrada`);
       if (
         cotizacion.fecha_emision ||
-        cotizacion.estado.toUpperCase() !== 'BORRADOR'
+        cotizacion.estado !== EstadoCotizacion.BORRADOR
       )
         throw new ConflictException(
           'Solo se pueden editar cotizaciones en BORRADOR sin fecha de emisión',

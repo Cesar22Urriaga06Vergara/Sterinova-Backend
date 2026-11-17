@@ -1,5 +1,5 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import type { Repository } from 'typeorm';
+import type { Repository, EntityManager, QueryRunner } from 'typeorm';
 import { User } from './entities/user.entity.js';
 import { UsersService } from './users.service.js';
 import { UserRole } from '../../test/fixtures/legacy-user-role.js';
@@ -31,9 +31,10 @@ describe('UsersService', () => {
     };
     const manager = {
       getRepository: vi.fn(() => repository),
+      query: vi.fn(async () => []),
     };
     const transaction = vi.fn(async (work: (manager: unknown) => unknown) => work(manager));
-    Object.assign(repository, { manager: { transaction } });
+    Object.assign(repository, { manager: { transaction, query: manager.query } });
     return { service: new UsersService(repository as unknown as Repository<User>), repository, transaction };
   };
 
@@ -88,5 +89,57 @@ describe('UsersService', () => {
     const { service } = createService();
 
     await expect(service.setActive(8, false, 1)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('protects platform owner from update by area admin', async () => {
+    const users = [{ id: 1, nombre: 'Owner', email: 'owner@sterinova.co', activo: true }];
+    const { service, repository } = createService(users);
+    repository.manager.query = vi.fn(async () => [{protected: 1}]); // platform owner
+
+    await expect(service.update(1, { nombre: 'Nuevo' })).rejects.toBeInstanceOf(ForbiddenException);
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it('protects user with GLOBAL scope assignment from update', async () => {
+    const users = [{ id: 2, nombre: 'GlobalAdmin', email: 'global@sterinova.co', activo: true }];
+    const { service, repository } = createService(users);
+    repository.manager.query = vi.fn(async () => [{protected: 1}]); // GLOBAL scope assignment
+
+    await expect(service.update(2, { cargo: 'Nuevo Cargo' })).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('protects platform owner from deactivation', async () => {
+    const { service, repository } = createService([{ id: 1, rol: UserRole.ADMIN, activo: true }]);
+    repository.manager.query = vi.fn(async () => [{protected: 1}]); // platform owner
+
+    await expect(service.setActive(1, false, 2)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('prevents self-modification of email (identity)', async () => {
+    const users = [{ id: 1, nombre: 'Ana', email: 'ana@sterinova.co', activo: true }];
+    const { service } = createService(users);
+
+    await expect(service.update(1, { email: 'nuevo@sterinova.co' })).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('creates a user atomically with role assignment and activation in one transaction', async () => {
+    const { service, repository, transaction } = createService();
+    repository.manager.query = vi.fn(async () => []);
+
+    const result = await service.createWithAssignment(
+      {
+        nombre: 'Nuevo',
+        apellido: 'Usuario',
+        email: 'nuevo@sterinova.co',
+        password: 'ClaveSegura123!',
+        cargo: 'Analista',
+        celular: '3001112233',
+      },
+      { role_id: 5, scope_id: 2 },
+      1, // actorId
+    );
+
+    expect(result).toMatchObject({ nombre: 'Nuevo', email: 'nuevo@sterinova.co', activo: true });
+    expect(transaction).toHaveBeenCalledTimes(1);
   });
 });

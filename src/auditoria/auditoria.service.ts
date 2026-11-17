@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, LessThanOrEqual, MoreThanOrEqual, type EntityManager, type Repository } from 'typeorm';
+import { Between, In, LessThanOrEqual, MoreThanOrEqual, type EntityManager, type Repository } from 'typeorm';
 import { Auditoria, AccionAuditoria } from './entities/auditoria.entity.js';
 
 export type CreateAuditoriaEntry = {
@@ -19,6 +19,7 @@ export type AuditoriaFilters = {
   usuario_id?: number;
   desde?: Date;
   hasta?: Date;
+  scopeIds?: readonly number[];
 };
 
 @Injectable()
@@ -45,6 +46,9 @@ export class AuditoriaService {
     const where: Record<string, unknown> = {};
     if (filters.entidad) where.entidad = filters.entidad;
     if (filters.usuario_id !== undefined) where.usuario_id = filters.usuario_id;
+    if (filters.scopeIds && !filters.scopeIds.includes(1)) {
+      where.scope_id = In(filters.scopeIds);
+    }
     if (filters.desde && filters.hasta) {
       where.created_at = Between(filters.desde, filters.hasta);
     } else if (filters.desde) {

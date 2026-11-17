@@ -30,6 +30,13 @@ import { AddProductCatalog1794700000000 } from './migrations/1794700000000-AddPr
 import { AddQuoteItemCatalogSnapshots1794800000000 } from './migrations/1794800000000-AddQuoteItemCatalogSnapshots.js';
 import { EnableGeneralManager1794900000000 } from './migrations/1794900000000-EnableGeneralManager.js';
 import { RevokeQuoteDeletion1795000000000 } from './migrations/1795000000000-RevokeQuoteDeletion.js';
+import { AllowMultipleOrdersPerQuote1795100000000 } from './migrations/1795100000000-AllowMultipleOrdersPerQuote.js';
+import { CicloMaterialesProcesados1795200000000 } from './migrations/1795200000000-CicloMaterialesProcesados.js';
+import { MaterialesCantidadDecimal1795300000000 } from './migrations/1795300000000-MaterialesCantidadDecimal.js';
+import { OrdenCompraCliente1795400000000 } from './migrations/1795400000000-OrdenCompraCliente.js';
+import { RecepcionLogistica1795500000000 } from './migrations/1795500000000-RecepcionLogistica.js';
+import { DocumentosEmitidos1795600000000 } from './migrations/1795600000000-DocumentosEmitidos.js';
+import { ObservacionesSeparadasOrden1795700000000 } from './migrations/1795700000000-ObservacionesSeparadasOrden.js';
 
 /** Shared by the CLI and isolated migration rehearsals; does not load environment variables. */
 export const DATABASE_MIGRATIONS = [
@@ -65,4 +72,11 @@ export const DATABASE_MIGRATIONS = [
   AddQuoteItemCatalogSnapshots1794800000000,
   EnableGeneralManager1794900000000,
   RevokeQuoteDeletion1795000000000,
+  AllowMultipleOrdersPerQuote1795100000000,
+  CicloMaterialesProcesados1795200000000,
+  MaterialesCantidadDecimal1795300000000,
+  OrdenCompraCliente1795400000000,
+  RecepcionLogistica1795500000000,
+  DocumentosEmitidos1795600000000,
+  ObservacionesSeparadasOrden1795700000000,
 ];
