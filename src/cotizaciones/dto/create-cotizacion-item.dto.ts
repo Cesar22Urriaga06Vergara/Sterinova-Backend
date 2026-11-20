@@ -27,7 +27,7 @@ export class CreateCotizacionItemDto {
   producto_id?: number;
 
   @ApiPropertyOptional({ enum: TipoItemCatalogo })
-  @ValidateIf((item) => item.producto_id === undefined)
+  @IsOptional()
   @IsEnum(TipoItemCatalogo)
   tipo_item?: TipoItemCatalogo;
 
@@ -67,7 +67,7 @@ export class CreateCotizacionItemDto {
   marca?: string;
 
   @ApiPropertyOptional({ example: 'Esterilización de instrumental' })
-  @ValidateIf((item) => item.producto_id === undefined)
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
@@ -89,7 +89,7 @@ export class CreateCotizacionItemDto {
   valor_unitario: number;
 
   @ApiPropertyOptional({ example: 'unidad', maxLength: 80 })
-  @ValidateIf((item) => item.producto_id === undefined)
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(80)

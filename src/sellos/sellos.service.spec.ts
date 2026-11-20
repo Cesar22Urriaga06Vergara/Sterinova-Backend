@@ -32,7 +32,7 @@ describe('SellosService', () => {
 
     const seal = await service.create(
       { nombre_norma: 'ISO 9001', numero_licencia: 'LIC-9001', orden: 2 },
-      { buffer: png } as UploadedImage,
+      { buffer: png, mimetype: 'image/png' } as UploadedImage,
     );
 
     expect(seal).toMatchObject({ nombre_norma: 'ISO 9001', numero_licencia: 'LIC-9001', activo: true, orden: 2 });
@@ -40,7 +40,7 @@ describe('SellosService', () => {
     expect(await readFile(path.join(temporaryDirectory, seal.imagen_key))).toEqual(png);
   });
 
-  it('rejects non-PNG/JPG bytes even when an upload claims an image mime type', async () => {
+  it('rejects unsupported bytes even when an upload claims an image mime type', async () => {
     const repository = { create: vi.fn(), save: vi.fn() };
     const service = new SellosService(repository as unknown as Repository<SelloCertificacion>);
 

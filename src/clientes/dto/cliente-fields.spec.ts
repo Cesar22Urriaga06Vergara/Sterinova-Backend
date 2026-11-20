@@ -44,4 +44,16 @@ describe('Cliente cargo and ciudad validation', () => {
       'ciudad',
     ]);
   });
+
+  it('accepts a boolean client status for the protected update endpoint', async () => {
+    const dto = plainToInstance(UpdateClienteDto, { activo: false });
+    expect(await validate(dto)).toHaveLength(0);
+  });
+
+  it('rejects non-boolean client status updates', async () => {
+    const dto = plainToInstance(UpdateClienteDto, { activo: 'false' });
+    expect((await validate(dto)).map(({ property }) => property)).toEqual([
+      'activo',
+    ]);
+  });
 });

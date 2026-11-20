@@ -21,7 +21,7 @@ const projectRoot = path.resolve(
 );
 
 function documentDateFromHeader(header: string, fallback: string): string {
-  const date = header.match(/\b(\d{2})-(\d{2})-(\d{4})\b/);
+  const date = header.replace(/\s+/g, '').match(/\b(\d{2})-(\d{2})-(\d{4})\b/);
   return date ? `${date[3]}-${date[2]}-${date[1]}` : fallback;
 }
 
@@ -61,11 +61,11 @@ export async function loadTemplateFromDocx(
 
   const source = readDocxTemplate(await readFile(sourcePath));
   const fullText = [...source.paragraphs, source.headersAndFooters].join('\n');
-  if (!fullText.includes(seed.codigo)) {
+  if (!fullText.replace(/\s+/g, '').includes(seed.codigo.replace(/\s+/g, ''))) {
     throw new Error(`El DOCX fuente no contiene el código ${seed.codigo}`);
   }
-  const versionLabel = source.headersAndFooters.match(
-    /VERSI[ÓO]N:\s*0*(\d+)/i,
+  const versionLabel = source.headersAndFooters.replace(/\s+/g, '').match(
+    /VERSI[ÓO]N:0*(\d{1,2})(?=\d{2}-\d{2}-\d{4})/i,
   )?.[1];
   if (versionLabel && Number(versionLabel) !== seed.version) {
     throw new Error(

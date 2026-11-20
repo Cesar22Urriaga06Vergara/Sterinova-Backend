@@ -16,42 +16,42 @@
 
 Configurar en el gestor de secretos o en la configuración protegida del runtime:
 
-| Variable | Requerida | Uso |
-|---|---:|---|
-| `DB_HOST` | Sí | Host MariaDB. |
-| `DB_PORT` | Sí | Puerto MariaDB, normalmente `3306`. |
-| `DB_USERNAME` | Sí | Usuario de conexión de la aplicación. |
-| `DB_PASSWORD` | Sí | Secreto de conexión; nunca imprimir su valor. |
-| `DB_DATABASE` | Sí | Esquema de la aplicación. |
-| `JWT_SECRET` | Sí | Firma JWT. Generar aleatorio y privado; rotarlo con un plan de invalidación de sesiones. |
-| `PDF_RENDER_SECRET` | Sí | Firma del acceso interno del renderer; usar al menos 32 caracteres aleatorios y compartirlo solo con el frontend renderer. |
-| `PDF_RENDER_BASE_URL` | Sí* | URL interna alcanzable por el backend para las rutas `/internal/pdf/...`. Tiene prioridad sobre `FRONTEND_INTERNAL_URL`. |
-| `FRONTEND_INTERNAL_URL` | Sí* | Alternativa para resolver las rutas internas PDF cuando no se define `PDF_RENDER_BASE_URL`. |
-| `PDF_STORAGE_PATH` | Sí en producción | Ruta del volumen persistente montado para PDFs. Sin ella, se usa `storage/pdfs` relativo al código. |
-| `NODE_ENV` | Sí | Usar `production` para emitir logs JSON. |
-| `PORT` | No | Puerto HTTP; predeterminado `3001`. |
-| `CORS_ORIGINS` | Sí si hay navegador | Orígenes web exactos separados por coma; evitar comodines. |
-| `PDF_RENDER_TIMEOUT_MS` | No | Límite de generación PDF; predeterminado 15000 ms. |
+| Variable                |           Requerida | Uso                                                                                                                        |
+| ----------------------- | ------------------: | -------------------------------------------------------------------------------------------------------------------------- |
+| `DB_HOST`               |                  Sí | Host MariaDB.                                                                                                              |
+| `DB_PORT`               |                  Sí | Puerto MariaDB, normalmente `3306`.                                                                                        |
+| `DB_USERNAME`           |                  Sí | Usuario de conexión de la aplicación.                                                                                      |
+| `DB_PASSWORD`           |                  Sí | Secreto de conexión; nunca imprimir su valor.                                                                              |
+| `DB_DATABASE`           |                  Sí | Esquema de la aplicación.                                                                                                  |
+| `JWT_SECRET`            |                  Sí | Firma JWT. Generar aleatorio y privado; rotarlo con un plan de invalidación de sesiones.                                   |
+| `PDF_RENDER_SECRET`     |                  Sí | Firma del acceso interno del renderer; usar al menos 32 caracteres aleatorios y compartirlo solo con el frontend renderer. |
+| `PDF_RENDER_BASE_URL`   |                 Sí* | URL interna alcanzable por el backend para las rutas `/internal/pdf/...`. Tiene prioridad sobre `FRONTEND_INTERNAL_URL`.   |
+| `FRONTEND_INTERNAL_URL` |                 Sí* | Alternativa para resolver las rutas internas PDF cuando no se define `PDF_RENDER_BASE_URL`.                                |
+| `PDF_STORAGE_PATH`      |    Sí en producción | Ruta del volumen persistente montado para PDFs. Sin ella, se usa `storage/pdfs` relativo al código.                        |
+| `NODE_ENV`              |                  Sí | Usar `production` para emitir logs JSON.                                                                                   |
+| `PORT`                  |                  No | Puerto HTTP; predeterminado `3001`.                                                                                        |
+| `CORS_ORIGINS`          | Sí si hay navegador | Orígenes web exactos separados por coma; evitar comodines.                                                                 |
+| `PDF_RENDER_TIMEOUT_MS` |                  No | Límite de generación PDF; predeterminado 15000 ms.                                                                         |
 
 `*` Configurar exactamente una URL interna accesible. Cualquier contraseña/token usado por el frontend se suministra por separado y no debe aparecer en el URL.
 
-Para aprovisionar el primer administrador, inyectar temporalmente `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` al job autorizado `npm run bootstrap:admin`; retirar esos valores al terminar. No incluirlos en el servicio web.
+Usa `npm run start:deploy` como Start Command recomendado para servicios de producción en Render o contenedores Docker. El comando ejecuta migraciones y bootstrap con los artefactos compilados de `dist/` antes de iniciar `start:prod`. En el primer despliegue, configura temporalmente `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el entorno privado del servicio. Después del primer despliegue exitoso, elimina esas tres variables del panel del proveedor; el bootstrap omite la creación y termina con código 0 cuando ya hay usuarios o cuando faltan esas credenciales en producción. No incluyas esas variables en el frontend ni en imágenes del contenedor.
 
 ## Secuencia de despliegue
 
 1. Seleccionar el release/tag y comprobar el estado de migraciones contra el ambiente (`npm run migration:show`) sin imprimir secretos.
 2. Tomar respaldo consistente de MariaDB y storage; registrar ubicación, hora, resultado y responsable. No continuar si falla.
 3. Crear la nueva imagen/instancia desde el release y cargar los secretos/configuración del ambiente.
-4. En el artefacto de despliegue, ejecutar exactamente:
+4. Configurar `npm run start:deploy` como Start Command del servicio (en Docker, como comando del contenedor). El flujo ejecuta:
 
    ```sh
-   npm ci
-   npm run build
    npm run migration:run
+   npm run bootstrap:admin
    npm run start:prod
    ```
 
-   `migration:run` vuelve a ejecutar `npm run build` internamente; se conserva aquí la secuencia explícita requerida y se puede optimizar el script en un cambio posterior.
+   `migration:run` y `bootstrap:admin` compilan el proyecto y ejecutan la versión correspondiente desde `dist/`; no se requiere `ts-node` en producción. Instalar dependencias y compilar también puede hacerse en la fase de build de la plataforma.
+
 5. `migration:run` solo procede si el respaldo está confirmado. Verificar su salida y luego ejecutar `npm run migration:show`; no promocionar la instancia si quedan migraciones pendientes o hay errores.
 6. En una instancia nueva, llamar `GET /health/live` y `GET /health/ready`. La readiness debe informar `database`, `storage` y `pdf_renderer` como `up`. Confirmar además una operación autenticada de lectura y una emisión PDF de prueba con datos no productivos.
 7. Promover tráfico al release nuevo y observar errores HTTP, latencia, readiness, logs con `correlation_id`, generación/descarga PDF y espacio del volumen.
@@ -75,6 +75,7 @@ Las migraciones deben seguir expansión/contracción: primero agregar estructura
    ```
 
    TypeORM revierte la última migración aplicada. Revisar primero el método `down()` y el impacto de pérdida de datos. Si no es segura, restaurar el respaldo en una base separada y planificar recuperación; no repetir la migración sobre producción a ciegas.
+
 4. Si hay corrupción o pérdida de datos, detener escrituras, preservar el estado actual, y seguir el procedimiento de restauración de [respaldos y operación](../base-de-datos/respaldos-y-operacion.md). Reconciliar datos creados después del respaldo antes de reabrir tráfico.
 5. Registrar release, hora, decisión, correlaciones afectadas y resultado. Mantener tráfico en la versión estable hasta corregir y volver a desplegar Green.
 
@@ -103,7 +104,7 @@ Configura en `.env` local:
 - `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`.
 - `JWT_SECRET`.
 - Para generar PDFs: `PDF_RENDER_SECRET` (mínimo 32 caracteres) y `PDF_RENDER_BASE_URL` o `FRONTEND_INTERNAL_URL`. El valor local habitual es `http://localhost:3004`.
-- Opcional: `PDF_STORAGE_PATH`, `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+- Opcional: `PDF_STORAGE_PATH`.
 
 El archivo `.env.example` incluye las variables reconocidas y deja los secretos vacíos. Copia ese archivo como `.env` y completa credenciales locales; nunca copies secretos reales a archivos versionados.
 
@@ -120,9 +121,9 @@ npm run migration:run
 npm run start:dev
 ```
 
-La API escucha en `http://localhost:3002`. `start:dev` ejecuta migraciones antes de levantar NestJS. Revisa el estado y respalda la base antes de aplicar migraciones a datos existentes.
+La API escucha en `http://localhost:3002`. `start:dev` solo levanta NestJS; las migraciones se aplican explícitamente con `npm run migration:run`, después de revisar el estado y respaldar la base si contiene datos existentes.
 
-Para aprovisionar el primer Admin, define `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` de al menos 12 caracteres y ejecuta `npm run bootstrap:admin`. No existe una ruta HTTP `/auth/seed`.
+Para aprovisionar el primer Admin, inyecta temporalmente `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` de al menos 12 caracteres al proceso aislado `npm run bootstrap:admin`. El CLI solo crea la cuenta cuando no existe ningún usuario en la base de datos. Nunca configures estas variables en el servicio HTTP. No existe una ruta HTTP `/auth/seed`.
 
 ### Comandos útiles
 

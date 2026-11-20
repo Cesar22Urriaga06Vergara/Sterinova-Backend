@@ -40,6 +40,12 @@ type VersionEditorFields = {
   introduccion?: string;
   condiciones_comerciales?: string;
   firmas?: CreateFormatoDocumentalDto['firmas'];
+  columnas?: string[];
+  condiciones_etiquetas?: string[];
+  pie_notas?: string;
+  subtitulo?: string;
+  titulo_detalle?: string;
+  nota_precios?: string;
 };
 
 function splitLines(value: string): string[] {
@@ -66,6 +72,7 @@ function createConfiguration(
       : splitLines(fields.condiciones_comerciales);
   const signatures =
     fields.firmas === undefined ? current.signatures : fields.firmas;
+  const detail = (current.detail ?? {}) as Record<string, unknown>;
 
   return {
     ...current,
@@ -86,6 +93,17 @@ function createConfiguration(
       ? {}
       : { commercial_terms: commercialTerms }),
     ...(signatures === undefined ? {} : { signatures }),
+    ...(fields.subtitulo === undefined ? {} : { subtitle: fields.subtitulo }),
+    ...(fields.columnas === undefined && fields.titulo_detalle === undefined && fields.nota_precios === undefined ? {} : {
+      detail: {
+        ...detail,
+        ...(fields.columnas === undefined ? {} : { columns: fields.columnas }),
+        ...(fields.titulo_detalle === undefined ? {} : { title: fields.titulo_detalle }),
+        ...(fields.nota_precios === undefined ? {} : { pricing_note: fields.nota_precios }),
+      },
+    }),
+    ...(fields.condiciones_etiquetas === undefined ? {} : { commercial_terms: fields.condiciones_etiquetas }),
+    ...(fields.pie_notas === undefined ? {} : { footer_notes: fields.pie_notas }),
   };
 }
 
@@ -175,6 +193,7 @@ export class FormatosDocumentalesService {
           tipo_servicio: dto.tipo_servicio ?? null,
           codigo: dto.codigo,
           nombre: dto.nombre,
+          cliente_id: dto.cliente_id ?? null,
         }),
       );
       const configuration = createConfiguration(format, dto.version, dto.fecha_version, {
@@ -185,6 +204,12 @@ export class FormatosDocumentalesService {
         introduccion: dto.introduccion,
         condiciones_comerciales: dto.condiciones_comerciales,
         firmas: dto.firmas,
+        columnas: dto.columnas,
+        condiciones_etiquetas: dto.condiciones_etiquetas,
+        pie_notas: dto.pie_notas,
+        subtitulo: dto.subtitulo,
+        titulo_detalle: dto.titulo_detalle,
+        nota_precios: dto.nota_precios,
       });
       await versions.save(
         versions.create({

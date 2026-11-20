@@ -27,6 +27,7 @@ import { DocumentoEmitido } from '../logistica/entities/documento-emitido.entity
 import { DocumentoEvento } from '../logistica/entities/documento-evento.entity.js';
 import { RecepcionItem } from '../logistica/entities/recepcion-item.entity.js';
 import { RecepcionLogistica } from '../logistica/entities/recepcion-logistica.entity.js';
+import { Conductor } from '../logistica/entities/conductor.entity.js';
 
 export const STERINOVA_ENTITIES = [
   OrdenServicioMaterial,
@@ -63,4 +64,5 @@ export const STERINOVA_ENTITIES = [
   DocumentoEvento,
   RecepcionLogistica,
   RecepcionItem,
+  Conductor,
 ];

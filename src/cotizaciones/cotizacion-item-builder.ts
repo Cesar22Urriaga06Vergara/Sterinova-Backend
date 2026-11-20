@@ -129,7 +129,13 @@ export async function buildCotizacionItem(
       throw new BadRequestException(
         'El producto no está activo o no pertenece al ámbito y tipo de esta cotización',
       );
-    snapshot = product;
+    const unit = dto.unidad?.trim() || product.unidad || 'unidad';
+    const precision = dto.precision_cantidad ?? product.precision_cantidad ?? 2;
+    if (!unit || unit.length > 80)
+      throw new BadRequestException('La unidad debe tener entre 1 y 80 caracteres');
+    if (!Number.isInteger(precision) || precision < 0 || precision > 2)
+      throw new BadRequestException('La precisión de cantidad debe estar entre 0 y 2 decimales');
+    snapshot = { ...product, unidad: unit, precision_cantidad: precision };
     productoId = previousSnapshot ? previousSnapshot.producto_id : product.id;
   } else {
     const descripcion = dto.descripcion?.trim();

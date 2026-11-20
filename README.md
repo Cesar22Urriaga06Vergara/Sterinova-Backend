@@ -18,9 +18,9 @@ npm run migration:run
 npm run start:dev
 ```
 
-La API escucha en http://localhost:3001. `migration:run` compila antes de aplicar migraciones. Revisa el estado de la base y crea un respaldo antes de migrar datos existentes.
+La API escucha en http://localhost:3001. Las migraciones se ejecutan de forma explícita con `npm run migration:run`; revisa el estado de la base y crea un respaldo antes de migrar datos existentes. El arranque del servidor no aplica migraciones ni carga datos iniciales.
 
-`start:dev` aplica las migraciones y crea el administrador definido por `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` en `.env` si su correo no existe. Los siguientes arranques conservan la cuenta y su contraseña. Los demás usuarios se crean desde la gestión de usuarios con la sesión del administrador. `npm run bootstrap:admin` permite crear el primer administrador explícitamente y falla si el correo ya existe.
+`start:dev` y `start:prod` solo levantan la API. Para crear el primer administrador ejecuta explícitamente `npm run bootstrap:admin`, inyectando temporalmente `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` desde el entorno privado. El CLI falla si ya existe cualquier usuario, y nunca se crea automáticamente una cuenta al iniciar el servidor. Los demás usuarios se crean desde la gestión protegida por permisos de administrador.
 
 ## Variables de entorno
 
@@ -34,7 +34,7 @@ Las variables que el código lee realmente son:
 - Sellos/ICONTEC: `CERTIFICATION_SEALS_PATH`, `ICONTEC_SELLO_ID` (opcional)
 - Pruebas con base aislada: `RUN_DB_INTEGRATION=1` (solo en entornos de prueba)
 
-Las obligatorias para iniciar la API son `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`, `JWT_SECRET`, `PDF_RENDER_SECRET` y, para bootstrapping, `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+Las obligatorias para iniciar la API son `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`, `JWT_SECRET` y `PDF_RENDER_SECRET`. Para aprovisionar el primer usuario, entrega temporalmente `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` solo al proceso CLI.
 
 ## Comandos útiles
 

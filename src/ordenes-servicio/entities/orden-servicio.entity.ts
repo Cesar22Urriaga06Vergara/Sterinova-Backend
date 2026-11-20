@@ -93,6 +93,29 @@ export class OrdenServicio {
   @Column({ type: 'varchar', length: 50, nullable: true })
   vehiculo_placa: string | null;
 
+  @Column({ type: 'int', nullable: true }) conductor_recoleccion_id: number | null;
+  @Column({ type: 'int', nullable: true }) conductor_entrega_id: number | null;
+  @Column({ type: 'datetime', nullable: true }) fecha_hora_recoleccion: Date | null;
+  @Column({ type: 'varchar', length: 120, nullable: true }) lote_recoleccion: string | null;
+  @Column({ type: 'int', nullable: true }) cajas_recibidas: number | null;
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true }) cantidad_recibida: number | null;
+  @Column({ type: 'varchar', length: 150, nullable: true }) entregado_por_cliente: string | null;
+  @Column({ type: 'varchar', length: 150, nullable: true }) recibido_por_sterinova: string | null;
+  @Column({ type: 'datetime', nullable: true }) fecha_hora_entrega: Date | null;
+  @Column({ type: 'int', nullable: true }) cajas_entregadas: number | null;
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true }) cantidad_entregada: number | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) certificado_asociado: string | null;
+  @Column({ type: 'varchar', length: 150, nullable: true }) entregado_por_sterinova: string | null;
+  @Column({ type: 'varchar', length: 150, nullable: true }) recibido_por_cliente: string | null;
+  @Column({ type: 'boolean', default: true }) generar_acta: boolean;
+  @Column({ type: 'boolean', default: true }) generar_orden: boolean;
+  @Column({ type: 'tinyint', unsigned: true, default: 1 }) acta_fase: number;
+  @Column({ type: 'datetime', nullable: true }) acta_cerrada_at: Date | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) certificado_no: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) factura_no: string | null;
+  @Column({ type: 'varchar', length: 40, nullable: true }) novedad_tipo: string | null;
+  @Column({ type: 'text', nullable: true }) novedad_motivo: string | null;
+
   @Column({ type: 'text', nullable: true })
   observaciones: string | null;
 

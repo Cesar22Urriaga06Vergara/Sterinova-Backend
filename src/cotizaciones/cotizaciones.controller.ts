@@ -123,6 +123,13 @@ export class CotizacionesController {
     return this.cotizacionesService.emitir(id, request.rbac);
   }
 
+  @Post(':id/aceptar')
+  @RequirePermission('cotizaciones.aceptar')
+  @ApiOperation({ summary: 'Registrar aceptación del cliente sobre cotización aprobada y emitida' })
+  aceptar(@Param('id', ParseIntPipe) id: number, @Req() request: RbacRequest) {
+    return this.cotizacionesService.aceptar(id, request.rbac);
+  }
+
   @Get(':id/descargar')
   @RequirePermission('cotizaciones.descargar')
   @ApiOperation({ summary: 'Descargar PDF de cotización' })

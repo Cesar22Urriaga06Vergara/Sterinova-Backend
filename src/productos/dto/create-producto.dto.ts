@@ -13,7 +13,6 @@ import {
   Max,
   MaxLength,
   Min,
-  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -27,11 +26,7 @@ export class CreateProductoDto {
   tipo_item: TipoItemCatalogo;
 
   @ApiPropertyOptional({ enum: CategoriaProducto })
-  @ValidateIf(
-    (producto: CreateProductoDto, value: unknown) =>
-      producto.tipo_servicio === TipoServicioCotizacion.INSUMOS ||
-      value !== undefined,
-  )
+  @IsOptional()
   @IsEnum(CategoriaProducto)
   categoria?: CategoriaProducto;
 
@@ -71,16 +66,18 @@ export class CreateProductoDto {
   @MaxLength(500)
   descripcion: string;
 
-  @ApiProperty({ maxLength: 80 })
+  @ApiPropertyOptional({ maxLength: 80, default: 'unidad' })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(80)
-  unidad: string;
+  unidad?: string;
 
-  @ApiProperty({ minimum: 0, maximum: 2, default: 0 })
+  @ApiPropertyOptional({ minimum: 0, maximum: 2, default: 2 })
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
   @Max(2)
-  precision_cantidad: number;
+  precision_cantidad?: number;
 }

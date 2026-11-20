@@ -53,7 +53,7 @@ describe('LogisticaService PDF snapshot', () => {
           telefono: null,
           email: null,
         },
-        items: [{ id: 8, cantidad: 1 }],
+        items: [{ id: 8, cantidad: 1, valor_unitario: 1000, valor_total: 1000 }],
       },
       materiales: [
         {
@@ -69,7 +69,7 @@ describe('LogisticaService PDF snapshot', () => {
 
     const snapshot = await service.buildPdfSnapshot(orden, 'ORDEN_SERVICIO');
 
-    expect(snapshot.cliente).toEqual({
+    expect(snapshot.cliente).toMatchObject({
       razon_social: 'Cliente de prueba',
       direccion: null,
       nit: null,
@@ -78,16 +78,18 @@ describe('LogisticaService PDF snapshot', () => {
     });
     expect(snapshot.cotizacion).toMatchObject({
       tipo_servicio: TipoServicioCotizacion.INDUSTRIAL_ETO,
-      items: [{ id: 8, cantidad: 1 }],
+      items: [{ id: 8, cantidad: 1, valor_unitario: 1000, valor_total: 1000 }],
+      subtotal: 1000,
+      iva: 190,
+      total: 1190,
     });
-    expect(snapshot.cotizacion).not.toHaveProperty('subtotal');
-    expect(snapshot.cotizacion).not.toHaveProperty('iva');
-    expect(snapshot.cotizacion).not.toHaveProperty('total');
     expect(snapshot.materiales[0]).toMatchObject({
       descripcion: 'Bata',
       lote: null,
       cantidad: 1,
       cotizacion_item_id: 8,
+      valor_unitario_pactado: 1000,
+      valor_total_real: 1000,
     });
     expect(snapshot.documento).not.toHaveProperty('fecha_emision');
     expect(snapshot.orden).not.toHaveProperty('fecha_recepcion');

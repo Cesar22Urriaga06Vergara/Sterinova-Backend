@@ -20,6 +20,9 @@ export class SelloCertificacion {
   @Column({ type: 'varchar', length: 1024 })
   imagen_key: string;
 
+  @Column({ type: 'json', nullable: true })
+  aplica_a: string[] | null;
+
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 

@@ -6,6 +6,7 @@ import {
   IsIn,
   IsInt,
   IsOptional,
+  IsString,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -26,4 +27,18 @@ export class UpdateMaterialesOrdenDto {
   @ValidateNested({ each: true })
   @Type(() => MaterialOrdenDto)
   materiales: MaterialOrdenDto[];
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) conductor_recoleccion_id?: number | null;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) conductor_entrega_id?: number | null;
+  @ApiPropertyOptional() @IsOptional() fecha_hora_recoleccion?: Date | null;
+  @ApiPropertyOptional() @IsOptional() fecha_hora_entrega?: Date | null;
+  @ApiPropertyOptional() @IsOptional() @IsString() lote_recoleccion?: string | null;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) cajas_recibidas?: number | null;
+  @ApiPropertyOptional() @IsOptional() cantidad_recibida?: number | null;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) cajas_entregadas?: number | null;
+  @ApiPropertyOptional() @IsOptional() cantidad_entregada?: number | null;
+  @ApiPropertyOptional() @IsOptional() @IsString() certificado_asociado?: string | null;
+  @ApiPropertyOptional() @IsOptional() @IsString() entregado_por_cliente?: string | null;
+  @ApiPropertyOptional() @IsOptional() @IsString() recibido_por_sterinova?: string | null;
+  @ApiPropertyOptional() @IsOptional() @IsString() entregado_por_sterinova?: string | null;
+  @ApiPropertyOptional() @IsOptional() @IsString() recibido_por_cliente?: string | null;
 }

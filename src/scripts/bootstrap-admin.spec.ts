@@ -9,11 +9,15 @@ const state = vi.hoisted(() => ({
   assignments: [] as { role_id: number; scope_id: number }[],
   isGlobalAdmin: false,
   hasAssignments: false,
+  hasUsers: false,
+  initialized: false,
 }));
 
 vi.mock('../database/data-source.js', () => ({
   AppDataSource: {
-    initialize: async () => {},
+    initialize: async () => {
+      state.initialized = true;
+    },
     destroy: async () => {},
     getRepository: () => ({
       findOneBy: async (criteria: Record<string, unknown>) =>
@@ -27,8 +31,8 @@ vi.mock('../database/data-source.js', () => ({
     }),
     query: async (sql: string, parameters: unknown[] = []) => {
       state.updates.push({ sql, parameters });
-      if (sql.includes('admin_general')) {
-        return [{ role_id: 4, scope_id: 1 }];
+      if (sql.includes("r.code='superadmin'")) {
+        return [{ role_id: 99, scope_id: 1 }];
       }
       if (sql.includes('rbac_is_global_admin')) {
         return [{ is_admin: state.isGlobalAdmin ? 1 : 0 }];
@@ -39,6 +43,8 @@ vi.mock('../database/data-source.js', () => ({
       if (sql.includes('has_assignments')) {
         return [{ has_assignments: state.hasAssignments ? 1 : 0 }];
       }
+      if (sql.includes('has_users'))
+        return [{ has_users: state.hasUsers ? 1 : 0 }];
       if (sql.includes('rbac_version')) return [{ rbac_version: 0 }];
       if (sql.startsWith('CALL rbac_set_user_roles')) {
         state.isGlobalAdmin = true;
@@ -58,6 +64,7 @@ beforeEach(() => {
   vi.stubEnv('ADMIN_NAME', 'Admin local');
   vi.stubEnv('ADMIN_EMAIL', ' ADMIN@example.com ');
   vi.stubEnv('ADMIN_PASSWORD', 'Local-password-1234');
+  vi.stubEnv('NODE_ENV', 'test');
   state.existing = null;
   state.id1 = null;
   state.saved = [];
@@ -65,6 +72,8 @@ beforeEach(() => {
   state.assignments = [];
   state.isGlobalAdmin = false;
   state.hasAssignments = false;
+  state.hasUsers = false;
+  state.initialized = false;
 });
 
 afterEach(() => {
@@ -73,24 +82,78 @@ afterEach(() => {
 });
 
 it('creates a missing admin with a usable hashed password', async () => {
-  vi.spyOn(process, 'argv', 'get').mockReturnValue(['node', 'bootstrap-admin', '--if-missing']);
+  vi.spyOn(process, 'argv', 'get').mockReturnValue([
+    'node',
+    'bootstrap-admin',
+    '--if-missing',
+  ]);
   await import('./bootstrap-admin.js');
   expect(state.saved).toHaveLength(1);
-  expect(state.saved[0]).toMatchObject({ nombre: 'Admin local', email: 'admin@example.com' });
+  expect(state.saved[0]).toMatchObject({
+    nombre: 'Admin local',
+    email: 'admin@example.com',
+  });
   expect(state.saved[0]).not.toHaveProperty('rol');
-  expect(state.updates.some(({ sql }) => sql.startsWith('CALL rbac_set_user_roles'))).toBe(true);
-  expect(await bcrypt.compare('Local-password-1234', state.saved[0].password_hash as string)).toBe(true);
+  const assignment = state.updates.find(({ sql }) =>
+    sql.startsWith('CALL rbac_set_user_roles'),
+  );
+  expect(assignment).toBeDefined();
+  expect(JSON.parse(String(assignment?.parameters[1]))).toEqual([
+    { role_id: 99, scope_id: 1 },
+  ]);
+  expect(
+    state.updates.some(({ sql }) =>
+      sql.includes("r.code='superadmin' AND r.kind='PLATFORM'"),
+    ),
+  ).toBe(true);
+  expect(
+    await bcrypt.compare(
+      'Local-password-1234',
+      state.saved[0].password_hash as string,
+    ),
+  ).toBe(true);
 }, 15_000);
 
 it('allows repeated development startup without modifying an existing account', async () => {
-  vi.spyOn(process, 'argv', 'get').mockReturnValue(['node', 'bootstrap-admin', '--if-missing']);
-  state.existing = { id: 7, email: 'admin@example.com', password_hash: 'original', rol: 'Admin' };
+  vi.spyOn(process, 'argv', 'get').mockReturnValue([
+    'node',
+    'bootstrap-admin',
+    '--if-missing',
+  ]);
+  state.existing = {
+    id: 7,
+    email: 'admin@example.com',
+    password_hash: 'original',
+    rol: 'Admin',
+  };
   await expect(import('./bootstrap-admin.js')).resolves.toBeDefined();
   expect(state.saved).toEqual([]);
   expect(state.existing.password_hash).toBe('original');
 });
 
-it('reconfigures ID 1 and bootstraps Admin General only when RBAC is empty', async () => {
+it('skips successfully when any account already exists', async () => {
+  state.hasUsers = true;
+  vi.spyOn(process, 'argv', 'get').mockReturnValue(['node', 'bootstrap-admin']);
+
+  await expect(import('./bootstrap-admin.js')).resolves.toBeDefined();
+  expect(state.saved).toEqual([]);
+  expect(state.updates).toHaveLength(1);
+  expect(state.updates[0].sql).toContain('has_users');
+});
+
+it('skips successfully in production when bootstrap credentials are absent', async () => {
+  vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('ADMIN_NAME', '');
+  vi.stubEnv('ADMIN_EMAIL', '');
+  vi.stubEnv('ADMIN_PASSWORD', '');
+
+  await expect(import('./bootstrap-admin.js')).resolves.toBeDefined();
+  expect(state.initialized).toBe(false);
+  expect(state.updates).toEqual([]);
+  expect(state.saved).toEqual([]);
+});
+
+it('reconfigures ID 1 and bootstraps platform superadmin only when RBAC is empty', async () => {
   vi.stubEnv('ADMIN_NAME', '');
   vi.spyOn(process, 'argv', 'get').mockReturnValue([
     'node',
@@ -110,13 +173,13 @@ it('reconfigures ID 1 and bootstraps Admin General only when RBAC is empty', asy
   );
   expect(assignment?.parameters).toEqual([
     1,
-    JSON.stringify([{ role_id: 4, scope_id: 1 }]),
+    JSON.stringify([{ role_id: 99, scope_id: 1 }]),
     null,
     0,
   ]);
-  expect(state.updates.some(({ sql }) => sql.startsWith('UPDATE usuarios'))).toBe(
-    true,
-  );
+  expect(
+    state.updates.some(({ sql }) => sql.startsWith('UPDATE usuarios')),
+  ).toBe(true);
   const identityUpdate = state.updates.find(({ sql }) =>
     sql.startsWith('UPDATE usuarios'),
   );
@@ -137,15 +200,15 @@ it('does not elevate ID 1 when existing RBAC assignments require an administrato
   state.assignments = [{ role_id: 9, scope_id: 2 }];
 
   await expect(import('./bootstrap-admin.js')).rejects.toThrow(
-    'No se puede asignar Admin General',
+    'No se puede asignar el superadmin',
   );
   expect(state.updates.some(({ sql }) => sql.startsWith('CALL'))).toBe(false);
-  expect(state.updates.some(({ sql }) => sql.startsWith('UPDATE usuarios'))).toBe(
-    false,
-  );
+  expect(
+    state.updates.some(({ sql }) => sql.startsWith('UPDATE usuarios')),
+  ).toBe(false);
 });
 
-it('preserves ID 1 role assignments while adding the explicit Admin General profile', async () => {
+it('preserves ID 1 role assignments while adding the platform superadmin profile', async () => {
   vi.spyOn(process, 'argv', 'get').mockReturnValue([
     'node',
     'bootstrap-admin',
@@ -162,13 +225,15 @@ it('preserves ID 1 role assignments while adding the explicit Admin General prof
   );
   expect(JSON.parse(String(assignment?.parameters[1]))).toEqual([
     { role_id: 9, scope_id: 2 },
-    { role_id: 4, scope_id: 1 },
+    { role_id: 99, scope_id: 1 },
   ]);
 });
 
 it('keeps explicit bootstrap strict when the email already exists', async () => {
   vi.spyOn(process, 'argv', 'get').mockReturnValue(['node', 'bootstrap-admin']);
   state.existing = { id: 7, email: 'admin@example.com' };
-  await expect(import('./bootstrap-admin.js')).rejects.toThrow('Ya existe un usuario');
+  await expect(import('./bootstrap-admin.js')).rejects.toThrow(
+    'Ya existe un usuario',
+  );
   expect(state.saved).toEqual([]);
 });

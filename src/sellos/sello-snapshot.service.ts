@@ -22,6 +22,7 @@ export type FrozenSeal = {
   nombre_norma: string;
   numero_licencia: string;
   imagen_src: string;
+  aplica_a?: string[] | null;
 };
 const MAX_BYTES = 5 * 1024 * 1024;
 function imageType(bytes: Buffer) {
@@ -38,6 +39,8 @@ function imageType(bytes: Buffer) {
     bytes[2] === 255
   )
     return { extension: 'jpg', mime: 'image/jpeg' };
+  if (bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP')
+    return { extension: 'webp', mime: 'image/webp' };
   throw new ConflictException(
     'El sello no contiene una imagen PNG/JPEG válida',
   );
@@ -67,6 +70,30 @@ export class SelloSnapshotService {
         code: 'SELLO_ICONTEC_NO_DISPONIBLE',
         message: 'Configure un sello ICONTEC o SELLOS activo antes de emitir',
       });
+    return this.freezeSelected(manager, sello, creadoPorId);
+  }
+
+  async freezeApplicable(
+    manager: EntityManager,
+    appliesTo: string,
+    creadoPorId: number | null = null,
+  ): Promise<FrozenSeal[]> {
+    const active = await manager.getRepository(SelloCertificacion).find({
+      where: { activo: true },
+      order: { orden: 'ASC', id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+    const applicable = active.filter((seal) => seal.aplica_a?.includes(appliesTo));
+    const frozen: FrozenSeal[] = [];
+    for (const seal of applicable) frozen.push(await this.freezeSelected(manager, seal, creadoPorId));
+    return frozen;
+  }
+
+  private async freezeSelected(
+    manager: EntityManager,
+    sello: SelloCertificacion,
+    creadoPorId: number | null,
+  ): Promise<FrozenSeal> {
     const file = path.resolve(this.root, sello.imagen_key);
     if (!file.startsWith(this.root + path.sep))
       throw new ConflictException('Ruta de sello inválida');
@@ -125,6 +152,7 @@ export class SelloSnapshotService {
       nombre_norma: version.nombre_norma,
       numero_licencia: version.numero_licencia,
       imagen_src: `/internal/pdf-assets/sellos/${sha256}.${type.extension}`,
+      aplica_a: sello.aplica_a,
     };
   }
 
@@ -145,6 +173,31 @@ export class SelloSnapshotService {
     return {
       imagen_src: `data:${type.mime};base64,${bytes.toString('base64')}`,
     };
+  }
+
+  async previewApplicable(
+    appliesTo: string,
+    manager: EntityManager = this.source.manager,
+  ): Promise<FrozenSeal[]> {
+    const active = await manager.getRepository(SelloCertificacion).find({
+      where: { activo: true }, order: { orden: 'ASC', id: 'ASC' },
+    });
+    const results: FrozenSeal[] = [];
+    for (const seal of active.filter((candidate) => candidate.aplica_a?.includes(appliesTo))) {
+      const file = path.resolve(this.root, seal.imagen_key);
+      if (!file.startsWith(this.root + path.sep)) throw new ConflictException('Ruta de sello inválida');
+      const bytes = await readFile(file).catch(() => { throw new ConflictException('No está disponible la imagen del sello'); });
+      const type = imageType(bytes);
+      const sha256 = createHash('sha256').update(bytes).digest('hex');
+      results.push({
+        sello_id: seal.id, version_id: 0, version: 0, sha256,
+        imagen_key: seal.imagen_key, mime_type: type.mime,
+        nombre_norma: seal.nombre_norma, numero_licencia: seal.numero_licencia,
+        imagen_src: `data:${type.mime};base64,${bytes.toString('base64')}`,
+        aplica_a: seal.aplica_a,
+      });
+    }
+    return results;
   }
 
   private async findActiveSeal(
@@ -181,7 +234,7 @@ export class SelloSnapshotService {
     if (
       !seal ||
       !/^[0-9a-f]{64}$/.test(seal.sha256) ||
-      !/^versiones\/[0-9a-f]{64}\.(png|jpg)$/.test(seal.imagen_key)
+      !/^versiones\/[0-9a-f]{64}\.(png|jpg|webp)$/.test(seal.imagen_key)
     )
       throw new ConflictException('Referencia de sello congelado inválida');
     const version = await manager

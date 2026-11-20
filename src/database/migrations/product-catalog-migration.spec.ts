@@ -30,9 +30,12 @@ describe('product catalog migration', () => {
     expect(statements).toContain(
       "INSERT INTO rbac_permissions (code, module, label, active, is_dynamic) VALUES ('productos.gestionar', 'comercial', 'Administrar el catálogo de productos y servicios', 1, 0)",
     );
-    expect(statements.some((sql) =>
-      sql.includes("code = 'admin_area'") && sql.includes("code = 'superadmin'"),
-    )).toBe(true);
+    const productGrant = statements.find((sql) =>
+      sql.includes("SELECT id, 'productos.gestionar'"),
+    );
+    expect(productGrant).toContain("'productos.gestionar', 'SCOPE', 1");
+    expect(productGrant).toContain("code = 'admin_area' AND kind = 'STANDARD'");
+    expect(productGrant).toContain("code = 'superadmin' AND kind = 'PLATFORM'");
   });
 
   it('refuses to drop catalog data during rollback', async () => {

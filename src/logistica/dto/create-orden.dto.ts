@@ -6,6 +6,12 @@ import { Type } from 'class-transformer';
 import { IsDateString, IsOptional, IsString } from 'class-validator';
 
 export class CreateOrdenDto {
+  @ApiPropertyOptional({ enum: ['ACTA', 'ORDEN', 'AMBOS'], default: 'AMBOS' })
+  @IsOptional() @IsIn(['ACTA', 'ORDEN', 'AMBOS'])
+  formatos?: 'ACTA' | 'ORDEN' | 'AMBOS';
+  @ApiPropertyOptional({ type: Number, minimum: 1 })
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1)
+  conductor_recoleccion_id?: number;
   @ApiPropertyOptional({ enum: ['ETO', 'VAPOR'] })
   @IsOptional()
   @IsIn(['ETO', 'VAPOR'])

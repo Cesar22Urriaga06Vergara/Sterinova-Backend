@@ -9,12 +9,22 @@ import {
   Min,
   IsOptional,
   IsString,
+  IsBoolean,
+  IsIn,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCotizacionDto {
+  @ApiPropertyOptional({ enum: ['EtO', 'VAPOR', 'NO_APLICA'] })
+  @IsOptional() @IsIn(['EtO', 'VAPOR', 'NO_APLICA'])
+  metodo_esterilizacion?: 'EtO' | 'VAPOR' | 'NO_APLICA';
+
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() aplica_esterilizacion?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() aplica_empaque?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() aplica_transporte?: boolean;
+  @ApiPropertyOptional({ minimum: 0 }) @IsOptional() @Type(() => Number) @IsNumber() @Min(0) valor_transporte?: number;
   @ApiPropertyOptional({
     description:
       'Versión vista en el formulario; solo detecta cambios, no selecciona una tasa',

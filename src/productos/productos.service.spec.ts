@@ -81,7 +81,7 @@ describe('ProductosService', () => {
     );
   });
 
-  it('requires an Insumos category before creating a catalog item', async () => {
+  it('uses safe defaults when catalog-only details are omitted', async () => {
     const repository = {
       create: vi.fn((value) => value),
       save: vi.fn(),
@@ -90,19 +90,19 @@ describe('ProductosService', () => {
       repository as unknown as Repository<Producto>,
     );
 
-    await expect(
-      service.create(
+    await service.create(
         {
           tipo_servicio: TipoServicioCotizacion.INSUMOS,
           tipo_item: 'PRODUCTO',
           descripcion: 'Bolsa grado médico',
-          unidad: 'unidad',
-          precision_cantidad: 0,
         },
         access,
-      ),
-    ).rejects.toThrow('Seleccione una categoría válida para los insumos');
-    expect(repository.save).not.toHaveBeenCalled();
+      );
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({
+      categoria: 'GENERAL', unidad: 'unidad', precision_cantidad: 2,
+      codigo: null, referencia: null, metodo: null, presentacion: null, marca: null,
+    }));
+    expect(repository.save).toHaveBeenCalled();
   });
 
   it('changes catalog availability without deleting the entry', async () => {

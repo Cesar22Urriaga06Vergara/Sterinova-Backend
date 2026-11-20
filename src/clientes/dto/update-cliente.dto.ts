@@ -3,10 +3,15 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsBoolean,
   ValidateIf,
 } from 'class-validator';
 
 export class UpdateClienteDto {
+  @IsOptional()
+  @IsBoolean()
+  activo?: boolean;
+
   @IsOptional()
   @IsString()
   @IsNotEmpty()

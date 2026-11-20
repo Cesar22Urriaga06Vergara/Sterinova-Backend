@@ -37,6 +37,10 @@ import { OrdenCompraCliente1795400000000 } from './migrations/1795400000000-Orde
 import { RecepcionLogistica1795500000000 } from './migrations/1795500000000-RecepcionLogistica.js';
 import { DocumentosEmitidos1795600000000 } from './migrations/1795600000000-DocumentosEmitidos.js';
 import { ObservacionesSeparadasOrden1795700000000 } from './migrations/1795700000000-ObservacionesSeparadasOrden.js';
+import { AddQuoteOperationalScope1795800000000 } from './migrations/1795800000000-AddQuoteOperationalScope.js';
+import { AddLogisticsDriversRoutes1795900000000 } from './migrations/1795900000000-AddLogisticsDriversRoutes.js';
+import { DynamicQuoteDocuments1796000000000 } from './migrations/1796000000000-DynamicQuoteDocuments.js';
+import { ActaServicePhases1796100000000 } from './migrations/1796100000000-ActaServicePhases.js';
 
 /** Shared by the CLI and isolated migration rehearsals; does not load environment variables. */
 export const DATABASE_MIGRATIONS = [
@@ -79,4 +83,8 @@ export const DATABASE_MIGRATIONS = [
   RecepcionLogistica1795500000000,
   DocumentosEmitidos1795600000000,
   ObservacionesSeparadasOrden1795700000000,
+  AddQuoteOperationalScope1795800000000,
+  AddLogisticsDriversRoutes1795900000000,
+  DynamicQuoteDocuments1796000000000,
+  ActaServicePhases1796100000000,
 ];

@@ -1231,6 +1231,27 @@
         "x-required-permission": "cotizaciones.ver"
       }
     },
+    "/cotizaciones/exportar": {
+      "get": {
+        "operationId": "CotizacionesController_exportar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Archivo Excel con cotizaciones"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Exportar cotizaciones a Excel",
+        "tags": [
+          "Cotizaciones"
+        ],
+        "x-required-permission": "cotizaciones.exportar"
+      }
+    },
     "/cotizaciones/iva-vigente": {
       "get": {
         "operationId": "CotizacionesController_currentIva",
@@ -1399,6 +1420,36 @@
           "Cotizaciones"
         ],
         "x-required-permission": "cotizaciones.emitir"
+      }
+    },
+    "/cotizaciones/{id}/aceptar": {
+      "post": {
+        "operationId": "CotizacionesController_aceptar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar aceptación del cliente sobre cotización aprobada y emitida",
+        "tags": [
+          "Cotizaciones"
+        ],
+        "x-required-permission": "cotizaciones.aceptar"
       }
     },
     "/cotizaciones/{id}/descargar": {
@@ -2057,6 +2108,123 @@
         "x-required-permission": "logistica.recepciones.registrar"
       }
     },
+    "/logistica/ordenes/{id}/acta/fase1": {
+      "patch": {
+        "operationId": "LogisticaController_guardarFase1Acta",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActaFase1Dto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Logistica"
+        ],
+        "x-required-permission": "logistica.recepciones.registrar"
+      }
+    },
+    "/logistica/ordenes/{id}/acta/fase2": {
+      "patch": {
+        "operationId": "LogisticaController_guardarFase2Acta",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActaFase2Dto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Logistica"
+        ],
+        "x-required-permission": "logistica.despacho.ejecutar"
+      }
+    },
+    "/logistica/ordenes/{id}/acta/cerrar": {
+      "patch": {
+        "operationId": "LogisticaController_cerrarActa",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CerrarActaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Logistica"
+        ],
+        "x-required-permission": "logistica.despacho.ejecutar"
+      }
+    },
     "/logistica/cotizaciones-aprobadas": {
       "get": {
         "operationId": "LogisticaController_findCotizacionesAprobadas",
@@ -2365,6 +2533,122 @@
         "x-required-permission": "logistica.recepciones.registrar"
       }
     },
+    "/logistica/conductores": {
+      "get": {
+        "operationId": "ConductoresController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Conductores"
+        ],
+        "x-required-permission": "logistica.ordenes.ver"
+      },
+      "post": {
+        "operationId": "ConductoresController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveConductorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Conductores"
+        ],
+        "x-required-permission": "logistica.ordenes.crear"
+      }
+    },
+    "/logistica/conductores/{id}": {
+      "put": {
+        "operationId": "ConductoresController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveConductorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Conductores"
+        ],
+        "x-required-permission": "logistica.ordenes.crear"
+      }
+    },
+    "/logistica/conductores/{id}/estado": {
+      "patch": {
+        "operationId": "ConductoresController_state",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Conductores"
+        ],
+        "x-required-permission": "logistica.ordenes.cambiar_estado"
+      }
+    },
     "/planta/protocolos": {
       "get": {
         "operationId": "PlantaController_findProtocolos",
@@ -2531,6 +2815,27 @@
         "x-required-permission": "certificados.ver"
       }
     },
+    "/certificados/exportar": {
+      "get": {
+        "operationId": "CertificadosController_exportar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Archivo Excel con certificados"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Exportar certificados a Excel",
+        "tags": [
+          "Certificados"
+        ],
+        "x-required-permission": "certificados.exportar"
+      }
+    },
     "/certificados/{id}/descargar": {
       "get": {
         "operationId": "CertificadosController_descargar",
@@ -2678,6 +2983,257 @@
           "Calidad"
         ],
         "x-required-permission": "calidad.rechazar"
+      }
+    },
+    "/ambitos": {
+      "get": {
+        "operationId": "AmbitoController_listar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Ambito"
+        ],
+        "x-required-permission": "ambitos.gestionar"
+      },
+      "post": {
+        "operationId": "AmbitoController_crear",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAmbitoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Ambito"
+        ],
+        "x-required-permission": "ambitos.gestionar"
+      }
+    },
+    "/ambitos/{id}": {
+      "get": {
+        "operationId": "AmbitoController_obtener",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Ambito"
+        ],
+        "x-required-permission": "ambitos.gestionar"
+      },
+      "patch": {
+        "operationId": "AmbitoController_actualizar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAmbitoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Ambito"
+        ],
+        "x-required-permission": "ambitos.gestionar"
+      }
+    },
+    "/ambitos/{id}/cerrar": {
+      "patch": {
+        "operationId": "AmbitoController_cerrar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CerrarAmbitoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Ambito"
+        ],
+        "x-required-permission": "ambitos.gestionar"
+      }
+    },
+    "/revocacion/usuario/{usuarioId}": {
+      "post": {
+        "operationId": "RevocacionController_revocarAsignacionesUsuario",
+        "parameters": [
+          {
+            "name": "usuarioId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevocarAsignacionesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Revocacion"
+        ],
+        "x-required-permission": "usuarios.identidad.gestionar"
+      }
+    },
+    "/revocacion/asignacion": {
+      "post": {
+        "operationId": "RevocacionController_revocarAsignacionEspecifica",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevocarAsignacionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Revocacion"
+        ],
+        "x-required-permission": "asignaciones.gestionar"
+      }
+    },
+    "/revocacion/historial/{usuarioId}": {
+      "get": {
+        "operationId": "RevocacionController_obtenerHistorial",
+        "parameters": [
+          {
+            "name": "usuarioId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Revocacion"
+        ],
+        "x-required-permission": "usuarios.identidad.gestionar"
       }
     },
     "/sellos": {
@@ -3323,21 +3879,20 @@
           },
           "unidad": {
             "type": "string",
-            "maxLength": 80
+            "maxLength": 80,
+            "default": "unidad"
           },
           "precision_cantidad": {
             "type": "number",
             "minimum": 0,
             "maximum": 2,
-            "default": 0
+            "default": 2
           }
         },
         "required": [
           "tipo_servicio",
           "tipo_item",
-          "descripcion",
-          "unidad",
-          "precision_cantidad"
+          "descripcion"
         ]
       },
       "UpdateProductoDto": {
@@ -3493,6 +4048,27 @@
       "CreateCotizacionDto": {
         "type": "object",
         "properties": {
+          "metodo_esterilizacion": {
+            "type": "string",
+            "enum": [
+              "EtO",
+              "VAPOR",
+              "NO_APLICA"
+            ]
+          },
+          "aplica_esterilizacion": {
+            "type": "boolean"
+          },
+          "aplica_empaque": {
+            "type": "boolean"
+          },
+          "aplica_transporte": {
+            "type": "boolean"
+          },
+          "valor_transporte": {
+            "type": "number",
+            "minimum": 0
+          },
           "iva_version_esperada_id": {
             "type": "number",
             "description": "Versión vista en el formulario; solo detecta cambios, no selecciona una tasa"
@@ -3640,6 +4216,27 @@
             "type": "number",
             "description": "Versión leída; una versión obsoleta produce 409",
             "minimum": 1
+          },
+          "metodo_esterilizacion": {
+            "type": "string",
+            "enum": [
+              "EtO",
+              "VAPOR",
+              "NO_APLICA"
+            ]
+          },
+          "aplica_esterilizacion": {
+            "type": "boolean"
+          },
+          "aplica_empaque": {
+            "type": "boolean"
+          },
+          "aplica_transporte": {
+            "type": "boolean"
+          },
+          "valor_transporte": {
+            "type": "number",
+            "minimum": 0
           },
           "cliente_id": {
             "type": "number"
@@ -3789,6 +4386,19 @@
       "CreateOrdenDto": {
         "type": "object",
         "properties": {
+          "formatos": {
+            "type": "string",
+            "enum": [
+              "ACTA",
+              "ORDEN",
+              "AMBOS"
+            ],
+            "default": "AMBOS"
+          },
+          "conductor_recoleccion_id": {
+            "type": "number",
+            "minimum": 1
+          },
           "metodo_esterilizacion": {
             "type": "string",
             "enum": [
@@ -3844,12 +4454,66 @@
             "items": {
               "$ref": "#/components/schemas/MaterialOrdenDto"
             }
+          },
+          "conductor_recoleccion_id": {
+            "type": "object"
+          },
+          "conductor_entrega_id": {
+            "type": "object"
+          },
+          "fecha_hora_recoleccion": {
+            "type": "object"
+          },
+          "fecha_hora_entrega": {
+            "type": "object"
+          },
+          "lote_recoleccion": {
+            "type": "object"
+          },
+          "cajas_recibidas": {
+            "type": "object"
+          },
+          "cantidad_recibida": {
+            "type": "object"
+          },
+          "cajas_entregadas": {
+            "type": "object"
+          },
+          "cantidad_entregada": {
+            "type": "object"
+          },
+          "certificado_asociado": {
+            "type": "object"
+          },
+          "entregado_por_cliente": {
+            "type": "object"
+          },
+          "recibido_por_sterinova": {
+            "type": "object"
+          },
+          "entregado_por_sterinova": {
+            "type": "object"
+          },
+          "recibido_por_cliente": {
+            "type": "object"
           }
         },
         "required": [
           "version",
           "materiales"
         ]
+      },
+      "ActaFase1Dto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ActaFase2Dto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CerrarActaDto": {
+        "type": "object",
+        "properties": {}
       },
       "CantidadEventoMaterialDto": {
         "type": "object",
@@ -3996,6 +4660,10 @@
         "required": [
           "estado"
         ]
+      },
+      "SaveConductorDto": {
+        "type": "object",
+        "properties": {}
       },
       "MaterialProcesadoDto": {
         "type": "object",
@@ -4153,6 +4821,26 @@
             }
           }
         }
+      },
+      "CreateAmbitoDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateAmbitoDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CerrarAmbitoDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RevocarAsignacionesDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RevocarAsignacionDto": {
+        "type": "object",
+        "properties": {}
       },
       "CreateSelloCertificacionDto": {
         "type": "object",

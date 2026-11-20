@@ -423,7 +423,7 @@ describe('PdfGeneratorService', () => {
             expect(html).toContain('Ana Recepción');
             expect(html).toContain('Ana Operadora');
             expect(html).toContain('11/11/2026');
-            expect(html).toContain('PROCESADO');
+            expect(html).toContain('DEVOLUCIONES');
             expect(html).toContain('Cliente Receptor');
             expect(html).toContain('TOTAL CAJAS RECIBIDAS');
             expect(html).toContain('13:00');

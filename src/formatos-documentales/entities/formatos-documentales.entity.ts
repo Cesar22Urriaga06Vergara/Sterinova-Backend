@@ -20,7 +20,6 @@ export enum TipoDocumentoFormato {
 
 @Entity('formatos_documentales')
 @Index('UQ_formatos_documentales_clave', ['clave'], { unique: true })
-@Index('UQ_formatos_documentales_codigo', ['codigo'], { unique: true })
 export class FormatosDocumentales {
   @PrimaryGeneratedColumn()
   id: number;
@@ -39,6 +38,9 @@ export class FormatosDocumentales {
 
   @Column({ type: 'varchar', length: 255 })
   nombre: string;
+
+  @Column({ type: 'int', nullable: true })
+  cliente_id: number | null;
 
   @CreateDateColumn({ type: 'datetime' })
   created_at: Date;

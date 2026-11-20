@@ -27,6 +27,21 @@ import { TasaFiscal } from '../../tasas-fiscales/entities/tasa-fiscal.entity.js'
   'aceptacion_registrada_por_id',
 ])
 export class Cotizacion {
+  @Column({ type: 'enum', enum: ['EtO', 'VAPOR', 'NO_APLICA'], default: 'NO_APLICA' })
+  metodo_esterilizacion: 'EtO' | 'VAPOR' | 'NO_APLICA';
+
+  @Column({ type: 'boolean', default: false })
+  aplica_esterilizacion: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  aplica_empaque: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  aplica_transporte: boolean;
+
+  @Column({ type: 'decimal', precision: 14, scale: 2, default: 0 })
+  valor_transporte: number;
+
   @Column({ type: 'int', nullable: true })
   aprobador_interno_id: number | null;
 

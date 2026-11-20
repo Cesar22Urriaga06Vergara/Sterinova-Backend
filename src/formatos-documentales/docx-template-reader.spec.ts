@@ -12,7 +12,7 @@ describe('readDocxTemplate', () => {
   it('extracts text and version metadata from the R-CM-07-5 source DOCX', async () => {
     const sourcePath = path.resolve(
       process.cwd(),
-      'docs/ejemplos-formatos/R-CM-07-5 LAVANDERIA FARMACEUTICA V4 17-09-2026.docx',
+      'docs/ejemplos-formatos/LAVANDERIA FARMACEUTICA.docx',
     );
     const source = await readFile(sourcePath);
 
@@ -21,9 +21,10 @@ describe('readDocxTemplate', () => {
     expect(document.paragraphs.join(' ')).toContain(
       'servicio de lavandería de dotación farmacéutica',
     );
-    expect(document.headersAndFooters).toContain('R-CM-07-5');
-    expect(document.headersAndFooters).toContain('VERSIÓN: 04');
-    expect(document.headersAndFooters).toContain('17-09-2026');
+    const header = document.headersAndFooters.replace(/\s+/g, '');
+    expect(header).toContain('R-CM-07-5');
+    expect(header).toContain('VERSIÓN:04');
+    expect(header).toContain('17-09-2026');
   });
 
   it('loads all five templates from DOCX and corrects the EtO introduction erratum', async () => {

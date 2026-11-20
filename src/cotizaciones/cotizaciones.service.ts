@@ -94,6 +94,11 @@ function buildPdfSnapshot(
     cotizacion: {
       fecha: quote.fecha,
       tipo_servicio: quote.tipo_servicio,
+      metodo_esterilizacion: quote.metodo_esterilizacion,
+      aplica_esterilizacion: quote.aplica_esterilizacion,
+      aplica_empaque: quote.aplica_empaque,
+      aplica_transporte: quote.aplica_transporte,
+      valor_transporte: quote.valor_transporte,
       items: quote.items.map(
         ({
           id,
@@ -206,11 +211,13 @@ export class CotizacionesService {
           }),
         );
       }
-      const subtotal = Number(
+      const subtotalItems = Number(
         items
           .reduce((sum, item) => sum + Number(item.valor_total), 0)
           .toFixed(2),
       );
+      const valorTransporte = dto.aplica_transporte ? Number(dto.valor_transporte ?? 0) : 0;
+      const subtotal = Number((subtotalItems + valorTransporte).toFixed(2));
       const iva = ivaAmount(subtotal, tax.tasa);
       const total = Number((subtotal + iva).toFixed(2));
       const sequences = manager.getRepository(SecuenciaConsecutivos);
@@ -241,6 +248,11 @@ export class CotizacionesService {
         creador_id: access.policy.userId,
         scope_id: scopeId,
         tipo_servicio: dto.tipo_servicio,
+        metodo_esterilizacion: dto.metodo_esterilizacion ?? 'NO_APLICA',
+        aplica_esterilizacion: dto.aplica_esterilizacion ?? false,
+        aplica_empaque: dto.aplica_empaque ?? false,
+        aplica_transporte: dto.aplica_transporte ?? false,
+        valor_transporte: valorTransporte,
         condiciones_comerciales: dto.condiciones_comerciales ?? null,
         tiempo_despacho: dto.tiempo_despacho ?? null,
         transporte: dto.transporte ?? null,
@@ -269,6 +281,31 @@ export class CotizacionesService {
 
   currentIva() {
     return resolveCurrentIva(this.dataSource.manager);
+  }
+
+  async aceptar(id: number, access: PermissionContext): Promise<Cotizacion> {
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(Cotizacion);
+      const quote = await repository.findOne({
+        where: quoteWhere(access, 'cotizaciones.aceptar', id),
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!quote) throw new NotFoundException(`Cotización #${id} no encontrada`);
+      if (!quote.fecha_emision || quote.estado !== EstadoCotizacion.APROBADA)
+        throw new ConflictException('Solo se pueden aceptar cotizaciones aprobadas y emitidas');
+      quote.estado = EstadoCotizacion.ACEPTADA_CLIENTE;
+      quote.aceptacion_registrada_por_id = access.policy.userId ?? null;
+      quote.aceptacion_registrada_at = new Date();
+      quote.version += 1;
+      await repository.save(quote);
+      await this.auditoriaService.create({
+        usuario_id: access.policy.userId,
+        entidad: 'cotizaciones', entidad_id: quote.id,
+        accion: AccionAuditoria.EDITAR,
+        detalle: { estado_anterior: EstadoCotizacion.APROBADA, estado_nuevo: EstadoCotizacion.ACEPTADA_CLIENTE },
+      }, manager);
+      return quote;
+    });
   }
 
   async findAll(access: PermissionContext): Promise<CotizacionListItem[]> {
@@ -352,8 +389,10 @@ export class CotizacionesService {
       quote.fecha,
       await this.itemImageSources(quote),
     );
-    const seal = await this.selloSnapshot.preview(this.dataSource.manager);
-    return seal ? { ...snapshot, sellos: { icontec: seal } } : snapshot;
+    const seals = this.selloSnapshot.previewApplicable
+      ? await this.selloSnapshot.previewApplicable(`COTIZACION:${quote.tipo_servicio}`, this.dataSource.manager)
+      : [await this.selloSnapshot.preview(this.dataSource.manager)].filter((seal): seal is NonNullable<typeof seal> => Boolean(seal));
+    return seals.length ? { ...snapshot, sellos: { icontec: seals[0], certificaciones: seals } } : snapshot;
   }
 
   async ensurePdfCurrent(
@@ -450,10 +489,20 @@ export class CotizacionesService {
           current.cliente_id,
           manager,
         );
-        const seal = await this.selloSnapshot.freeze(
-          manager,
-          access.policy.userId,
-        );
+        const seals = this.selloSnapshot.freezeApplicable
+          ? await this.selloSnapshot.freezeApplicable(
+              manager,
+              `COTIZACION:${current.tipo_servicio}`,
+              access.policy.userId,
+            )
+          : [await this.selloSnapshot.freeze(manager, access.policy.userId)];
+        if (!seals.length) {
+          throw new ConflictException({
+            code: 'SELLO_DOCUMENTAL_NO_DISPONIBLE',
+            message: `Configure al menos un sello activo para ${current.tipo_servicio}`,
+          });
+        }
+        const primarySeal = seals[0] ?? null;
         const snapshot = {
           ...buildPdfSnapshot(
             current,
@@ -462,14 +511,14 @@ export class CotizacionesService {
             await this.itemImageSources(current),
           ),
           schema_version: 2,
-          sellos: { icontec: seal },
+          sellos: { icontec: primarySeal, certificaciones: seals },
         };
         const result = await this.pdfGenerator.generate(
           snapshot,
           storageKey,
           manager,
         );
-        current.sello_icontec_version_id = seal.version_id;
+        current.sello_icontec_version_id = primarySeal?.version_id ?? null;
         generated = true;
         current.version_formato_id = version.id;
         current.snapshot_datos = snapshot;
@@ -778,6 +827,12 @@ export class CotizacionesService {
       }
       if (dto.tipo_servicio !== undefined)
         cotizacion.tipo_servicio = dto.tipo_servicio;
+      if (dto.metodo_esterilizacion !== undefined) cotizacion.metodo_esterilizacion = dto.metodo_esterilizacion;
+      if (dto.aplica_esterilizacion !== undefined) cotizacion.aplica_esterilizacion = dto.aplica_esterilizacion;
+      if (dto.aplica_empaque !== undefined) cotizacion.aplica_empaque = dto.aplica_empaque;
+      if (dto.aplica_transporte !== undefined) cotizacion.aplica_transporte = dto.aplica_transporte;
+      if (dto.valor_transporte !== undefined) cotizacion.valor_transporte = dto.valor_transporte;
+      if (!cotizacion.aplica_transporte) cotizacion.valor_transporte = 0;
       if (dto.condiciones_comerciales !== undefined)
         cotizacion.condiciones_comerciales = dto.condiciones_comerciales;
       if (dto.tiempo_despacho !== undefined)
@@ -827,11 +882,12 @@ export class CotizacionesService {
                 key !== null && key !== '' && !retainedImageKeys.has(key),
             ),
         );
-        cotizacion.subtotal = Number(
+        const subtotalItems = Number(
           items
             .reduce((sum, item) => sum + Number(item.valor_total), 0)
             .toFixed(2),
         );
+        cotizacion.subtotal = Number((subtotalItems + Number(cotizacion.valor_transporte ?? 0)).toFixed(2));
         cotizacion.iva = ivaAmount(cotizacion.subtotal, cotizacion.iva_tasa);
         cotizacion.total = Number(
           (cotizacion.subtotal + cotizacion.iva).toFixed(2),
@@ -840,6 +896,13 @@ export class CotizacionesService {
           throw new BadRequestException('El total supera el importe permitido');
         await itemsRepository.delete({ cotizacion_id: id });
         cotizacion.items = items;
+      }
+      if (dto.valor_transporte !== undefined || dto.aplica_transporte !== undefined) {
+        if (cotizacion.iva_tasa == null) throw new ConflictException('El borrador histórico no tiene tasa fiscal conciliada');
+        const subtotalItems = (cotizacion.items ?? []).reduce((sum, item) => sum + Number(item.valor_total), 0);
+        cotizacion.subtotal = Number((subtotalItems + Number(cotizacion.valor_transporte ?? 0)).toFixed(2));
+        cotizacion.iva = ivaAmount(cotizacion.subtotal, cotizacion.iva_tasa);
+        cotizacion.total = Number((cotizacion.subtotal + cotizacion.iva).toFixed(2));
       }
       cotizacion.version += 1;
       await repository.save(cotizacion);

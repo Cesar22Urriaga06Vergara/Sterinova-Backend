@@ -20,6 +20,9 @@ import { createHash } from 'node:crypto';
 type AuthenticatedRequest = RbacRequest;
 import { LogisticaService } from './logistica.service.js';
 import { CreateOrdenDto } from './dto/create-orden.dto.js';
+import { ActaFase1Dto } from './dto/acta-fase1.dto.js';
+import { ActaFase2Dto } from './dto/acta-fase2.dto.js';
+import { CerrarActaDto } from './dto/cerrar-acta.dto.js';
 import { UpdateEstadoOrdenDto } from './dto/update-estado-orden.dto.js';
 import { PdfGeneratorService } from '../pdf/pdf-generator.service.js';
 import { StorageService } from '../common/services/storage.service.js';
@@ -57,6 +60,24 @@ export class LogisticaController {
     @Req() request: AuthenticatedRequest,
   ) {
     return this.logisticaService.updateMateriales(id, dto, request.user.id, request.rbac);
+  }
+
+  @Patch('ordenes/:id/acta/fase1')
+  @RequirePermission('logistica.recepciones.registrar')
+  guardarFase1Acta(@Param('id', ParseIntPipe) id: number, @Body() dto: ActaFase1Dto, @Req() request: RbacRequest) {
+    return this.logisticaService.guardarFase1Acta(id, dto, request.user.id, request.rbac);
+  }
+
+  @Patch('ordenes/:id/acta/fase2')
+  @RequirePermission('logistica.despacho.ejecutar')
+  guardarFase2Acta(@Param('id', ParseIntPipe) id: number, @Body() dto: ActaFase2Dto, @Req() request: RbacRequest) {
+    return this.logisticaService.guardarFase2Acta(id, dto, request.user.id, request.rbac);
+  }
+
+  @Patch('ordenes/:id/acta/cerrar')
+  @RequirePermission('logistica.despacho.ejecutar')
+  cerrarActa(@Param('id', ParseIntPipe) id: number, @Body() dto: CerrarActaDto, @Req() request: RbacRequest) {
+    return this.logisticaService.cerrarActa(id, dto, request.user.id, request.rbac);
   }
 
   @Get('ordenes')

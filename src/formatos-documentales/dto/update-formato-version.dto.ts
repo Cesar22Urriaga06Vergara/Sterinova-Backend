@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsDateString,
   IsNotEmpty,
@@ -56,4 +57,39 @@ export class UpdateFormatoVersionDto {
   @ValidateNested({ each: true })
   @Type(() => FormatoFirmaDto)
   firmas?: FormatoFirmaDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(4)
+  @ArrayMinSize(4)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  columnas?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(12)
+  @IsString({ each: true })
+  @MaxLength(160, { each: true })
+  condiciones_etiquetas?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  pie_notas?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  subtitulo?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  titulo_detalle?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  nota_precios?: string;
 }

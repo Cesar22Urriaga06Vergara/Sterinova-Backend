@@ -10,7 +10,7 @@ import {
   EstadoVersionFormato,
   FormatoVersiones,
 } from './entities/formato-versiones.entity.js';
-import { FormatosDocumentales } from './entities/formatos-documentales.entity.js';
+import { FormatosDocumentales, TipoDocumentoFormato } from './entities/formatos-documentales.entity.js';
 import { TipoServicioCotizacion } from '../cotizaciones/entities/tipo-servicio.enum.js';
 
 export const CERTIFICATE_FORMAT_KEY = 'CERTIFICADO_ESTERILIZACION';
@@ -81,7 +81,33 @@ export class FormatoResolverService {
     clientId: number,
     manager: EntityManager,
   ): Promise<FormatoVersiones> {
-    return this.resolve(`COTIZACION_${tipoServicio}`, clientId, manager);
+    return this.resolveCotizacionWithClientFallback(tipoServicio, clientId, manager);
+  }
+
+  private async resolveCotizacionWithClientFallback(
+    tipoServicio: TipoServicioCotizacion,
+    clientId: number,
+    manager: EntityManager,
+  ): Promise<FormatoVersiones> {
+    const formats = manager.getRepository(FormatosDocumentales);
+    const serviceAliases = tipoServicio === TipoServicioCotizacion.FABRICANTE
+      ? [TipoServicioCotizacion.FABRICANTE, TipoServicioCotizacion.FARMACEUTICO]
+      : [tipoServicio];
+    for (const service of serviceAliases) {
+      const clientFormat = await formats.findOne({
+        where: { tipo_documento: TipoDocumentoFormato.COTIZACION, tipo_servicio: service, cliente_id: clientId },
+      });
+      if (clientFormat) {
+        return this.resolve(clientFormat.clave, clientId, manager);
+      }
+    }
+    try {
+      return await this.resolve(`COTIZACION_${tipoServicio}`, clientId, manager);
+    } catch (error) {
+      if (tipoServicio !== TipoServicioCotizacion.FABRICANTE && tipoServicio !== TipoServicioCotizacion.FARMACEUTICO) throw error;
+      if (!(error instanceof NotFoundException)) throw error;
+      return this.resolve('COTIZACION_FARMACEUTICO_FABRICANTE', clientId, manager);
+    }
   }
 
   resolveCertificado(

@@ -7,6 +7,9 @@ import {
   Min,
   IsOptional,
   IsString,
+  IsBoolean,
+  IsIn,
+  IsNumber,
   IsArray,
   ArrayNotEmpty,
   ValidateNested,
@@ -33,6 +36,12 @@ export class QuoteVersionDto {
 }
 
 export class UpdateCotizacionDto extends QuoteVersionDto {
+  @ApiPropertyOptional({ enum: ['EtO', 'VAPOR', 'NO_APLICA'] }) @ValidateIf((_o, v) => v !== undefined) @IsIn(['EtO', 'VAPOR', 'NO_APLICA'])
+  metodo_esterilizacion?: 'EtO' | 'VAPOR' | 'NO_APLICA';
+  @ApiPropertyOptional() @ValidateIf((_o, v) => v !== undefined) @IsBoolean() aplica_esterilizacion?: boolean;
+  @ApiPropertyOptional() @ValidateIf((_o, v) => v !== undefined) @IsBoolean() aplica_empaque?: boolean;
+  @ApiPropertyOptional() @ValidateIf((_o, v) => v !== undefined) @IsBoolean() aplica_transporte?: boolean;
+  @ApiPropertyOptional({ minimum: 0 }) @ValidateIf((_o, v) => v !== undefined) @Type(() => Number) @IsNumber() @Min(0) valor_transporte?: number;
   @ApiPropertyOptional()
   @ValidateIf((_object, value) => value !== undefined)
   @IsInt()

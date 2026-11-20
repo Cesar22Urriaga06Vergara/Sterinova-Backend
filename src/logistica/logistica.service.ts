@@ -23,7 +23,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, type EntityManager } from 'typeorm';
+import { In, Repository, type EntityManager } from 'typeorm';
 import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
 import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.enum.js';
 import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
@@ -44,6 +44,11 @@ import { DocumentoEmitido } from './entities/documento-emitido.entity.js';
 import { DocumentoEvento } from './entities/documento-evento.entity.js';
 import { CreateDocumentoEmitidoDto } from './dto/create-documento-emitido.dto.js';
 import { CreateDocumentoEventoDto } from './dto/documento-evento.dto.js';
+import { ivaAmount } from '../tasas-fiscales/iva-amount.js';
+import { Conductor } from './entities/conductor.entity.js';
+import { ActaFase1Dto } from './dto/acta-fase1.dto.js';
+import { ActaFase2Dto } from './dto/acta-fase2.dto.js';
+import { CerrarActaDto } from './dto/cerrar-acta.dto.js';
 
 const EVENTO_POR_ESTADO: Partial<
   Record<EstadoOrdenServicio, TipoEventoOrden>
@@ -141,9 +146,10 @@ export class LogisticaService {
           'La Orden de Compra del cliente es obligatoria para crear la orden',
         );
       }
+      const formatos = dto.formatos ?? 'AMBOS';
       const [orderFormat, actaFormat] = await Promise.all([
-        this.formatoResolver.resolveOrdenServicio(manager),
-        this.formatoResolver.resolveActaServicio(manager),
+        formatos !== 'ACTA' ? this.formatoResolver.resolveOrdenServicio(manager) : Promise.resolve(null),
+        formatos !== 'ORDEN' ? this.formatoResolver.resolveActaServicio(manager) : Promise.resolve(null),
       ]);
       const year = new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
@@ -192,7 +198,21 @@ export class LogisticaService {
       const items = await manager
         .getRepository(CotizacionItem)
         .find({ where: { cotizacion_id: dto.cotizacion_id } });
+      const conductorRecoleccion = dto.conductor_recoleccion_id == null
+        ? null
+        : await manager.getRepository(Conductor).findOneBy({
+            id: dto.conductor_recoleccion_id,
+            scope_id: cotizacion.scope_id!,
+            activo: true,
+          });
+      if (dto.conductor_recoleccion_id != null && !conductorRecoleccion) {
+        throw new BadRequestException('El conductor debe estar activo y pertenecer al ámbito de la cotización');
+      }
       const materiales = prepararMateriales(dto.materiales ?? [], items);
+      for (const material of materiales) {
+        const cotizado = items.find((item) => item.id === material.cotizacion_item_id);
+        if (cotizado) material.descripcion = cotizado.descripcion;
+      }
       // One quote may serve several orders (sedes or partial deliveries), but
       // the contracted quantity is never allocated twice (hoja de ruta D15).
       await this.assertSaldoDisponible(
@@ -206,7 +226,7 @@ export class LogisticaService {
         orders.create({
           metodo_esterilizacion: metodoOrden(
             cotizacion.tipo_servicio,
-            dto.metodo_esterilizacion,
+            dto.metodo_esterilizacion ?? (cotizacion.metodo_esterilizacion === 'EtO' ? 'ETO' : cotizacion.metodo_esterilizacion === 'VAPOR' ? 'VAPOR' : undefined),
           ),
           consecutivo: `OS-${year}-${numero}`,
           cotizacion_id: dto.cotizacion_id,
@@ -214,12 +234,15 @@ export class LogisticaService {
           creador_id: usuarioId,
           fecha_programada: dto.fecha_programada,
           estado: EstadoOrdenServicio.PENDIENTE,
-          acta_consecutivo: `AS-${year}-${actaConsecutivo.numero}`,
-          formato_orden_version_id: orderFormat.id,
-          formato_acta_version_id: actaFormat.id,
+          acta_consecutivo: formatos !== 'ORDEN' ? `AS-${year}-${actaConsecutivo.numero}` : null,
+          formato_orden_version_id: orderFormat?.id ?? null,
+          formato_acta_version_id: actaFormat?.id ?? null,
+          generar_acta: formatos !== 'ORDEN',
+          generar_orden: formatos !== 'ACTA',
           orden_compra_cliente: dto.orden_compra_cliente.trim(),
-          conductor_asignado: dto.conductor_asignado ?? null,
-          vehiculo_placa: dto.vehiculo_placa ?? null,
+          conductor_asignado: conductorRecoleccion?.nombre_completo ?? dto.conductor_asignado ?? null,
+          conductor_recoleccion_id: conductorRecoleccion?.id ?? null,
+          vehiculo_placa: conductorRecoleccion?.placa_vehiculo ?? dto.vehiculo_placa ?? null,
           observaciones: dto.observaciones ?? null,
         }),
       );
@@ -307,6 +330,7 @@ export class LogisticaService {
         lock: { mode: 'pessimistic_write' },
       });
       if (!orden) throw new NotFoundException('Orden no encontrada');
+      if (orden.acta_fase >= 2 || orden.acta_cerrada_at) throw new ConflictException('La recepción del Acta está confirmada y sus datos están bloqueados');
       if (orden.version !== dto.version)
         throw new ConflictException(
           'La orden cambió; recargue antes de guardar',
@@ -329,6 +353,11 @@ export class LogisticaService {
       const quote = await manager
         .getRepository(Cotizacion)
         .findOneByOrFail({ id: orden.cotizacion_id });
+      for (const conductorId of [dto.conductor_recoleccion_id, dto.conductor_entrega_id]) {
+        if (conductorId == null) continue;
+        const driver = await manager.getRepository(Conductor).findOneBy({ id: conductorId, scope_id: orden.scope_id! });
+        if (!driver || !driver.activo) throw new BadRequestException('El conductor debe estar activo y pertenecer al ámbito de la orden');
+      }
       const items = await manager
         .getRepository(CotizacionItem)
         .find({ where: { cotizacion_id: orden.cotizacion_id } });
@@ -338,6 +367,9 @@ export class LogisticaService {
         quote.tipo_servicio,
         dto.metodo_esterilizacion ?? orden.metodo_esterilizacion ?? undefined,
       );
+      for (const key of ['conductor_recoleccion_id','conductor_entrega_id','fecha_hora_recoleccion','lote_recoleccion','cajas_recibidas','cantidad_recibida','entregado_por_cliente','recibido_por_sterinova','fecha_hora_entrega','cajas_entregadas','cantidad_entregada','certificado_asociado','entregado_por_sterinova','recibido_por_cliente'] as const) {
+        if (dto[key] !== undefined) Object.assign(orden, { [key]: dto[key] });
+      }
       await manager
         .getRepository(OrdenServicioMaterial)
         .delete({ orden_id: id });
@@ -363,6 +395,113 @@ export class LogisticaService {
       );
     });
     return this.findOne(id);
+  }
+
+  async guardarFase1Acta(id: number, dto: ActaFase1Dto, usuarioId: number, access?: PermissionContext) {
+    await this.dataSource.transaction(async (manager) => {
+      const orders = manager.getRepository(OrdenServicio);
+      const order = await orders.findOne({ where: access ? resourceWhere<OrdenServicio>(access, { id }) : { id }, lock: { mode: 'pessimistic_write' } });
+      if (!order) throw new NotFoundException('Orden no encontrada');
+      if (order.acta_fase !== 1 || order.acta_cerrada_at) throw new ConflictException('La Fase 1 está bloqueada');
+      if (order.version !== dto.version) throw new ConflictException('El Acta cambió; recargue antes de confirmar recepción');
+      const linesRepo = manager.getRepository(OrdenServicioMaterial);
+      const lines = await linesRepo.find({ where: { orden_id: id }, lock: { mode: 'pessimistic_write' } });
+      this.validarLineasActa(lines, dto.materiales);
+      await this.validarConductorActa(manager, order, dto.conductor_recoleccion_id);
+      const byId = new Map(dto.materiales.map((line) => [line.material_id, line]));
+      for (const line of lines) {
+        const input = byId.get(line.id)!;
+        line.lote = input.lote?.trim() || null;
+        line.cantidad_recibida = input.cantidad_recibida;
+        line.cajas_recibidas = input.cajas_recibidas;
+      }
+      await linesRepo.save(lines);
+      order.fecha_hora_recoleccion = new Date(dto.fecha_hora_recoleccion);
+      order.conductor_recoleccion_id = dto.conductor_recoleccion_id ?? null;
+      order.entregado_por_cliente = dto.entregado_por_cliente.trim();
+      order.recibido_por_sterinova = dto.recibido_por_sterinova?.trim() || null;
+      order.observaciones_recepcion = dto.observaciones_recepcion?.trim() || null;
+      order.acta_fase = 2;
+      if ([EstadoOrdenServicio.PENDIENTE, EstadoOrdenServicio.EN_RUTA, EstadoOrdenServicio.RECOGIDO].includes(order.estado)) order.estado = EstadoOrdenServicio.EN_PLANTA;
+      order.version = dto.version + 1;
+      await orders.save(order);
+      await this.auditoriaService.create({ usuario_id: usuarioId, entidad: 'orden_servicio', entidad_id: id, accion: AccionAuditoria.EDITAR, detalle: { acta_fase: 1, estado: 'CONFIRMADA', materiales: lines.length } }, manager);
+    });
+    return this.findOne(id, access);
+  }
+
+  async guardarFase2Acta(id: number, dto: ActaFase2Dto, usuarioId: number, access?: PermissionContext) {
+    await this.dataSource.transaction(async (manager) => {
+      const orders = manager.getRepository(OrdenServicio);
+      const order = await orders.findOne({ where: access ? resourceWhere<OrdenServicio>(access, { id }) : { id }, lock: { mode: 'pessimistic_write' } });
+      if (!order) throw new NotFoundException('Orden no encontrada');
+      if (order.acta_fase !== 2 || order.acta_cerrada_at) throw new ConflictException('Confirme primero la recepción y complete Fase 2 en su orden actual');
+      if (order.version !== dto.version) throw new ConflictException('El Acta cambió; recargue antes de guardar la entrega');
+      const linesRepo = manager.getRepository(OrdenServicioMaterial);
+      const lines = await linesRepo.find({ where: { orden_id: id }, lock: { mode: 'pessimistic_write' } });
+      this.validarLineasActa(lines, dto.materiales);
+      await this.validarConductorActa(manager, order, dto.conductor_entrega_id);
+      const byId = new Map(dto.materiales.map((line) => [line.material_id, line]));
+      for (const line of lines) {
+        const input = byId.get(line.id)!;
+        if (line.cantidad_recibida == null) throw new ConflictException('Complete las cantidades recibidas en Fase 1');
+        if (input.cantidad_entregada > Number(line.cantidad_recibida)) throw new BadRequestException('La cantidad entregada no puede superar la recibida');
+        line.cantidad_entregada = input.cantidad_entregada;
+        line.cajas_entregadas = input.cajas_entregadas;
+        line.visto_bueno = input.visto_bueno;
+        line.devolucion_registrada = input.devolucion_registrada ?? false;
+      }
+      await linesRepo.save(lines);
+      order.fecha_hora_entrega = new Date(dto.fecha_hora_entrega);
+      order.conductor_entrega_id = dto.conductor_entrega_id ?? null;
+      order.entregado_por_sterinova = dto.entregado_por_sterinova?.trim() || null;
+      order.recibido_por_cliente = dto.recibido_por_cliente.trim();
+      order.certificado_no = dto.certificado_no?.trim() || null;
+      order.factura_no = dto.factura_no?.trim() || null;
+      order.observaciones_cliente = dto.observaciones_cliente?.trim() || null;
+      order.acta_fase = 3;
+      order.version = dto.version + 1;
+      await orders.save(order);
+      await this.auditoriaService.create({ usuario_id: usuarioId, entidad: 'orden_servicio', entidad_id: id, accion: AccionAuditoria.EDITAR, detalle: { acta_fase: 2, estado: 'CONFIRMADA', materiales: lines.length } }, manager);
+    });
+    return this.findOne(id, access);
+  }
+
+  async cerrarActa(id: number, dto: CerrarActaDto, usuarioId: number, access?: PermissionContext) {
+    await this.dataSource.transaction(async (manager) => {
+      const orders = manager.getRepository(OrdenServicio);
+      const order = await orders.findOne({ where: access ? resourceWhere<OrdenServicio>(access, { id }) : { id }, lock: { mode: 'pessimistic_write' } });
+      if (!order) throw new NotFoundException('Orden no encontrada');
+      if (order.acta_fase !== 3 || order.acta_cerrada_at) throw new ConflictException('El Acta no está lista para cierre o ya está cerrada');
+      if (order.version !== dto.version) throw new ConflictException('El Acta cambió; recargue antes de cerrar');
+      const linesRepo = manager.getRepository(OrdenServicioMaterial);
+      const lines = await linesRepo.find({ where: { orden_id: id }, lock: { mode: 'pessimistic_write' } });
+      const hayDiferencia = lines.some((line) => Number(line.cantidad_entregada ?? 0) < Number(line.cantidad_recibida ?? 0) || line.devolucion_registrada);
+      const tipo = dto.novedad_tipo;
+      const motivo = dto.novedad_motivo?.trim() ?? '';
+      if (hayDiferencia && (!tipo || !motivo)) throw new BadRequestException('Seleccione Entrega parcial o Devolución / Rechazo e indique el motivo para cerrar el Acta');
+      if ((tipo && !motivo) || (!tipo && motivo)) throw new BadRequestException('El tipo de novedad y su motivo deben registrarse juntos');
+      for (const line of lines) line.cantidad_devuelta = Number(Math.max(0, Number(line.cantidad_recibida ?? 0) - Number(line.cantidad_entregada ?? 0)).toFixed(3));
+      await linesRepo.save(lines);
+      order.novedad_tipo = tipo ?? null;
+      order.novedad_motivo = motivo || null;
+      order.acta_cerrada_at = new Date();
+      order.version = dto.version + 1;
+      await orders.save(order);
+      await this.auditoriaService.create({ usuario_id: usuarioId, entidad: 'orden_servicio', entidad_id: id, accion: AccionAuditoria.EDITAR, detalle: { acta_fase: 3, acta_cerrada: true, novedad_tipo: tipo ?? null, devoluciones: lines.reduce((sum, line) => sum + Number(line.cantidad_devuelta), 0) } }, manager);
+    });
+    return this.findOne(id, access);
+  }
+
+  private validarLineasActa<T extends { material_id: number }>(lines: OrdenServicioMaterial[], inputs: T[]) {
+    const ids = lines.map((line) => line.id);
+    const submitted = inputs.map((line) => line.material_id);
+    if (!ids.length || ids.length !== submitted.length || new Set(submitted).size !== submitted.length || submitted.some((id) => !ids.includes(id))) throw new BadRequestException('Incluya cada línea de la orden una sola vez');
+  }
+
+  private async validarConductorActa(manager: EntityManager, order: OrdenServicio, id: number) {
+    const driver = await manager.getRepository(Conductor).findOneBy({ id, scope_id: order.scope_id!, activo: true });
+    if (!driver) throw new BadRequestException('El conductor debe estar activo y pertenecer al ámbito de la orden');
   }
 
   findAll(access?: PermissionContext): Promise<OrdenServicio[]> {
@@ -593,6 +732,9 @@ export class LogisticaService {
         'La orden no tiene un cliente asociado para generar el documento',
       );
     }
+    if ((tipo === 'ACTA_SERVICIO' && orden.generar_acta === false) || (tipo === 'ORDEN_SERVICIO' && orden.generar_orden === false)) {
+      throw new BadRequestException('Este formato no fue seleccionado para la orden');
+    }
 
     const pinnedFormatId =
       tipo === 'ORDEN_SERVICIO'
@@ -604,6 +746,20 @@ export class LogisticaService {
         ? await this.formatoResolver.resolveOrdenServicio()
         : await this.formatoResolver.resolveActaServicio();
     const configuration = formatVersion.configuracion_json;
+    const quoteItems = orden.cotizacion?.items ?? [];
+    const materialSubtotal = (orden.materiales ?? []).reduce((sum, material) => {
+      const item = quoteItems.find((candidate) => candidate.id === material.cotizacion_item_id);
+      const quantity = tipo === 'ACTA_SERVICIO' ? Number(material.cantidad_entregada ?? 0) : Number(material.cantidad);
+      return sum + (item ? quantity * Number(item.valor_unitario) : 0);
+    }, 0);
+    const transport = orden.cotizacion?.aplica_transporte ? Number(orden.cotizacion.valor_transporte ?? 0) : 0;
+    const subtotalReal = Number((materialSubtotal + (tipo === 'ACTA_SERVICIO' ? 0 : transport)).toFixed(2));
+    const ivaReal = ivaAmount(tipo === 'ACTA_SERVICIO' ? materialSubtotal + transport : subtotalReal, tipo === 'ACTA_SERVICIO' ? '0.19' : orden.cotizacion?.iva_tasa ?? '0.19');
+    const totalReal = Number((subtotalReal + ivaReal + (tipo === 'ACTA_SERVICIO' ? transport : 0)).toFixed(2));
+    const conductorIds = [orden.conductor_recoleccion_id, orden.conductor_entrega_id].filter((id): id is number => typeof id === 'number');
+    const conductoresRuta = conductorIds.length
+      ? await this.ordenesRepository.manager.getRepository(Conductor).findBy({ id: In(conductorIds) })
+      : [];
 
     return {
       documento: {
@@ -630,12 +786,28 @@ export class LogisticaService {
         nit: cliente.nit,
         telefono: cliente.telefono,
         email: cliente.email,
+        contacto: cliente.contacto,
+        cargo: cliente.cargo,
+        ciudad: cliente.ciudad,
       },
       cotizacion: {
         tipo_servicio: orden.cotizacion?.tipo_servicio,
-        items: (orden.cotizacion?.items ?? []).map((item) => ({
+        metodo_esterilizacion: orden.cotizacion?.metodo_esterilizacion,
+        aplica_esterilizacion: orden.cotizacion?.aplica_esterilizacion,
+        aplica_empaque: orden.cotizacion?.aplica_empaque,
+        aplica_transporte: orden.cotizacion?.aplica_transporte,
+        valor_transporte: orden.cotizacion?.valor_transporte,
+        subtotal: subtotalReal,
+        iva_tasa: orden.cotizacion?.iva_tasa,
+        iva: ivaReal,
+        total: totalReal,
+        items: quoteItems.map((item) => ({
           id: item.id,
+          descripcion: item.descripcion,
+          unidad: item.unidad,
           cantidad: item.cantidad,
+          valor_unitario: item.valor_unitario,
+          valor_total: item.valor_total,
         })),
       },
       orden: {
@@ -644,6 +816,30 @@ export class LogisticaService {
         metodo_esterilizacion: orden.metodo_esterilizacion,
         conductor_asignado: orden.conductor_asignado ?? null,
         vehiculo_placa: orden.vehiculo_placa ?? null,
+        conductor_recoleccion_id: orden.conductor_recoleccion_id ?? null,
+        conductor_entrega_id: orden.conductor_entrega_id ?? null,
+        fecha_hora_recoleccion: orden.fecha_hora_recoleccion ?? null,
+        lote_recoleccion: orden.lote_recoleccion ?? null,
+        cajas_recibidas: orden.cajas_recibidas ?? null,
+        cantidad_recibida: orden.cantidad_recibida ?? null,
+        entregado_por_cliente: orden.entregado_por_cliente ?? null,
+        recibido_por_sterinova: orden.recibido_por_sterinova ?? null,
+        fecha_hora_entrega: orden.fecha_hora_entrega ?? null,
+        cajas_entregadas: orden.cajas_entregadas ?? null,
+        cantidad_entregada: orden.cantidad_entregada ?? null,
+        certificado_asociado: orden.certificado_asociado ?? null,
+        entregado_por_sterinova: orden.entregado_por_sterinova ?? null,
+        recibido_por_cliente: orden.recibido_por_cliente ?? null,
+        acta_fase: orden.acta_fase ?? 1,
+        acta_cerrada_at: orden.acta_cerrada_at ?? null,
+        certificado_no: orden.certificado_no ?? orden.certificado_asociado ?? null,
+        factura_no: orden.factura_no ?? null,
+        novedad_tipo: orden.novedad_tipo ?? null,
+        novedad_motivo: orden.novedad_motivo ?? null,
+        conductores_ruta: {
+          recoleccion: conductoresRuta.find((c) => c.id === orden.conductor_recoleccion_id) ?? null,
+          entrega: conductoresRuta.find((c) => c.id === orden.conductor_entrega_id) ?? null,
+        },
         observaciones: orden.observaciones ?? null,
         observaciones_recepcion: orden.observaciones_recepcion ?? null,
         observaciones_cliente: orden.observaciones_cliente ?? null,
@@ -654,8 +850,18 @@ export class LogisticaService {
         referencia: material.referencia ?? null,
         lote: material.lote ?? null,
         cantidad: material.cantidad,
+        cantidad_recibida: material.cantidad_recibida ?? null,
+        cajas_recibidas: material.cajas_recibidas ?? null,
+        cantidad_entregada: material.cantidad_entregada ?? null,
+        cajas_entregadas: material.cajas_entregadas ?? null,
+        visto_bueno: material.visto_bueno ?? null,
+        devolucion_registrada: material.devolucion_registrada ?? false,
+        cantidad_devuelta: material.cantidad_devuelta ?? 0,
         cotizacion_item_id: material.cotizacion_item_id,
         posicion: material.posicion,
+        valor_unitario_pactado: quoteItems.find((item) => item.id === material.cotizacion_item_id)?.valor_unitario ?? null,
+        cantidad_cotizada: quoteItems.find((item) => item.id === material.cotizacion_item_id)?.cantidad ?? null,
+        valor_total_real: Number((Number(tipo === 'ACTA_SERVICIO' ? material.cantidad_entregada ?? 0 : material.cantidad) * Number(quoteItems.find((item) => item.id === material.cotizacion_item_id)?.valor_unitario ?? 0)).toFixed(2)),
       })),
       eventos: (orden.eventos ?? [])
         .slice()
@@ -681,8 +887,7 @@ export class LogisticaService {
   ): Promise<Cotizacion[]> {
     const aprobadas = await this.cotizacionesRepository.find({
       where: resourceWhere<Cotizacion>(access, { estado: EstadoCotizacion.ACEPTADA_CLIENTE }),
-      select: {id:true,consecutivo:true,tipo_servicio:true,estado:true,cliente_id:true},
-      relations: ['cliente'],
+      relations: ['cliente', 'items'],
       order: { id: 'DESC' },
     });
 

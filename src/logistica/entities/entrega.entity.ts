@@ -14,7 +14,7 @@ import { User } from '../../users/entities/user.entity.js';
 export type EstadoEntrega =
   | 'PENDIENTE'
   | 'EN_TRANSITO'
-  * | 'ENTREGADO'
+  | 'ENTREGADO'
   | 'RECHAZADO';
 
 @Entity('entregas')

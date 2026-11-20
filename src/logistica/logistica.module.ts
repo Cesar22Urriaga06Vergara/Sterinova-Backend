@@ -6,6 +6,9 @@ import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
 import { DocumentoEmitido } from './entities/documento-emitido.entity.js';
 import { DocumentoEvento } from './entities/documento-evento.entity.js';
 import { RecepcionLogistica } from './entities/recepcion-logistica.entity.js';
+import { Conductor } from './entities/conductor.entity.js';
+import { ConductoresController } from './conductores.controller.js';
+import { ConductoresService } from './conductores.service.js';
 import { LogisticaController } from './logistica.controller.js';
 import { RecepcionController } from './recepcion.controller.js';
 import { LogisticaService } from './logistica.service.js';
@@ -22,12 +25,13 @@ import { FormatosDocumentalesModule } from '../formatos-documentales/formatos-do
       DocumentoEmitido,
       DocumentoEvento,
       RecepcionLogistica,
+      Conductor,
     ]),
     AuditoriaModule,
     FormatosDocumentalesModule,
   ],
-  controllers: [LogisticaController, RecepcionController],
-  providers: [LogisticaService, RecepcionService],
+  controllers: [LogisticaController, RecepcionController, ConductoresController],
+  providers: [LogisticaService, RecepcionService, ConductoresService],
   exports: [LogisticaService, RecepcionService],
 })
 export class LogisticaModule {}

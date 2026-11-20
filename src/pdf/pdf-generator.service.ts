@@ -71,6 +71,18 @@ function eventDateTime(event?: Snapshot): { date: string; time: string } {
   };
 }
 
+function orderDateTime(value?: unknown): { date: string; time: string } {
+  if (!value) return { date: '', time: '' };
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!match) return { date: '', time: '' };
+  return { date: `${match[3]}/${match[2]}/${match[1]}`, time: `${match[4]}:${match[5]}` };
+}
+
+function printable(value: unknown, empty = '---'): string {
+  const normalized = value == null ? '' : String(value).trim();
+  return escapeHtml(normalized || empty);
+}
+
 function buildLogisticDocumentHtml(
   snapshot: Snapshot,
   type: 'orden_servicio' | 'acta_servicio',
@@ -124,7 +136,7 @@ function buildLogisticDocumentHtml(
   const certificationUrl = escapeHtml(
     new URL('/certificaciones-icontec-iqnet.jpeg', logoBase).toString(),
   );
-  const quoteItems = isOrder && Array.isArray(quote?.items) ? quote.items : [];
+  const quoteItems = Array.isArray(quote?.items) ? quote.items : [];
   const eventos: Snapshot[] = Array.isArray(snapshot.eventos)
     ? snapshot.eventos
     : [];
@@ -170,7 +182,7 @@ function buildLogisticDocumentHtml(
     (total, material) => total + Number(material.cajas ?? 0),
     0,
   );
-  const receivedDateTime = eventDateTime(receiptEvent);
+  const receivedDateTime = orderDateTime(order?.fecha_hora_recoleccion ?? receiptEvent?.ocurrido_at ?? pickupEvent?.ocurrido_at);
   const processingDateTime = eventDateTime(processingEvent);
   const sterilizationDate = String(
     processingEvent?.fecha_esterilizacion ?? '',
@@ -180,24 +192,30 @@ function buildLogisticDocumentHtml(
   )
     ? formatDocumentVersionDate(sterilizationDate)
     : '';
-  const deliveredDateTime = eventDateTime(deliveryEvent);
+  const deliveredDateTime = orderDateTime(order?.fecha_hora_entrega ?? deliveryEvent?.ocurrido_at);
   const pickupDateTime = eventDateTime(pickupEvent);
-  const receiptBoxesValue = receiptEvent ? String(receiptBoxes) : '';
-  const deliveryBoxesValue = deliveryEvent ? String(deliveryBoxes) : '';
+  const receiptBoxesValue = materials.some((material) => material.cajas_recibidas != null)
+    ? String(materials.reduce((sum, material) => sum + Number(material.cajas_recibidas ?? 0), 0))
+    : receiptEvent ? String(receiptBoxes) : 'N/A';
+  const deliveryBoxesValue = materials.some((material) => material.cajas_entregadas != null)
+    ? String(materials.reduce((sum, material) => sum + Number(material.cajas_entregadas ?? 0), 0))
+    : deliveryEvent ? String(deliveryBoxes) : 'N/A';
   const renderedCommercialTotals = new Set<number>();
   const lineValues = materials.map((material) => {
     const item = quoteItems.find(
       (candidate: Snapshot) => candidate.id === material.cotizacion_item_id,
     );
-    const unitValue = item?.valor_unitario ?? null;
+    const unitValue = material?.valor_unitario_pactado ?? item?.valor_unitario ?? null;
     const firstMaterialForQuoteItem =
-      item != null && !renderedCommercialTotals.has(item.id);
+      type === 'acta_servicio' || (item != null && !renderedCommercialTotals.has(item.id));
     if (item) renderedCommercialTotals.add(item.id);
     const quotedQuantity =
       item?.cantidad == null ? null : Number(item.cantidad);
     const commercialTotal =
       !firstMaterialForQuoteItem
         ? null
+        : material?.valor_total_real != null
+        ? Number(material.valor_total_real)
         : item?.valor_total != null
         ? Number(item.valor_total)
         : unitValue == null ||
@@ -211,8 +229,7 @@ function buildLogisticDocumentHtml(
     const quantity = Number(material.cantidad ?? 0);
     return Number.isFinite(quantity) ? total + quantity : total;
   }, 0);
-  const tableRows = materials.length
-    ? materials
+  const populatedTableRows = materials
         .map((material, index) => {
           const description = escapeHtml(material.descripcion);
           const lot = escapeHtml(material.lote);
@@ -236,29 +253,36 @@ function buildLogisticDocumentHtml(
           return `<tr>
             <td class="description">${description}</td>
             <td class="lot">${lot}</td>
-            <td class="number">${escapeHtml(received?.cantidad ?? '')}</td>
-            <td class="number">${escapeHtml(received?.cajas ?? '')}</td>
-            <td class="number">${escapeHtml(processed?.cantidad ?? '')}</td>
-            <td class="number">${escapeHtml(delivered?.cantidad ?? '')}</td>
-            <td class="number">${escapeHtml(delivered?.cajas ?? '')}</td>
-            <td class="number"></td>
-            <td class="money"></td>
-            <td class="money"></td>
+            <td class="number">${printable(material.cantidad_cotizada)}</td>
+            <td class="number">${printable(material.cantidad_recibida ?? received?.cantidad)}</td>
+            <td class="number">${printable(material.cajas_recibidas ?? received?.cajas)}</td>
+            <td class="number">${printable(material.cantidad_entregada ?? delivered?.cantidad)}</td>
+            <td class="number">${printable(material.cajas_entregadas ?? delivered?.cajas)}</td>
+            <td class="center">${material.visto_bueno == null ? '---' : material.visto_bueno ? '☒' : '☐'}</td>
+            <td class="money">${values.unitValue == null ? '---' : formatCurrency(values.unitValue)}</td>
+            <td class="money">${values.totalValue == null ? '---' : formatCurrency(values.totalValue)}</td>
           </tr>`;
         })
-        .join('')
-    : `    <tr><td class="empty" colspan="${isOrder ? 6 : 10}"></td></tr>`;
+        .join('');
+  const tableRows = isOrder
+    ? populatedTableRows || '<tr><td class="empty" colspan="6"></td></tr>'
+    : populatedTableRows + Array.from({ length: Math.max(0, 12 - materials.length) }, () => `<tr>${Array.from({ length: 10 }, () => '<td class="center">---</td>').join('')}</tr>`).join('');
   const address = escapeHtml(customer?.direccion);
   const nit = escapeHtml(customer?.nit);
   const phone = escapeHtml(customer?.telefono);
   const email = escapeHtml(customer?.email);
   const observation = isOrder
     ? escapeHtml(order?.observaciones)
-    : escapeHtml(receiptEvent?.observaciones);
-  const quoteSubtotal = isOrder ? formatCurrency(quote?.subtotal) : '';
-  const quoteTax = isOrder ? formatCurrency(quote?.iva) : '';
-  const quoteTotal = isOrder ? formatCurrency(quote?.total) : '';
-  const methodology = method === 'ETO' ? 'GAS' : method;
+    : printable(order?.observaciones_recepcion ?? receiptEvent?.observaciones);
+  const actaSubtotal = materials.reduce((sum, material) => sum + Number(material.valor_total_real ?? 0), 0);
+  const transportAmount = quote?.aplica_transporte ? Number(quote.valor_transporte ?? 0) : 0;
+  const actaTax = Number(((actaSubtotal + transportAmount) * 0.19).toFixed(2));
+  const actaTotal = Number((actaSubtotal + transportAmount + actaTax).toFixed(2));
+  const quoteSubtotal = isOrder ? formatCurrency(Number(quote?.subtotal ?? 0) - Number(quote?.valor_transporte ?? 0)) : formatCurrency(actaSubtotal);
+  const quoteTransport = quote?.aplica_transporte ? formatCurrency(isOrder ? quote.valor_transporte : transportAmount) : 'N/A';
+  const quoteTax = isOrder ? formatCurrency(quote?.iva) : formatCurrency(actaTax);
+  const quoteTotal = isOrder ? formatCurrency(quote?.total) : formatCurrency(actaTotal);
+  const methodology = method === 'ETO' ? 'EtO' : method || 'No aplica';
 
   return `<!doctype html>
   <html lang="es">
@@ -399,7 +423,7 @@ function buildLogisticDocumentHtml(
               <td class="label shade" style="width: 17%">SUB TOTAL</td><td class="right">${quoteSubtotal}</td>
             </tr>
             <tr>
-              <td colspan="3"></td><td class="label shade">TRANSPORTE</td><td></td>
+              <td colspan="3"></td><td class="label shade">TRANSPORTE</td><td>${quoteTransport}</td>
             </tr>
             <tr>
               <td colspan="3"></td><td class="label shade">I.V.A.</td><td class="right">${quoteTax}</td>
@@ -426,15 +450,19 @@ function buildLogisticDocumentHtml(
         </div>
       ` : `
         <table class="section">
-          <tr><td class="label shade" style="width: 18%">CLIENTE:</td><td>${customerName}</td><td class="label shade" style="width: 18%">TIPO DE SERVICIO</td><td style="width: 18%">${serviceType}</td></tr>
-          <tr>
-            <td class="label shade">DESCRIPCIÓN DEL SERVICIO:</td><td colspan="3">${serviceType}</td>
-          </tr>
+          <tr><td class="label shade">ESTADO DE LA ORDEN</td><td colspan="3">${printable(order?.estado ?? (processingEvent ? 'PROCESADO' : undefined))}</td></tr>
+          <tr><td class="label shade">CLIENTE / RAZÓN SOCIAL</td><td colspan="3">${customerName}</td></tr>
+          <tr><td class="label shade">NIT</td><td>${nit}</td><td class="label shade">DIRECCIÓN</td><td>${address}</td></tr>
+          <tr><td class="label shade">TELÉFONO</td><td>${phone}</td><td class="label shade">E-MAIL</td><td>${email}</td></tr>
+          <tr><td class="label shade">MÉTODO / TIPO DE SERVICIO</td><td>${methodology} / ${serviceType}</td><td class="label shade">ESTERILIZACIÓN</td><td>${quote?.aplica_esterilizacion ? 'APLICA' : 'NO APLICA'}</td></tr>
+          <tr><td class="label shade">EMPAQUE</td><td>${quote?.aplica_empaque ? 'APLICA' : 'NO APLICA'}</td><td class="label shade">TRANSPORTE</td><td>${quote?.aplica_transporte ? 'APLICA' : 'NO APLICA'}</td></tr>
+          
           <tr>
             <td class="label shade">RECEPCIÓN DE PRODUCTO</td>
-            <td><span class="label">FECHA</span><br />${escapeHtml(receivedDateTime.date)}</td>
-            <td><span class="label">HORA</span><br />${escapeHtml(receivedDateTime.time)}</td><td>${escapeHtml(receiptEvent?.recibido_por)}</td>
+            <td><span class="label">FECHA</span><br />${printable(receivedDateTime.date)}</td>
+            <td><span class="label">HORA</span><br />${printable(receivedDateTime.time)}</td><td>${printable(order?.recibido_por_sterinova ?? receiptEvent?.recibido_por)}</td>
           </tr>
+          <tr><td class="label shade">RECOLECCIÓN</td><td>${printable(order?.conductores_ruta?.recoleccion?.nombre_completo ?? order?.conductor_asignado)}</td><td class="label shade">ENTREGADO POR CLIENTE</td><td>${printable(order?.entregado_por_cliente)}</td></tr>
           <tr>
             <td class="label shade">PROCESAMIENTO</td>
             <td><span class="label">FECHA DE ESTERILIZACIÓN</span><br />${escapeHtml(sterilizationDateDisplay)}</td>
@@ -452,46 +480,47 @@ function buildLogisticDocumentHtml(
             <tr>
               <th rowspan="2" style="width: 24%">DESCRIPCIÓN DEL PRODUCTO</th>
               <th rowspan="2" style="width: 10%">LOTE</th>
-              <th colspan="5" style="width: 38%">CANTIDAD</th>
-              <th rowspan="2" style="width: 6%">V.B.</th>
+              <th rowspan="2" style="width: 8%">CANT. COTIZADA</th>
+              <th colspan="4" style="width: 30%">CANTIDAD</th>
+              <th rowspan="2" style="width: 6%">V° B°</th>
               <th rowspan="2" style="width: 10%">VALOR UNITARIO</th>
               <th rowspan="2" style="width: 12%">VALOR TOTAL</th>
             </tr>
-            <tr><th>RECIBIDO</th><th>CAJAS RECIBIDAS</th><th>PROCESADO</th><th>ENTREGADO</th><th>CAJAS ENTREGADAS</th></tr>
+            <tr><th>RECIBIDA</th><th>CAJAS RECIBIDAS</th><th>ENTREGADA</th><th>CAJAS ENTREGADAS</th></tr>
           </thead>
           <tbody>${tableRows}</tbody>
         </table>
         <div class="closing">
           <table class="totals">
-            <tr>
-              <td rowspan="2" class="label shade" style="width: 15%">TRANSPORTE</td>
-              <td class="label shade" style="width: 20%">RECIBIDO POR</td><td>${escapeHtml(receiptEvent?.recibido_por)}</td>
-              <td class="label shade" style="width: 18%">TOTAL CAJAS RECIBIDAS</td><td>${receiptBoxesValue}</td>
-              <td class="label shade" style="width: 14%">SUBTOTAL</td><td class="right">${quoteSubtotal}</td>
-            </tr>
-            <tr>
-              <td class="label shade">ENTREGADO POR</td><td>${escapeHtml(deliveryEvent?.responsable)}</td>
-              <td class="label shade">TOTAL CAJAS ENTREGADAS</td><td>${deliveryBoxesValue}</td>
-              <td class="label shade">TRANSPORTE</td><td>${escapeHtml(receiptEvent?.transportista ?? order?.conductor_asignado)}</td>
-            </tr>
-            <tr><td colspan="5"></td><td class="label shade">IVA</td><td class="right">${quoteTax}</td></tr>
-            <tr><td colspan="5"></td><td class="label shade">TOTAL</td><td class="right">${quoteTotal}</td></tr>
+            <tr><td class="label shade">SUBTOTAL</td><td class="right">${quoteSubtotal}</td></tr>
+            ${quote?.aplica_transporte ? `<tr><td class="label shade">TRANSPORTE</td><td class="right">${quoteTransport}</td></tr>` : ''}
+            <tr><td class="label shade">IVA (19 %)</td><td class="right">${quoteTax}</td></tr>
+            <tr><td class="label shade">TOTAL</td><td class="right">${quoteTotal}</td></tr>
           </table>
-          <table class="notes"><tr><td class="label shade">OBSERVACIONES (RECEPCIÓN):</td><td class="note-content">${observation}</td></tr></table>
           <table class="section">
+            <tr><td class="label shade" colspan="8">RECEPCIÓN DE PRODUCTO · RUTA IDA</td></tr>
+            <tr><td class="label shade">FECHA</td><td>${printable(receivedDateTime.date)}</td><td class="label shade">HORA</td><td>${printable(receivedDateTime.time)}</td><td class="label shade">CONDUCTOR</td><td>${printable(order?.conductores_ruta?.recoleccion?.nombre_completo ?? order?.conductor_recoleccion_id)}</td><td class="label shade">TOTAL CAJAS RECIBIDAS</td><td>${materials.reduce((sum,m)=>sum+Number(m.cajas_recibidas??0),0)}</td></tr>
+            <tr><td class="label shade">ENTREGADO POR (CLIENTE)</td><td>${printable(order?.entregado_por_cliente)}</td><td class="label shade">RECIBIDO POR (STERINOVA)</td><td>${printable(order?.recibido_por_sterinova)}</td><td class="label shade">ORDEN COMPRA / REF.</td><td colspan="3">${printable(order?.orden_compra_cliente)}</td></tr>
+          </table>
+          <table class="notes"><tr><td class="label shade">OBSERVACIONES (RECEPCIÓN):</td><td class="note-content">${printable(order?.observaciones_recepcion)}</td></tr></table>
+          <table class="section">
+            <tr><td class="label shade" colspan="8">ENTREGA PRODUCTO ESTÉRIL · RUTA VUELTA</td></tr>
             <tr>
-              <td class="label shade" style="width: 26%">ENTREGA PRODUCTO ESTÉRIL</td>
-              <td class="label shade">FECHA</td><td>${escapeHtml(deliveredDateTime.date)}</td>
-              <td class="label shade">HORA</td><td>${escapeHtml(deliveredDateTime.time)}</td>
-              <td class="label shade">CERTIFICADO No.</td><td></td>
-              <td class="label shade">FACTURA No.</td><td></td>
+              <td class="label shade">FECHA</td><td>${printable(deliveredDateTime.date)}</td>
+              <td class="label shade">HORA</td><td>${printable(deliveredDateTime.time)}</td>
+              <td class="label shade">CONDUCTOR / ENTREGADO POR (STERINOVA)</td><td>${printable(order?.conductores_ruta?.entrega?.nombre_completo ?? order?.conductor_entrega_id)}</td>
+              <td class="label shade">TOTAL CAJAS</td><td>${materials.reduce((sum,m)=>sum+Number(m.cajas_entregadas??0),0)}</td>
             </tr>
             <tr>
-              <td colspan="2" class="label shade">RECIBIDO POR</td>
-              <td colspan="7">${escapeHtml(deliveryEvent?.recibido_por)}</td>
+              <td class="label shade">RECIBIDO POR (CLIENTE)</td><td>${printable(order?.recibido_por_cliente ?? deliveryEvent?.recibido_por)}</td>
+              <td class="label shade">CERTIFICADO No.</td><td>${printable(order?.certificado_no, 'N/A')}</td>
+              <td class="label shade">FACTURA No.</td><td>${printable(order?.factura_no, '---')}</td>
+              <td colspan="2"></td>
             </tr>
           </table>
-          <table class="notes"><tr><td class="label shade">OBSERVACIONES CLIENTE:</td><td class="note-content">${escapeHtml(deliveryEvent?.observaciones)}</td></tr></table>
+          <table class="section"><tr><td class="label shade">DEVOLUCIONES</td><td>${materials.some((material) => Number(material.cantidad_devuelta ?? 0) > 0) ? materials.reduce((sum, material) => sum + Number(material.cantidad_devuelta ?? 0), 0) : 'N/A'}</td><td class="label shade">NOVEDAD</td><td>${printable(order?.novedad_tipo, 'N/A')}</td></tr><tr><td class="label shade">MOTIVO</td><td colspan="3">${printable(order?.novedad_motivo, 'N/A')}</td></tr></table>
+          <table class="notes"><tr><td class="label shade">OBSERVACIONES (ENTREGA / CLIENTE):</td><td class="note-content">${printable(order?.observaciones_cliente ?? deliveryEvent?.observaciones)}</td></tr></table>
+          <table class="signatures"><tr><td class="signature-space">________________________<br /><span class="label">Entregado por (Cliente)</span></td><td class="signature-space">________________________<br /><span class="label">Recibido por (Sterinova - Recepción)</span></td></tr><tr><td class="signature-space">________________________<br /><span class="label">Entregado por (Sterinova - Entrega)</span></td><td class="signature-space">________________________<br /><span class="label">Recibido por (Cliente - Entrega)</span></td></tr></table>
         </div>
       `}
       <div class="footer">
@@ -570,10 +599,10 @@ export class PdfGeneratorService implements OnModuleDestroy {
   }
 
   async render(snapshot: Snapshot, manager?: EntityManager): Promise<Buffer> {
-    const seal = snapshot.sellos?.icontec as FrozenSeal | undefined;
-    const sealBytes = seal
-      ? await this.selloSnapshot.readFrozen(seal, manager)
-      : null;
+    const seals = (Array.isArray(snapshot.sellos?.certificaciones)
+      ? snapshot.sellos.certificaciones
+      : snapshot.sellos?.icontec ? [snapshot.sellos.icontec] : []) as FrozenSeal[];
+    const sealBytes = await Promise.all(seals.map((seal) => this.selloSnapshot.readFrozen(seal, manager)));
     const renderPage = this.renderPage(snapshot);
     let page: Page | undefined;
     let timedOut = false;
@@ -586,18 +615,15 @@ export class PdfGeneratorService implements OnModuleDestroy {
         timezoneId: 'America/Bogota',
         viewport: { width: 816, height: 1056 },
       });
-      if (seal && sealBytes) {
+      for (const [index, seal] of seals.entries()) {
+        const bytes = sealBytes[index];
+        const dataUri = `data:${seal.mime_type};base64,${bytes.toString('base64')}`;
+        if (seal.imagen_src === dataUri) continue;
+        const extension = seal.mime_type === 'image/png' ? 'png' : seal.mime_type === 'image/webp' ? 'webp' : 'jpg';
+        const expectedPath = `/internal/pdf-assets/sellos/${seal.sha256}.${extension}`;
+        if (seal.imagen_src !== expectedPath) throw new Error('Ruta de sello no coincide con el hash');
         const assetUrl = new URL(seal.imagen_src, renderPage.url).toString();
-        const expectedPath = `/internal/pdf-assets/sellos/${seal.sha256}.${seal.mime_type === 'image/png' ? 'png' : 'jpg'}`;
-        if (seal.imagen_src !== expectedPath)
-          throw new Error('Ruta de sello no coincide con el hash');
-        await page.route(assetUrl, (route) =>
-          route.fulfill({
-            status: 200,
-            contentType: seal.mime_type,
-            body: sealBytes,
-          }),
-        );
+        await page.route(assetUrl, (route) => route.fulfill({ status: 200, contentType: seal.mime_type, body: bytes }));
       }
       if (renderPage.type === 'orden_servicio' || renderPage.type === 'acta_servicio') {
         const html = buildLogisticDocumentHtml(snapshot, renderPage.type);

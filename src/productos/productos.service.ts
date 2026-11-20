@@ -44,7 +44,8 @@ function validateCategory(
     if (
       category !== CategoriaProducto.EMPAQUES &&
       category !== CategoriaProducto.MONITOREO &&
-      category !== CategoriaProducto.EQUIPOS
+      category !== CategoriaProducto.EQUIPOS &&
+      category !== CategoriaProducto.GENERAL
     ) {
       throw new BadRequestException(
         'Seleccione una categoría válida para los insumos',
@@ -71,19 +72,22 @@ export class ProductosService {
     dto: CreateProductoDto,
     access: PermissionContext,
   ): Promise<Producto> {
+    const categoria = dto.tipo_servicio === TipoServicioCotizacion.INSUMOS
+      ? dto.categoria ?? CategoriaProducto.GENERAL
+      : dto.categoria;
     const producto = this.productosRepository.create({
       scope_id: creationScope(access),
       tipo_servicio: dto.tipo_servicio,
       tipo_item: dto.tipo_item,
-      categoria: validateCategory(dto.tipo_servicio, dto.categoria),
+      categoria: validateCategory(dto.tipo_servicio, categoria),
       codigo: trimmedOrNull(dto.codigo),
       referencia: trimmedOrNull(dto.referencia),
       metodo: trimmedOrNull(dto.metodo),
       presentacion: trimmedOrNull(dto.presentacion),
       marca: trimmedOrNull(dto.marca),
       descripcion: requiredTrimmed(dto.descripcion, 'La descripción'),
-      unidad: requiredTrimmed(dto.unidad, 'La unidad'),
-      precision_cantidad: dto.precision_cantidad,
+      unidad: dto.unidad === undefined ? 'unidad' : requiredTrimmed(dto.unidad, 'La unidad'),
+      precision_cantidad: dto.precision_cantidad ?? 2,
       activo: true,
     });
     return this.productosRepository.save(producto);
@@ -129,10 +133,14 @@ export class ProductosService {
   ): Promise<Producto> {
     const producto = await this.findOne(id, access);
     const tipoServicio = dto.tipo_servicio ?? producto.tipo_servicio;
-    const category =
-      dto.categoria === undefined ? producto.categoria : dto.categoria;
+    const category = dto.categoria === undefined ? producto.categoria : dto.categoria;
     producto.tipo_servicio = tipoServicio;
-    producto.categoria = validateCategory(tipoServicio, category);
+    producto.categoria = validateCategory(
+      tipoServicio,
+      tipoServicio === TipoServicioCotizacion.INSUMOS
+        ? category ?? CategoriaProducto.GENERAL
+        : category,
+    );
     if (dto.tipo_item !== undefined) producto.tipo_item = dto.tipo_item;
     if (dto.codigo !== undefined) producto.codigo = trimmedOrNull(dto.codigo);
     if (dto.referencia !== undefined)
