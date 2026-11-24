@@ -4,7 +4,6 @@ import {
   BadRequestException,
   Controller,
   Get,
-  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
@@ -120,32 +119,75 @@ export class LogisticaController {
       request.rbac,
     );
     const pdfType = tipo === 'acta' ? 'ACTA_SERVICIO' : 'ORDEN_SERVICIO';
+    const tipoDoc = tipo === 'acta' ? 'ACTA' : 'ORDEN';
+    const docConsecutivo =
+      tipo === 'acta'
+        ? orden.acta_consecutivo ?? orden.consecutivo
+        : orden.consecutivo;
+    const safeConsecutivo = docConsecutivo.replace(/[^A-Za-z0-9._-]/g, '_');
     const snapshot = await this.logisticaService.buildPdfSnapshot(
       orden,
       pdfType,
     );
-    const safeConsecutivo = orden.consecutivo.replace(/[^A-Za-z0-9._-]/g, '_');
+
+    const existing =
+      typeof this.logisticaService.findDocumentoEmitido === 'function'
+        ? await this.logisticaService.findDocumentoEmitido(
+            tipoDoc,
+            docConsecutivo,
+          )
+        : null;
+    if (
+      existing?.pdf_storage_key &&
+      JSON.stringify(existing.snapshot_json) === JSON.stringify(snapshot) &&
+      typeof this.storage.getFile === 'function'
+    ) {
+      try {
+        const cachedPdf = await this.storage.getFile(existing.pdf_storage_key);
+        const cachedHash = createHash('sha256').update(cachedPdf).digest('hex');
+        if (!existing.pdf_hash || existing.pdf_hash === cachedHash) {
+          response.setHeader('Content-Type', 'application/pdf');
+          response.setHeader('Cache-Control', 'private, no-store');
+          response.setHeader(
+            'Content-Disposition',
+            `inline; filename="${safeConsecutivo}-${tipo}.pdf"`,
+          );
+          return response.send(cachedPdf);
+        }
+      } catch {
+        // Missing or unreadable cached file will be regenerated below.
+      }
+    }
+
     const pdf = await this.pdfGenerator.render(snapshot);
     const pdfHash = createHash('sha256').update(pdf).digest('hex');
     const storageKey = `logistica/${safeConsecutivo}-${tipo}.pdf`;
     await this.storage.saveFile(pdf, storageKey);
 
-    const tipoDoc = tipo === 'acta' ? 'ACTA' : 'ORDEN';
-    await this.logisticaService.crearDocumentoEmitido(
-      {
-        tipo: tipoDoc,
-        consecutivo: orden.consecutivo,
-        formato_version_id: snapshot.formato.id,
-        snapshot_json: snapshot,
-        pdf_storage_key: storageKey,
-        pdf_hash: pdfHash,
-        fecha_emision: new Date().toISOString(),
-        usuario_id: request.user.id,
-        orden_id: orden.id,
-      },
-      request.user.id,
-      pdfHash,
-    );
+    const docPayload = {
+      tipo: tipoDoc as 'ORDEN' | 'ACTA',
+      consecutivo: docConsecutivo,
+      formato_version_id: snapshot.formato.id,
+      snapshot_json: snapshot,
+      pdf_storage_key: storageKey,
+      pdf_hash: pdfHash,
+      fecha_emision: new Date().toISOString(),
+      usuario_id: request.user.id,
+      orden_id: orden.id,
+    };
+    if (typeof this.logisticaService.upsertDocumentoEmitido === 'function') {
+      await this.logisticaService.upsertDocumentoEmitido(
+        docPayload,
+        request.user.id,
+        pdfHash,
+      );
+    } else {
+      await this.logisticaService.crearDocumentoEmitido(
+        docPayload,
+        request.user.id,
+        pdfHash,
+      );
+    }
 
     response.setHeader('Content-Type', 'application/pdf');
     response.setHeader('Cache-Control', 'private, no-store');
@@ -163,25 +205,6 @@ export class LogisticaController {
     @Req() request: RbacRequest,
   ) {
     return this.logisticaService.findDocumentosEmitidosPorOrden(id, request.rbac);
-  }
-
-  @Get('documentos-emitidos/:id/pdf')
-  @RequirePermission('logistica.ordenes.ver')
-  async descargarDocumentoEmitido(
-    @Param('id', ParseIntPipe) id: number,
-    @Res() response: Response,
-  ) {
-    const documento = await this.logisticaService.findDocumentoEmitidoByConsecutivo(
-      'ORDEN',
-      String(id),
-    );
-    if (!documento || !documento.pdf_storage_key) {
-      throw new NotFoundException('PDF no encontrado');
-    }
-    const pdf = await this.storage.getFile(documento.pdf_storage_key);
-    response.setHeader('Content-Type', 'application/pdf');
-    response.setHeader('Cache-Control', 'private, no-store');
-    return response.send(pdf);
   }
 
   @Put('ordenes/:id/estado')

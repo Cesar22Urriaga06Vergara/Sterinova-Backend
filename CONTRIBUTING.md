@@ -8,7 +8,7 @@ Este documento define el flujo para preparar cambios revisables y mantener el co
 2. Copia `.env.example` a `.env` y completa MariaDB, `JWT_SECRET` y `PDF_RENDER_SECRET` con valores locales privados. Configura el frontend en `http://localhost:3000` para renderizar PDFs.
 3. Crea o selecciona una base MariaDB local. Antes de aplicar migraciones, confirma que `DB_DATABASE` apunta al esquema correcto.
 4. Ejecuta `npm run start:dev`. El comando aplica las migraciones y levanta NestJS en el puerto configurado; durante el arranque genera `docs/arquitectura/openapi.json` y Swagger UI queda disponible en `/api/docs`.
-5. Ejecuta `npm run build`, `npm run test` y `npm run lint` antes de abrir un PR. Las pruebas que requieran servicios externos deben configurarse según `docs/calidad-y-pruebas/pruebas.md`.
+5. Ejecuta `npm run build`, `npm run test` y `npm run lint` antes de abrir un PR. Las pruebas que requieran servicios externos deben configurarse según `docs/OPERACION_Y_CALIDAD.md`.
 
 Para aprovisionar el primer usuario administrador, inyecta temporalmente `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` al proceso `npm run bootstrap:admin`; el CLI solo crea la cuenta si la base no contiene ningún usuario. No configures esas variables en el proceso del servidor.
 
@@ -48,5 +48,6 @@ Tipos habituales: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `build` y `
 
 - El contrato ejecutable es `docs/arquitectura/openapi.json`, generado desde decoradores NestJS al iniciar en un entorno no productivo y al ejecutar `npm run test:contract`. La interfaz Swagger se sirve en `/api/docs`.
 - Si una ruta o DTO cambia, revisa las anotaciones OpenAPI y `npm run test:contract`; `test/openapi-contract.e2e-spec.ts` comprueba que las rutas registradas estén documentadas.
-- Registra decisiones de arquitectura aceptadas o propuestas en `docs/arquitectura/adr/` y añade el enlace al índice.
+- Registra decisiones de arquitectura aceptadas o propuestas en `docs/ARQUITECTURA_Y_CONTRATOS.md` y enlaza la sección consolidada.
 - Añade cambios relevantes a `CHANGELOG.md` y actualiza manuales operativos cuando varíe el despliegue o la configuración.
+

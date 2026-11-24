@@ -90,6 +90,19 @@ export class CertificadoEsterilizacion {
   @Column({ default: 'Aprobado' })
   estado: string;
 
+  @Column({ type: 'text', nullable: true })
+  motivo_anulacion: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  anulado_por_id: number | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'anulado_por_id', foreignKeyConstraintName: 'FK_certificados_anulado_por' })
+  anuladoPor: Relation<User> | null;
+
+  @Column({ type: 'datetime', precision: 6, nullable: true })
+  anulado_at: Date | null;
+
   @Column({ type: 'int', nullable: true })
   aprobador_id: number | null;
 

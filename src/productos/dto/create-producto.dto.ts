@@ -1,4 +1,4 @@
-import { TipoServicioCotizacion } from '../../cotizaciones/entities/tipo-servicio.enum.js';
+import { TipoServicioCotizacion } from '../../common/tipo-servicio-cotizacion.js';
 import {
   CategoriaProducto,
   TipoItemCatalogo,

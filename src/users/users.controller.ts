@@ -4,7 +4,6 @@ import {
   Controller,
   Delete,
   Get,
-  GoneException,
   Header,
   Param,
   ParseIntPipe,
@@ -58,14 +57,6 @@ export class UsersController {
   async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto, @Req() request: AuthenticatedRequest) {
     await this.userRoles.authorizeIdentity(request.user.id, request.rbac);
     return this.usersService.update(id, dto);
-  }
-
-  @Patch(':id/password')
-  @RequirePermission('usuarios.identidad.gestionar')
-  changePassword(): never {
-    throw new GoneException(
-      'El cambio administrativo directo fue retirado; usa el restablecimiento de un solo uso',
-    );
   }
 
   @Patch(':id/password/reset')

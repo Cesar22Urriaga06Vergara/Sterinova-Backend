@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import type { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
 import type { ProtocoloEsterilizacionVersion } from '../planta/entities/protocolo-esterilizacion-version.entity.js';
-import type { EvaluacionParametroDto } from '../calidad/dto/evaluacion-parametro.dto.js';
+import type { EvaluacionParametro } from '../common/evaluacion-parametro.js';
 
 type FilaProtocolo = {
   parametro: string;
@@ -52,7 +52,7 @@ function enRango(value: number, opcion: string) {
 export function prepararInformacionTecnica(
   ciclo: CicloEsterilizacion,
   protocolo: ProtocoloEsterilizacionVersion,
-  evaluaciones: EvaluacionParametroDto[],
+  evaluaciones: EvaluacionParametro[],
 ) {
   if (!protocolo || protocolo.metodo !== ciclo.metodo)
     throw new BadRequestException('Protocolo incompatible con el ciclo');

@@ -4,6 +4,7 @@ import { TipoServicioCotizacion } from './entities/tipo-servicio.enum.js';
 import { CotizacionesService } from './cotizaciones.service.js';
 import { Cotizacion } from './entities/cotizacion.entity.js';
 import { CotizacionItem } from './entities/cotizacion-item.entity.js';
+import { User } from '../users/entities/user.entity.js';
 import type { DataSource, Repository } from 'typeorm';
 
 describe('CotizacionesService.emitir', () => {
@@ -14,6 +15,7 @@ describe('CotizacionesService.emitir', () => {
       cliente_id: 3,
       tipo_servicio: TipoServicioCotizacion.INSUMOS,
       estado: 'APROBADA',
+      version: 1,
       creador_id: 7,
       aprobador_interno_id: 42,
       aprobado_internamente_at: new Date('2026-11-04T11:00:00.000Z'),
@@ -70,8 +72,13 @@ describe('CotizacionesService.emitir', () => {
       findOne: vi.fn(async () => quote),
       save: vi.fn(async (value: Cotizacion) => value),
     };
+    const users = new Map([
+      [7, { id: 7, nombre: 'Laura', apellido: 'Creadora', cargo: 'Asesora', celular: '3001112233', email_contacto: 'laura@example.com' }],
+      [42, { id: 42, nombre: 'Carlos', apellido: 'Aprobador', cargo: 'Gerente', celular: '3009998877', email_contacto: 'carlos@example.com' }],
+    ]);
+    const usersRepository = { findOne: vi.fn(async (query: { where: { id: number } }) => users.get(query.where.id) ?? null) };
     const manager = {
-      getRepository: vi.fn(() => quoteRepository),
+      getRepository: vi.fn((entity: unknown) => entity === User ? usersRepository : quoteRepository),
     };
     const dataSource = {
       manager: {},
@@ -110,6 +117,7 @@ describe('CotizacionesService.emitir', () => {
     );
 
     expect(emitted.fecha_emision).toBeInstanceOf(Date);
+    expect(emitted.estado).toBe('EMITIDA');
     expect(emitted.version_formato_id).toBe(14);
     expect(emitted.sello_icontec_version_id).toBe(10);
     expect(quote.snapshot_datos?.sellos).toMatchObject({icontec:{version_id:10,sha256:'b'.repeat(64)}});
@@ -118,6 +126,10 @@ describe('CotizacionesService.emitir', () => {
     expect(quote.snapshot_datos?.cliente).toMatchObject({
       cargo: 'Compras',
       ciudad: 'Bogotá',
+    });
+    expect(quote.snapshot_datos?.firmas).toEqual({
+      realizo: { nombre: 'Laura Creadora', cargo: 'Asesora', celular: '3001112233', correo: 'laura@example.com' },
+      aprobo: { nombre: 'Carlos Aprobador', cargo: 'Gerente', celular: '3009998877', correo: 'carlos@example.com' },
     });
     expect(quote.snapshot_datos?.cotizacion).toMatchObject({
       tipo_servicio: TipoServicioCotizacion.INSUMOS,
@@ -160,6 +172,8 @@ describe('CotizacionesService.emitir', () => {
       }),
       manager,
     );
+    const accepted = await service.aceptar(7, quotePermission('cotizaciones.aceptar'));
+    expect(accepted.estado).toBe('ACEPTADA_CLIENTE');
   });
 
   it('rejects a draft before resolving the format or generating a PDF', async () => {
@@ -360,7 +374,7 @@ describe('CotizacionesService.emitir', () => {
       } as unknown as Repository<Cotizacion>,
       {} as Repository<CotizacionItem>,
       {} as never,
-      { manager: {} } as unknown as DataSource,
+      { manager: { getRepository: vi.fn(() => ({ findOne: vi.fn(async () => null) })) } } as unknown as DataSource,
       { resolveCotizacion: vi.fn(async () => version) } as never,
       {} as never,
       {} as never,

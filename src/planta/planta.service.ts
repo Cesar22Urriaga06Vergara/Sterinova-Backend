@@ -4,15 +4,18 @@ import { Cotizacion } from '../cotizaciones/entities/cotizacion.entity.js';
 import { ProtocoloEsterilizacionVersion } from './entities/protocolo-esterilizacion-version.entity.js';
 import { OrdenServicioMaterial } from '../ordenes-servicio/entities/orden-servicio-material.entity.js';
 import { OrdenServicioEvento } from '../ordenes-servicio/entities/orden-servicio-evento.entity.js';
-import { fechaVencimiento } from '../certificados/fecha-vencimiento.js';
-import { metodoOrden } from '../logistica/materiales-orden.js';
+import { fechaVencimiento } from '../common/fecha-vencimiento.js';
+import { fechaHoyBogota } from '../common/fecha-bogota.js';
+import { metodoOrden } from '../common/metodo-orden.js';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { DataSource, Not } from 'typeorm';
 import { EstadoOrdenServicio } from '../ordenes-servicio/entities/estado-orden.enum.js';
 import { OrdenServicio } from '../ordenes-servicio/entities/orden-servicio.entity.js';
 import { User } from '../users/entities/user.entity.js';
@@ -22,6 +25,9 @@ import {
 } from './entities/ciclo-esterilizacion.entity.js';
 import { CicloMaterialProcesado } from './entities/ciclo-material-procesado.entity.js';
 import { CreateCicloDto } from './dto/create-ciclo.dto.js';
+import { AutorizarReprocesoDto } from './dto/autorizar-reproceso.dto.js';
+import { AuditoriaService } from '../auditoria/auditoria.service.js';
+import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
 import {
   CICLO_OPERATIVO,
   COTIZACION_CON_CLIENTE,
@@ -34,7 +40,39 @@ import {
 
 @Injectable()
 export class PlantaService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly auditoriaService: AuditoriaService,
+  ) {}
+
+  async autorizarReproceso(id: number, dto: AutorizarReprocesoDto, usuarioId: number, access?: PermissionContext) {
+    const motivo = dto.motivo?.trim();
+    if (!motivo) throw new BadRequestException('Documente el motivo del reproceso');
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(CicloEsterilizacion);
+      const cycle = await repository.findOne({
+        where: access ? resourceWhere<CicloEsterilizacion>(access, { id }, 'operador_id') : { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!cycle) throw new NotFoundException(`Ciclo #${id} no encontrado`);
+      if (cycle.estado !== EstadoCicloEsterilizacion.RECHAZADO) throw new ConflictException('Solo puede autorizarse el reproceso de un ciclo rechazado');
+      if (cycle.reproceso_calidad_autorizado_por_id == null) throw new ConflictException('Calidad debe autorizar primero el reproceso');
+      if (cycle.reproceso_calidad_autorizado_por_id === usuarioId) throw new ForbiddenException('Calidad y Planta deben autorizar con personas distintas');
+      if (cycle.reproceso_planta_autorizado_por_id != null) throw new ConflictException('Planta ya autorizó este reproceso');
+      cycle.reproceso_planta_autorizado_por_id = usuarioId;
+      cycle.reproceso_planta_autorizado_at = new Date();
+      cycle.reproceso_planta_motivo = motivo;
+      const saved = await repository.save(cycle);
+      await this.auditoriaService.create({
+        usuario_id: usuarioId,
+        entidad: 'ciclo',
+        entidad_id: id,
+        accion: AccionAuditoria.APROBAR,
+        detalle: { tipo: 'reproceso_planta', motivo },
+      }, manager);
+      return saved;
+    });
+  }
 
   findOrdenesEnPlanta(access?: PermissionContext): Promise<OrdenServicio[]> {
     return this.dataSource.getRepository(OrdenServicio).find({
@@ -113,12 +151,7 @@ export class PlantaService {
       }
 
       fechaVencimiento(dto.fecha_esterilizacion);
-      const hoy = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Bogota',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(new Date());
+      const hoy = fechaHoyBogota();
       if (dto.fecha_esterilizacion > hoy)
         throw new BadRequestException(
           'La esterilizacion no puede estar en el futuro',
@@ -169,13 +202,16 @@ export class PlantaService {
         )
       ) {
         throw new BadRequestException(
-          'La cantidad procesada debe ser un entero no negativo válido',
+          'La cantidad procesada debe ser un número no negativo válido',
         );
       }
       if (
         cantidadesProcesadas.some(
-          ({ material_id, cantidad }) =>
-            cantidad > (materialesPorId.get(material_id)?.cantidad ?? 0),
+          ({ material_id, cantidad }) => {
+            const mat = materialesPorId.get(material_id);
+            const recibido = Number(mat?.cantidad_recibida ?? mat?.cantidad ?? 0);
+            return cantidad > recibido;
+          },
         )
       ) {
         throw new BadRequestException(
@@ -221,8 +257,34 @@ export class PlantaService {
       // distribuirse en varios ciclos mientras quede cantidad pendiente.
       const ciclosPrevios = await manager
         .getRepository(CicloEsterilizacion)
-        .find({ where: { orden_id: orden.id }, select: ['id'] });
+        .find({ where: { orden_id: orden.id, estado: Not(EstadoCicloEsterilizacion.RECHAZADO) }, select: ['id'] });
       const idsCiclosPrevios = ciclosPrevios.map((c) => c.id);
+      const rechazados = await ciclosRepository.find({
+        where: { orden_id: orden.id, estado: EstadoCicloEsterilizacion.RECHAZADO },
+        select: ['id', 'reproceso_calidad_autorizado_por_id', 'reproceso_planta_autorizado_por_id'],
+      });
+      const ciclosConCorreccion = rechazados.length ? await ciclosRepository.find({
+        where: { orden_id: orden.id },
+        select: ['id', 'ciclo_correccion_de_id'],
+      }) : [];
+      const pendientesDeCorreccion = rechazados.filter((cycle) =>
+        !ciclosConCorreccion.some((next) => next.ciclo_correccion_de_id === cycle.id)
+      );
+      const correccionDeId = dto.ciclo_correccion_de_id ?? (pendientesDeCorreccion.length === 1 ? pendientesDeCorreccion[0].id : null);
+      if (pendientesDeCorreccion.length > 1 && correccionDeId == null) {
+        throw new BadRequestException('Indique el ciclo rechazado que origina el reproceso');
+      }
+      if (rechazados.length && correccionDeId == null ||
+          correccionDeId != null && !pendientesDeCorreccion.some((c) => c.id === correccionDeId)) {
+        throw new BadRequestException('El ciclo de origen debe estar rechazado, sin corrección previa y pertenecer a la orden');
+      }
+      if (correccionDeId != null && !rechazados.some((c) =>
+        c.id === correccionDeId && c.reproceso_calidad_autorizado_por_id != null &&
+        c.reproceso_planta_autorizado_por_id != null &&
+        c.reproceso_calidad_autorizado_por_id !== c.reproceso_planta_autorizado_por_id
+      )) {
+        throw new BadRequestException('El reproceso requiere aprobación previa de Calidad y Planta por personas distintas');
+      }
       const acumuladoPorMaterial = new Map<number, number>();
       if (idsCiclosPrevios.length) {
         const filasAcumulado = await manager.query(
@@ -244,7 +306,8 @@ export class PlantaService {
         }
       }
       for (const { material_id, cantidad } of cantidadesProcesadas) {
-        const recibido = materialesPorId.get(material_id)?.cantidad ?? 0;
+        const mat = materialesPorId.get(material_id);
+        const recibido = Number(mat?.cantidad_recibida ?? mat?.cantidad ?? 0);
         const pendiente =
           recibido - (acumuladoPorMaterial.get(material_id) ?? 0);
         if (cantidad > pendiente) {
@@ -256,6 +319,7 @@ export class PlantaService {
       const { materiales_procesados: _, ...cicloDto } = dto;
       const ciclo = ciclosRepository.create({
         ...cicloDto,
+        ciclo_correccion_de_id: correccionDeId,
         scope_id: access ? creationScope(access, orden.scope_id) : orden.scope_id,
         protocolo_version_id: protocolo.id,
         tiempo_secado:
@@ -287,7 +351,8 @@ export class PlantaService {
         const nuevo = cantidadesProcesadas.find(
           (m) => m.material_id === material.id,
         )?.cantidad ?? 0;
-        return previo + nuevo >= material.cantidad;
+        const recibido = Number(material.cantidad_recibida ?? material.cantidad);
+        return previo + nuevo >= recibido;
       });
       orden.estado = completo
         ? EstadoOrdenServicio.PROCESADO

@@ -1,5 +1,5 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import type { Repository, EntityManager, QueryRunner } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { User } from './entities/user.entity.js';
 import { UsersService } from './users.service.js';
 import { UserRole } from '../../test/fixtures/legacy-user-role.js';

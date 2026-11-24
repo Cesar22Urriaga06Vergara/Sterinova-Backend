@@ -14,6 +14,7 @@ import {
   TipoEventoOrden,
 } from '../ordenes-servicio/entities/orden-servicio-evento.entity.js';
 import { CicloEsterilizacion, EstadoCicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
+import { CicloMaterialProcesado } from '../planta/entities/ciclo-material-procesado.entity.js';
 import {
   BadRequestException,
   ConflictException,
@@ -78,7 +79,7 @@ const TRANSICIONES_ESTADO: Record<
   [EstadoOrdenServicio.EN_PLANTA]: [
     EstadoOrdenServicio.CANCELADO,
   ],
-  [EstadoOrdenServicio.PROCESADO]: [EstadoOrdenServicio.ENTREGADO],
+  [EstadoOrdenServicio.PROCESADO]: [EstadoOrdenServicio.EN_PLANTA, EstadoOrdenServicio.ENTREGADO],
   [EstadoOrdenServicio.ENTREGADO]: [],
   [EstadoOrdenServicio.CANCELADO]: [],
 };
@@ -95,6 +96,15 @@ function validarTransicionEstado(
       `Transición de estado no permitida: ${estadoActual} -> ${nuevoEstado}`,
     );
   }
+}
+
+function reprocesoDisponible(cycles: CicloEsterilizacion[]): boolean {
+  return !cycles.some((cycle) => cycle.estado === EstadoCicloEsterilizacion.PENDIENTE_CALIDAD) &&
+    cycles.some((cycle) => cycle.estado === EstadoCicloEsterilizacion.RECHAZADO &&
+      cycle.reproceso_calidad_autorizado_por_id != null &&
+      cycle.reproceso_planta_autorizado_por_id != null &&
+      cycle.reproceso_calidad_autorizado_por_id !== cycle.reproceso_planta_autorizado_por_id &&
+      !cycles.some((next) => next.ciclo_correccion_de_id === cycle.id));
 }
 
 @Injectable()
@@ -435,6 +445,7 @@ export class LogisticaService {
       const orders = manager.getRepository(OrdenServicio);
       const order = await orders.findOne({ where: access ? resourceWhere<OrdenServicio>(access, { id }) : { id }, lock: { mode: 'pessimistic_write' } });
       if (!order) throw new NotFoundException('Orden no encontrada');
+      if (order.estado === EstadoOrdenServicio.ENTREGADO) throw new ConflictException('La entrega ya fue registrada; no se puede modificar la Fase 2 del Acta');
       if (order.acta_fase !== 2 || order.acta_cerrada_at) throw new ConflictException('Confirme primero la recepción y complete Fase 2 en su orden actual');
       if (order.version !== dto.version) throw new ConflictException('El Acta cambió; recargue antes de guardar la entrega');
       const linesRepo = manager.getRepository(OrdenServicioMaterial);
@@ -504,8 +515,8 @@ export class LogisticaService {
     if (!driver) throw new BadRequestException('El conductor debe estar activo y pertenecer al ámbito de la orden');
   }
 
-  findAll(access?: PermissionContext): Promise<OrdenServicio[]> {
-    return this.ordenesRepository.find({
+  async findAll(access?: PermissionContext): Promise<Array<OrdenServicio & { reproceso_disponible: boolean }>> {
+    const orders = await this.ordenesRepository.find({
       ...(access ? {where: resourceWhere<OrdenServicio>(access)} : {}),
       relations: [
         'cotizacion',
@@ -516,6 +527,16 @@ export class LogisticaService {
       ],
       order: { id: 'DESC' },
     });
+    const processedIds = orders.filter((order) => order.estado === EstadoOrdenServicio.PROCESADO).map((order) => order.id);
+    const cycles = processedIds.length ? await this.dataSource.getRepository(CicloEsterilizacion).find({
+      where: { orden_id: In(processedIds) },
+      select: ['id', 'orden_id', 'estado', 'ciclo_correccion_de_id', 'reproceso_calidad_autorizado_por_id', 'reproceso_planta_autorizado_por_id'],
+    }) : [];
+    return orders.map((order) => ({
+      ...order,
+      reproceso_disponible: order.estado === EstadoOrdenServicio.PROCESADO &&
+        reprocesoDisponible(cycles.filter((cycle) => cycle.orden_id === order.id)),
+    }));
   }
 
   async findOne(id: number, access?: PermissionContext): Promise<OrdenServicio> {
@@ -606,6 +627,16 @@ export class LogisticaService {
           `La orden ya se encuentra en estado ${dto.estado}`,
         );
       }
+      const esReproceso = estadoAnterior === EstadoOrdenServicio.PROCESADO && dto.estado === EstadoOrdenServicio.EN_PLANTA;
+      if (esReproceso) {
+        const cycles = await manager.getRepository(CicloEsterilizacion).find({ where: { orden_id: id } });
+        if (!reprocesoDisponible(cycles)) {
+          throw new ConflictException('Solo se puede reabrir la orden si hay un ciclo rechazado con aprobación de Calidad y Planta y ninguno pendiente de Calidad');
+        }
+      }
+      if (dto.estado === EstadoOrdenServicio.ENTREGADO && (orden.acta_fase ?? 1) < 3) {
+        throw new ConflictException('Confirme la Fase 2 del Acta antes de entregar la orden');
+      }
       if (
         dto.estado === EstadoOrdenServicio.ENTREGADO &&
         orden.metodo_esterilizacion
@@ -614,20 +645,26 @@ export class LogisticaService {
           where: { orden_id: id },
           relations: ['certificado'],
         });
-        if (
-          !cycles.length ||
-          cycles.some(
-            (cycle) =>
-              cycle.estado !== EstadoCicloEsterilizacion.APROBADO ||
-              !cycle.certificado,
-          )
-        ) {
+        const approved = cycles.filter((cycle) => cycle.estado === EstadoCicloEsterilizacion.APROBADO);
+        if (!approved.length || cycles.some((cycle) =>
+          cycle.estado !== EstadoCicloEsterilizacion.APROBADO && cycle.estado !== EstadoCicloEsterilizacion.RECHAZADO ||
+          cycle.estado === EstadoCicloEsterilizacion.APROBADO && (!cycle.certificado || cycle.certificado.estado !== 'Aprobado')
+        )) {
           throw new ConflictException(
-            'No se puede entregar la orden: todos sus ciclos deben estar aprobados y certificados',
+            'No se puede entregar la orden: los ciclos vigentes deben estar aprobados y certificados',
           );
         }
+        const [materials, processed] = await Promise.all([
+          manager.getRepository(OrdenServicioMaterial).find({ where: { orden_id: id } }),
+          manager.getRepository(CicloMaterialProcesado).find({ where: { ciclo_id: In(approved.map((cycle) => cycle.id)) } }),
+        ]);
+        const totals = new Map<number, number>();
+        for (const row of processed) totals.set(row.orden_servicio_material_id, (totals.get(row.orden_servicio_material_id) ?? 0) + Number(row.cantidad_procesada));
+        if (!materials.length || materials.some((material) => (totals.get(material.id) ?? 0) < Number(material.cantidad_recibida ?? material.cantidad))) {
+          throw new ConflictException('No se puede entregar la orden: faltan cantidades aprobadas tras el reproceso');
+        }
       }
-      const eventoTipo = EVENTO_POR_ESTADO[dto.estado];
+      const eventoTipo = esReproceso ? 'REPROCESO' : EVENTO_POR_ESTADO[dto.estado];
       let eventoDatos: EventoOrdenDatos | undefined;
       if (eventoTipo) {
         const evento = dto.evento;
@@ -654,13 +691,22 @@ export class LogisticaService {
           );
         }
         if (eventoTipo === 'ENTREGA_CLIENTE') {
-          const received = new Map(orderMaterials.map(({ id, cantidad }) => [id, cantidad]));
+          const received = new Map(orderMaterials.map(({ id, cantidad, cantidad_recibida }) => [id, Number(cantidad_recibida ?? cantidad)]));
           if (evento.materiales.some(({ material_id, cantidad }) =>
             cantidad > received.get(material_id)!,
           ))
             throw new BadRequestException(
               'La cantidad entregada no puede superar la cantidad recibida',
             );
+          const actaLines = new Map(orderMaterials.map((line) => [line.id, line]));
+          if (evento.materiales.some(({ material_id, cantidad, cajas }) => {
+            const line = actaLines.get(material_id);
+            return line?.cantidad_entregada == null ||
+              Number(line.cantidad_entregada) !== Number(cantidad) ||
+              (cajas != null && Number(line.cajas_entregadas) !== Number(cajas));
+          }) || (Boolean(evento.recibido_por?.trim()) && evento.recibido_por?.trim() !== orden.recibido_por_cliente?.trim())) {
+            throw new ConflictException('El evento de entrega debe coincidir con la Fase 2 del Acta');
+          }
         }
         eventoDatos = {
           responsable: evento.responsable.trim(),
@@ -754,7 +800,7 @@ export class LogisticaService {
     }, 0);
     const transport = orden.cotizacion?.aplica_transporte ? Number(orden.cotizacion.valor_transporte ?? 0) : 0;
     const subtotalReal = Number((materialSubtotal + (tipo === 'ACTA_SERVICIO' ? 0 : transport)).toFixed(2));
-    const ivaReal = ivaAmount(tipo === 'ACTA_SERVICIO' ? materialSubtotal + transport : subtotalReal, tipo === 'ACTA_SERVICIO' ? '0.19' : orden.cotizacion?.iva_tasa ?? '0.19');
+    const ivaReal = ivaAmount(tipo === 'ACTA_SERVICIO' ? materialSubtotal + transport : subtotalReal, orden.cotizacion?.iva_tasa ?? '0.19');
     const totalReal = Number((subtotalReal + ivaReal + (tipo === 'ACTA_SERVICIO' ? transport : 0)).toFixed(2));
     const conductorIds = [orden.conductor_recoleccion_id, orden.conductor_entrega_id].filter((id): id is number => typeof id === 'number');
     const conductoresRuta = conductorIds.length
@@ -923,6 +969,106 @@ export class LogisticaService {
     );
   }
 
+  findDocumentoEmitido(
+    tipo: 'ORDEN' | 'ACTA',
+    consecutivo: string,
+  ): Promise<DocumentoEmitido | null> {
+    return this.documentosEmitidosRepository.findOne({
+      where: { tipo, consecutivo },
+    });
+  }
+
+  async upsertDocumentoEmitido(
+    dto: CreateDocumentoEmitidoDto,
+    usuarioId: number,
+    pdfHash?: string | null,
+  ): Promise<DocumentoEmitido> {
+    return this.dataSource.transaction(async (manager) => {
+      const documentosRepo = manager.getRepository(DocumentoEmitido);
+      const eventosRepo = manager.getRepository(DocumentoEvento);
+
+      const existente = await documentosRepo.findOne({
+        where: { tipo: dto.tipo, consecutivo: dto.consecutivo },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!existente) {
+        const emitido = documentosRepo.create({
+          tipo: dto.tipo,
+          consecutivo: dto.consecutivo,
+          formato_version_id: dto.formato_version_id,
+          snapshot_json: dto.snapshot_json,
+          pdf_storage_key: dto.pdf_storage_key ?? null,
+          pdf_hash: pdfHash ?? null,
+          fecha_emision: new Date(dto.fecha_emision),
+          usuario_id: usuarioId,
+          estado: dto.estado ?? 'EMITIDO',
+          orden_id: dto.orden_id ?? null,
+        });
+        const saved = await documentosRepo.save(emitido);
+        await eventosRepo.save(
+          eventosRepo.create({
+            documento_emitido_id: saved.id,
+            tipo_evento: 'EMISION',
+            usuario_id: usuarioId,
+            fecha: new Date(dto.fecha_emision),
+            motivo: 'Emisión inicial del documento',
+            datos_json: { consecutivo: dto.consecutivo, tipo: dto.tipo },
+          }),
+        );
+        await this.auditoriaService.create(
+          {
+            usuario_id: usuarioId,
+            entidad: 'documento_emitido',
+            entidad_id: saved.id,
+            accion: AccionAuditoria.CREAR,
+            detalle: {
+              tipo: dto.tipo,
+              consecutivo: dto.consecutivo,
+              estado: saved.estado,
+            },
+          },
+          manager,
+        );
+        return saved;
+      }
+
+      existente.formato_version_id = dto.formato_version_id;
+      existente.snapshot_json = dto.snapshot_json;
+      existente.pdf_storage_key = dto.pdf_storage_key ?? existente.pdf_storage_key;
+      existente.pdf_hash = pdfHash ?? existente.pdf_hash;
+      existente.fecha_emision = new Date(dto.fecha_emision);
+      existente.usuario_id = usuarioId;
+      existente.estado = dto.estado ?? 'EMITIDO';
+      const updated = await documentosRepo.save(existente);
+
+      await eventosRepo.save(
+        eventosRepo.create({
+          documento_emitido_id: updated.id,
+          tipo_evento: 'CORRECCION',
+          usuario_id: usuarioId,
+          fecha: new Date(dto.fecha_emision),
+          motivo: 'Actualización de documento emitido tras cambios en la orden/acta',
+          datos_json: { consecutivo: dto.consecutivo, tipo: dto.tipo, pdf_hash: pdfHash ?? null },
+        }),
+      );
+      await this.auditoriaService.create(
+        {
+          usuario_id: usuarioId,
+          entidad: 'documento_emitido',
+          entidad_id: updated.id,
+          accion: AccionAuditoria.EDITAR,
+          detalle: {
+            tipo: dto.tipo,
+            consecutivo: dto.consecutivo,
+            estado: updated.estado,
+          },
+        },
+        manager,
+      );
+      return updated;
+    });
+  }
+
   async crearDocumentoEmitido(
     dto: CreateDocumentoEmitidoDto,
     usuarioId: number,
@@ -988,20 +1134,10 @@ export class LogisticaService {
     ordenId: number,
     access?: PermissionContext,
   ): Promise<DocumentoEmitido[]> {
+    await this.findOne(ordenId, access);
     return this.documentosEmitidosRepository.find({
-      where: access
-        ? resourceWhere<DocumentoEmitido>(access, { orden_id: ordenId })
-        : { orden_id: ordenId },
+      where: { orden_id: ordenId },
       order: { fecha_emision: 'DESC' },
-    });
-  }
-
-  async findDocumentoEmitidoByConsecutivo(
-    tipo: 'ORDEN' | 'ACTA',
-    consecutivo: string,
-  ): Promise<DocumentoEmitido | null> {
-    return this.documentosEmitidosRepository.findOne({
-      where: { tipo, consecutivo },
     });
   }
 

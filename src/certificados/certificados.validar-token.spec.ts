@@ -1,7 +1,5 @@
-import { NotFoundException } from '@nestjs/common';
 import { CertificadosService } from './certificados.service.js';
 
-const hoy = new Date().toISOString().slice(0, 10);
 const vencido = new Date(Date.now() - 86400000 * 31).toISOString().slice(0, 10);
 const vigente = new Date(Date.now() + 86400000 * 365).toISOString().slice(0, 10);
 
@@ -15,6 +13,26 @@ function repoWith(certificados: Record<string, any>) {
 }
 
 describe('CertificadosService.validarToken (QR público)', () => {
+  it('mantiene vigente un certificado hasta la medianoche de Bogotá', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-24T04:30:00.000Z'));
+    try {
+      const repo = repoWith({
+        'TOKEN-LIMITE': {
+          token_publico: 'TOKEN-LIMITE',
+          estado: 'Aprobado',
+          fecha_vencimiento: '2026-11-23',
+          consecutivo: 'CE-0000045',
+        },
+      });
+      const service = new CertificadosService(repo as never, {} as never, {} as never, {} as never);
+      expect((await service.validarToken('TOKEN-LIMITE')).estado).toBe('Vigente');
+      vi.setSystemTime(new Date('2026-11-24T05:00:00.000Z'));
+      expect((await service.validarToken('TOKEN-LIMITE')).estado).toBe('Vencido');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('devuelve Vigente para certificado aprobado sin vencer', async () => {
     const repo = repoWith({
       'TOKEN-VIGENTE': {

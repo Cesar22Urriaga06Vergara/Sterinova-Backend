@@ -1,0 +1,98 @@
+{
+  "backend_head": "d5c201b",
+  "frontend_head": "f0430a9",
+  "generado": "2026-11-23T16:25:50.533Z",
+  "backend_endpoints": {
+    "worktree": 102,
+    "head": 110,
+    "ambos": 100,
+    "solo_worktree": 2,
+    "solo_head": 10,
+    "ambos_con_diferencia": 0,
+    "duplicados_wt": [],
+    "duplicados_head": []
+  },
+  "politica_efectiva_wt": {
+    "PERMISO": 94,
+    "PUBLICO": 5,
+    "SESION": 1,
+    "DENEGADO_SCOPED_SIN_PERMISO": 2
+  },
+  "controladores": {
+    "worktree": 20,
+    "head": 23
+  },
+  "openapi": {
+    "worktree": {
+      "total": 102,
+      "en_codigo_no_en_openapi": [],
+      "en_openapi_no_en_codigo": [],
+      "permiso_distinto": []
+    },
+    "head": {
+      "total": 110,
+      "en_codigo_no_en_openapi": [],
+      "en_openapi_no_en_codigo": [],
+      "permiso_distinto": []
+    }
+  },
+  "backend_permisos": {
+    "worktree": 81,
+    "head": 81,
+    "solo_worktree": 0,
+    "solo_head": 0,
+    "ambos_con_diferencia": 6,
+    "sin_endpoint_wt": 28,
+    "permisos_endpoint_fuera_catalogo_wt": [],
+    "literales_migracion_fuera_catalogo_wt": []
+  },
+  "frontend_llamadas": {
+    "archivos_ts_wt": 158,
+    "archivos_ts_head": 119,
+    "worktree": 111,
+    "head": 105,
+    "solo_worktree": 14,
+    "solo_head": 8,
+    "no_resueltas_wt": 1,
+    "rutas_unicas_wt": 80,
+    "rutas_unicas_head": 79,
+    "rutas_solo_wt": [
+      "POST|/productos/importar-excel"
+    ],
+    "rutas_solo_head": []
+  },
+  "backend_no_montados": {
+    "worktree": [],
+    "head": []
+  },
+  "frontend_permisos": {
+    "worktree": 127,
+    "head": 127,
+    "solo_worktree": 63,
+    "solo_head": 63,
+    "codigos_unicos_wt": 48,
+    "codigos_unicos_head": 48,
+    "codigos_solo_wt": [],
+    "codigos_solo_head": [],
+    "no_resueltos_wt": 2,
+    "codigos_fuera_catalogo_wt": []
+  },
+  "duracion_ms": 10512,
+  "cambios": {
+    "backend": {
+      "colapsado": 84,
+      "uall": 153,
+      "M": 55,
+      "D": 13,
+      "??": 16
+    },
+    "frontend": {
+      "colapsado": 122,
+      "uall": 666,
+      "M": 102,
+      "D": 5,
+      "??": 15
+    },
+    "salida_auditoria": 24
+  }
+}

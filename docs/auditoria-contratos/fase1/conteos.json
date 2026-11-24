@@ -1,0 +1,10 @@
+{
+  "llamadas": 111,
+  "coinciden": 110,
+  "modelo_distinto": 1,
+  "ausentes_backend": 0,
+  "ausentes_frontend": 18,
+  "permisos_frontend": 94,
+  "permisos_no_existen": 0,
+  "permisos_sin_mapeo": 0
+}

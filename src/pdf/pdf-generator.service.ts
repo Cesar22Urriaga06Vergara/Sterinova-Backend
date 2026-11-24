@@ -162,25 +162,11 @@ function buildLogisticDocumentHtml(
       material,
     ]),
   );
-  const processingAmounts = new Map<number, Snapshot>(
-    (processingEvent?.materiales ?? []).map((material: Snapshot) => [
-      Number(material.material_id),
-      material,
-    ]),
-  );
   const deliveryAmounts = new Map<number, Snapshot>(
     (deliveryEvent?.materiales ?? []).map((material: Snapshot) => [
       Number(material.material_id),
       material,
     ]),
-  );
-  const receiptBoxes = [...receiptAmounts.values()].reduce(
-    (total, material) => total + Number(material.cajas ?? 0),
-    0,
-  );
-  const deliveryBoxes = [...deliveryAmounts.values()].reduce(
-    (total, material) => total + Number(material.cajas ?? 0),
-    0,
   );
   const receivedDateTime = orderDateTime(order?.fecha_hora_recoleccion ?? receiptEvent?.ocurrido_at ?? pickupEvent?.ocurrido_at);
   const processingDateTime = eventDateTime(processingEvent);
@@ -194,12 +180,6 @@ function buildLogisticDocumentHtml(
     : '';
   const deliveredDateTime = orderDateTime(order?.fecha_hora_entrega ?? deliveryEvent?.ocurrido_at);
   const pickupDateTime = eventDateTime(pickupEvent);
-  const receiptBoxesValue = materials.some((material) => material.cajas_recibidas != null)
-    ? String(materials.reduce((sum, material) => sum + Number(material.cajas_recibidas ?? 0), 0))
-    : receiptEvent ? String(receiptBoxes) : 'N/A';
-  const deliveryBoxesValue = materials.some((material) => material.cajas_entregadas != null)
-    ? String(materials.reduce((sum, material) => sum + Number(material.cajas_entregadas ?? 0), 0))
-    : deliveryEvent ? String(deliveryBoxes) : 'N/A';
   const renderedCommercialTotals = new Set<number>();
   const lineValues = materials.map((material) => {
     const item = quoteItems.find(
@@ -248,7 +228,6 @@ function buildLogisticDocumentHtml(
             </tr>`;
           }
           const received = receiptAmounts.get(Number(material.id));
-          const processed = processingAmounts.get(Number(material.id));
           const delivered = deliveryAmounts.get(Number(material.id));
           return `<tr>
             <td class="description">${description}</td>
@@ -543,6 +522,24 @@ const PDF_RENDER_TIMEOUT_MS = 15_000;
 export class PdfGeneratorService implements OnModuleDestroy {
   private readonly logger = new Logger(PdfGeneratorService.name);
   private browserPromise?: Promise<Browser>;
+  private activeRenders = 0;
+  private readonly renderWaiters: Array<() => void> = [];
+
+  private get maxConcurrency(): number {
+    const value = Number(process.env.PDF_MAX_CONCURRENCY);
+    return Number.isSafeInteger(value) && value > 0 ? value : 2;
+  }
+
+  private async acquireRenderSlot(): Promise<() => void> {
+    if (this.activeRenders >= this.maxConcurrency) {
+      await new Promise<void>((resolve) => this.renderWaiters.push(resolve));
+    }
+    this.activeRenders++;
+    return () => {
+      this.activeRenders--;
+      this.renderWaiters.shift()?.();
+    };
+  }
 
   constructor(
     @Inject(StorageService) private readonly storage: StorageService,
@@ -609,6 +606,9 @@ export class PdfGeneratorService implements OnModuleDestroy {
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
     const renderPdf = async () => {
+      const release = await this.acquireRenderSlot();
+      try {
+      if (timedOut) throw new Error('PDF render deadline exceeded');
       const browser = await this.getBrowser();
       page = await browser.newPage({
         locale: 'es-CO',
@@ -671,6 +671,10 @@ export class PdfGeneratorService implements OnModuleDestroy {
       });
       if (timedOut) throw new Error('PDF render deadline exceeded');
       return pdf;
+      } finally {
+        if (page) await Promise.resolve(page.close()).catch(() => undefined);
+        release();
+      }
     };
 
     try {

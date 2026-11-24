@@ -278,4 +278,45 @@ describe('CertificadosService', () => {
     });
     expect(generatedSnapshots[0].aprobador).not.toHaveProperty('rol');
   });
+
+  it('certifica únicamente las cantidades procesadas en el ciclo cuando existen registros en ciclos_materiales_procesados', async () => {
+    const { CicloMaterialProcesado } = await import(
+      '../planta/entities/ciclo-material-procesado.entity.js'
+    );
+    const { service, manager, generatedSnapshots } = createService();
+    const originalGetRepo = manager.getRepository as ReturnType<typeof vi.fn>;
+    const procesadosRepo = {
+      find: vi.fn(async () => [
+        { ciclo_id: 12, orden_servicio_material_id: 101, cantidad_procesada: 60 },
+        { ciclo_id: 12, orden_servicio_material_id: 102, cantidad_procesada: 0 },
+      ]),
+    };
+    const wrappedManager = {
+      ...manager,
+      getRepository: vi.fn((entity: unknown) =>
+        entity === CicloMaterialProcesado
+          ? procesadosRepo
+          : originalGetRepo(entity),
+      ),
+    } as unknown as EntityManager;
+    const cycle = {
+      ...operationalCycle(),
+      id: 12,
+      orden_id: 90,
+      orden: {
+        id: 90,
+        consecutivo: 'ORD-090',
+        materiales: [
+          { ...materialFixture, id: 101, posicion: 1, descripcion: 'Bata A', cantidad: 100 },
+          { ...materialFixture, id: 102, posicion: 2, descripcion: 'Bata B', cantidad: 50 },
+        ],
+      },
+    } as unknown as CicloEsterilizacion;
+
+    await service.emitirDesdeCiclo(wrappedManager, cycle, 7, new Date(), qualityEvaluations);
+
+    expect(generatedSnapshots[0].materiales).toEqual([
+      expect.objectContaining({ id: 101, descripcion: 'Bata A', cantidad: 60 }),
+    ]);
+  });
 });

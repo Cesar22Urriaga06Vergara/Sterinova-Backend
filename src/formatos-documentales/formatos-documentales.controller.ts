@@ -37,6 +37,12 @@ export class FormatosDocumentalesController {
     return this.formatosDocumentalesService.findOne(id, request.rbac);
   }
 
+  @Get(':id/versiones')
+  @RequirePermission('formatos.ver')
+  findVersions(@Param('id', ParseIntPipe) id: number, @Req() request: RbacRequest) {
+    return this.formatosDocumentalesService.findVersions(id, request.rbac);
+  }
+
   @Post()
   @RequirePermission('formatos.crear')
   create(

@@ -1,12 +1,11 @@
 import {
-  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, type EntityManager } from 'typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -167,7 +166,7 @@ export class UsersService {
   async createWithAssignment(
     createUserDto: CreateUserDto,
     assignment: { role_id: number; scope_id: number },
-    actorId: number,
+    _actorId: number,
   ): Promise<PublicUser> {
     return this.usersRepository.manager.transaction(async (manager) => {
       const repo = manager.getRepository(User);

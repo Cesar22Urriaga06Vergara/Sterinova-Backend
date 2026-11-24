@@ -2,7 +2,9 @@
  * Estados del ciclo de vida de una cotización.
  *
  * Secuencia documentada (reglas-maestras M3 §6; hoja de ruta D03–D05):
- * BORRADOR → EN_REVISION → APROBADA → ENVIADA → ACEPTADA_CLIENTE → EMITIDA → ANULADA
+ * Borrador → APROBADA → EMITIDA → ACEPTADA_CLIENTE.
+ * La anulación se solicita desde APROBADA o EMITIDA. EN_REVISION y ENVIADA
+ * permanecen reservados; el servicio actual no los asigna.
  *
  * Nota: el valor 'APROBADA' se conserva tal cual para mantener compatibilidad
  * con el contrato RBAC vigente y con los registros existentes; el flujo

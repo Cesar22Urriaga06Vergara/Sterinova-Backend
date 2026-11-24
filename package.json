@@ -37,7 +37,7 @@
     "seed:backend-roles": "npm run build && node dist/scripts/seed-backend-roles.js"
   },
   "dependencies": {
-    "@fontsource/open-sans": "^5.3.0",
+    "@e965/xlsx": "^0.20.3",
     "@nestjs/cache-manager": "^12.0.2",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.1",
@@ -61,7 +61,6 @@
     "passport-jwt": "^4.0.1",
     "pino-http": "^11.0.0",
     "playwright": "^1.64.1",
-    "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",
@@ -75,7 +74,6 @@
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/passport-jwt": "^4.0.1",
-    "@types/qrcode": "^1.5.6",
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.2",
     "oxlint": "^1.58.0",

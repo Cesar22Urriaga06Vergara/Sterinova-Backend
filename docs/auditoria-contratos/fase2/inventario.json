@@ -1,0 +1,1208 @@
+[
+  {
+    "project": "Backend",
+    "path": ".codexignore",
+    "status": "HERRAMIENTA",
+    "reason": "Instrucción o configuración de agente, IDE o CI."
+  },
+  {
+    "project": "Backend",
+    "path": ".github/PULL_REQUEST_TEMPLATE.md",
+    "status": "HERRAMIENTA",
+    "reason": "Instrucción o configuración de agente, IDE o CI."
+  },
+  {
+    "project": "Backend",
+    "path": "AGENTS.md",
+    "status": "HERRAMIENTA",
+    "reason": "Instrucción o configuración de agente, IDE o CI."
+  },
+  {
+    "project": "Backend",
+    "path": "ARQUITECTURA_BACKEND.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "CHANGELOG.md",
+    "status": "HISTORICO",
+    "reason": "Registro de cambios útil para rastrear versiones anteriores."
+  },
+  {
+    "project": "Backend",
+    "path": "CONTRIBUTING.md",
+    "status": "VIGENTE",
+    "reason": "Índice o guía de entrada del proyecto."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/archivo/2026-11-23/PROMPT_MAESTRO_AUDITORIA_INTEGRACION_LOGISTICA_STERINOVA.md",
+    "status": "HISTORICO",
+    "reason": "Ubicación, fecha o nombre indican antecedente o hito cerrado."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/archivo/2026-11-23/PROMPT_MAESTRO_V2_LOGISTICA_STERINOVA_IMPORTACION_XLSM.md",
+    "status": "HISTORICO",
+    "reason": "Ubicación, fecha o nombre indican antecedente o hito cerrado."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura-roles-permisos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/adr/001-evidencias-y-firmas.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/adr/002-pdf-playwright-nextjs.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/adr/003-consecutivos-transaccionales.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/adr/004-rbac-con-ambitos.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/adr/005-unificacion-catalogo-roles.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/adr/README.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/api-y-contratos.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/arquitectura-y-stack.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/auditoria-dependencias.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/contexto-frontend.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/contrato-autorizacion-rbac.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/estado-implementado.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/matriz-responsabilidades-frontend.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/arquitectura/roles-y-permisos.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/auditoria-contratos/fase0/README.md",
+    "status": "VIGENTE",
+    "reason": "Entregable reproducible de esta auditoría."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/auditoria-contratos/fase0/versiones.md",
+    "status": "VIGENTE",
+    "reason": "Entregable reproducible de esta auditoría."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/auditoria-contratos/fase1/matriz-contratos.md",
+    "status": "VIGENTE",
+    "reason": "Entregable reproducible de esta auditoría."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/auditoria-contratos/fase2/inventario-documental.md",
+    "status": "VIGENTE",
+    "reason": "Entregable reproducible de esta auditoría."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/auditoria-funcional-y-oportunidades.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/auditorias/RESULTADO_CORRECCION_AUTENTICACION_RBAC.md",
+    "status": "HISTORICO",
+    "reason": "Informe de auditoría previo; conserva evidencia contextual."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/auditorias/VALIDACION_FORMATOS_LOGISTICA.md",
+    "status": "HISTORICO",
+    "reason": "Informe de auditoría previo; conserva evidencia contextual."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/base-de-datos/esquema-y-migraciones.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/calidad-y-pruebas/aceptacion-visual-pdfs.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/calidad-y-pruebas/calidad-de-datos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/calidad-y-pruebas/checklist-verificacion-operativa.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/calidad-y-pruebas/pruebas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/CONTEXTO_RAPIDO.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/estandar-cotizaciones/ESTANDAR_FORMATOS.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/ESTRUCTURA_BACKEND.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/inventario-documental.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/manuales/despliegue.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/manuales/runbook-incidentes.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/manuales/runbook-pdfs.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/negocio/analisis-flujo-operativo-2026-11-11.md",
+    "status": "HISTORICO",
+    "reason": "Ubicación, fecha o nombre indican antecedente o hito cerrado."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/negocio/contexto-producto.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/negocio/cuestionarios-origen.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/negocio/hoja-ruta-integral-2026-11-12.md",
+    "status": "HISTORICO",
+    "reason": "Ubicación, fecha o nombre indican antecedente o hito cerrado."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/negocio/reglas-maestras.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/README.md",
+    "status": "VIGENTE",
+    "reason": "Índice o guía de entrada del proyecto."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/auditoria/RF-AUD-001-consulta-auditoria.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/auditoria/RF-AUD-002-atomicidad-auditoria.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/auditoria/RF-AUD-003-auditoria-usuarios.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/auditoria/RF-AUD-004-payload-auditoria.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RF-CAL-001-evaluacion-ciclos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RF-CAL-002-aprobacion-materiales.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RF-CAL-003-desviaciones-capa.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RF-CAL-004-liberacion-excepcion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RF-CAL-005-sugerencia-ui-calidad.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RF-CAL-006-cuarentena-materiales.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RF-CAL-007-bypass-ordenes-sin-metodo.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RF-CAL-008-modulo-capa.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RF-CAL-009-flujo-capa.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RF-CAL-010-flujo-excepcion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/calidad/RN-CAL-001-bloqueo-despacho.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/certificados/RF-CER-001-emision-certificados.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/certificados/RF-CER-002-identificacion-materiales.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/certificados/RF-CER-003-versionado-anulacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/certificados/RF-CER-004-certificados-ciclos-compartidos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/certificados/RF-CER-005-cantidades-procesadas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/certificados/RF-CER-006-flujo-anulacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/certificados/RF-CER-007-historial-versiones.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/certificados/RN-CER-001-ciclos-compartidos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-001-clientes.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-002-productos-servicios.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-003-cotizaciones-crud.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-004-condiciones-vigencia.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-005-revision-aprobacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-006-envio-aceptacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-007-emitir-documentos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-008-anulaciones.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-009-importacion-clientes.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-010-descuentos-cotizaciones.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-011-vigencia-oferta.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-012-paso-revision.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-013-implementar-envio-aceptacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/comercial/RF-COM-014-bloqueo-emision-anulacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-001-recogidas-rutas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-002-recepciones.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-003-novedades-custodia.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-004-transferencia-planta.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-005-entregas-parciales.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-006-precarga-items.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-007-fix-relacion-orden.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-008-entidad-rutas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-009-modalidad-ingreso.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-010-items-recepcion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-011-validacion-lotes.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-012-control-cantidades-planta.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-013-rechazo-item.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-014-entidad-novedades.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-015-evidencias-adjuntos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-016-cadena-custodia.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-017-recepcion-usuario-planta.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-018-acta-traspaso.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-019-entregas-acumulables.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-020-pod-firmas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-021-fix-entidad-entrega.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-022-inmutabilidad-documentos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RF-LOG-023-acta-recepcion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RN-LOG-001-creacion-ordenes.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/logistica/RN-LOG-002-no-reasignacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-001-equipos-disponibilidad.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-002-creacion-ciclos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-003-distribucion-cantidades.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-004-parametros-protocolos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-005-tandas-recetas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-006-ciclos-multiorden.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-007-catalogo-equipos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-008-control-mantenimiento.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-009-validacion-capacidad.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-010-consecutivos-ciclos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-011-flujo-reprocesos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-012-evidencias-adjuntas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-013-justificacion-no-aplica.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-014-entidad-tandas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-015-bloqueo-metodo.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-016-trigger-inmutabilidad.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RF-PLA-017-orden-esterilizacion-documento.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RN-PLA-001-metodo-contratado.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/planta/RN-PLA-002-no-sobrescribir.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/seguridad/RF-SEG-001-password-aprobaciones.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/seguridad/RNF-SEG-001-autorizacion-ambito.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/seguridad/RNF-SEG-002-sesiones-operaciones-criticas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/trazabilidad/RF-TRA-001-cadena-servicio.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/usuarios/RF-USR-001-administracion-usuarios.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/usuarios/RF-USR-002-roles-ambitos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/usuarios/RF-USR-003-administracion-areas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/backend/usuarios/RF-USR-004-crud-roles.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/brechas/registro-brechas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/decisiones/decisiones-negocio.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/frontend/README.md",
+    "status": "VIGENTE",
+    "reason": "Índice o guía de entrada del proyecto."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/operacion/RNF-OPS-001-operacion-produccion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/decisiones-prioridad-1-calidad-planta-logistica.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-CAL-001-politicas-cuarentena.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-CAL-002-politicas-capa.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-CAL-003-politicas-excepcion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-CER-001-politicas-certificacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-CER-002-politicas-reemplazo.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-COM-001-ciclo-vida-cliente.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-COM-002-categorizacion-dispositivos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-COM-003-flujo-reemplazo.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-COM-004-transicion-estado-emitida.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-COM-005-precios-cliente.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-COM-006-evidencia-aceptacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-COM-007-reconstruccion-pdf-historico.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-COM-008-politicas-anulacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-FIS-001-fiscalidad-por-producto.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-LOG-001-soportes-comerciales.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-LOG-002-notificacion-parciales.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-LOG-003-politicas-rechazo.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-LOG-004-cierre-ordenes.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-PLA-003-inventario-planta.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-PLA-004-politicas-equipos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-PLA-005-numeracion-ciclos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-PLA-006-politicas-reproceso.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-PLA-007-politicas-evidencias.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-PLA-008-politicas-recetas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-PLA-009-validacion-normativa-procesos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-PLA-010-alcance-orden-esterilizacion.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-SEG-001-evidencia-legal-firmas.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-USR-001-roles-por-planta.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/por-aclarar/RA-USR-002-areas-scopes.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/requisitos/README.md",
+    "status": "VIGENTE",
+    "reason": "Índice o guía de entrada del proyecto."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/superpowers/plans/2026-11-11-rbac-users-validation.md",
+    "status": "HISTORICO",
+    "reason": "Ubicación, fecha o nombre indican antecedente o hito cerrado."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/superpowers/plans/2026-11-12-avance-trazabilidad.md",
+    "status": "HISTORICO",
+    "reason": "Ubicación, fecha o nombre indican antecedente o hito cerrado."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/superpowers/plans/2026-11-12-backend-trazabilidad.md",
+    "status": "HISTORICO",
+    "reason": "Ubicación, fecha o nombre indican antecedente o hito cerrado."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/superpowers/plans/2026-11-17-plan-maestro-pendiente.md",
+    "status": "HISTORICO",
+    "reason": "Ubicación, fecha o nombre indican antecedente o hito cerrado."
+  },
+  {
+    "project": "Backend",
+    "path": "docs/ui-ux/correspondencia-ui-api.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Backend",
+    "path": "README.md",
+    "status": "VIGENTE",
+    "reason": "Índice o guía de entrada del proyecto."
+  },
+  {
+    "project": "Backend",
+    "path": "tasks/plan.md",
+    "status": "HISTORICO",
+    "reason": "Registro de tarea o plan de trabajo."
+  },
+  {
+    "project": "Backend",
+    "path": "tasks/todo.md",
+    "status": "HISTORICO",
+    "reason": "Registro de tarea o plan de trabajo."
+  },
+  {
+    "project": "Frontend",
+    "path": ".codexignore",
+    "status": "HERRAMIENTA",
+    "reason": "Instrucción o configuración de agente, IDE o CI."
+  },
+  {
+    "project": "Frontend",
+    "path": ".github/PULL_REQUEST_TEMPLATE.md",
+    "status": "HERRAMIENTA",
+    "reason": "Instrucción o configuración de agente, IDE o CI."
+  },
+  {
+    "project": "Frontend",
+    "path": "AGENTS.md",
+    "status": "HERRAMIENTA",
+    "reason": "Instrucción o configuración de agente, IDE o CI."
+  },
+  {
+    "project": "Frontend",
+    "path": "ARQUITECTURA_FRONTEND.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Frontend",
+    "path": "CHANGELOG.md",
+    "status": "HISTORICO",
+    "reason": "Registro de cambios útil para rastrear versiones anteriores."
+  },
+  {
+    "project": "Frontend",
+    "path": "CONTRIBUTING.md",
+    "status": "VIGENTE",
+    "reason": "Índice o guía de entrada del proyecto."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/arquitectura/auditoria-dependencias.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/arquitectura/integracion-y-stack.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/arquitectura/navegacion-y-permisos.md",
+    "status": "VIGENTE",
+    "reason": "Documento arquitectónico actual; requiere contraste puntual con código."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/calidad-y-pruebas/pruebas-frontend.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/CONTEXTO_RAPIDO.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/estado-proyecto/modulos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/estado-proyecto/plan-pendientes-2026-11-17.md",
+    "status": "HISTORICO",
+    "reason": "Ubicación, fecha o nombre indican antecedente o hito cerrado."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/ESTRUCTURA_FRONTEND.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/manuales/desarrollo-local.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/README.md",
+    "status": "VIGENTE",
+    "reason": "Índice o guía de entrada del proyecto."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/ui-ux/accesibilidad.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/ui-ux/design-system.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/ui-ux/flujos-criticos.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Frontend",
+    "path": "docs/ui-ux/principios-y-patrones.md",
+    "status": "VIGENTE",
+    "reason": "Documento en área activa; validar afirmaciones antes de tratarlo como contrato."
+  },
+  {
+    "project": "Frontend",
+    "path": "README.md",
+    "status": "VIGENTE",
+    "reason": "Índice o guía de entrada del proyecto."
+  }
+]

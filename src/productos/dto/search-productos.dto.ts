@@ -1,6 +1,7 @@
-import { TipoServicioCotizacion } from '../../cotizaciones/entities/tipo-servicio.enum.js';
+import { TipoServicioCotizacion } from '../../common/tipo-servicio-cotizacion.js';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { TipoItemCatalogo } from '../entities/producto.entity.js';
 
 export class SearchProductosDto {
   @ApiProperty({ enum: TipoServicioCotizacion })
@@ -12,4 +13,9 @@ export class SearchProductosDto {
   @IsString()
   @MaxLength(100)
   q?: string;
+
+  @ApiPropertyOptional({ enum: TipoItemCatalogo })
+  @IsOptional()
+  @IsEnum(TipoItemCatalogo)
+  tipo_item?: TipoItemCatalogo;
 }

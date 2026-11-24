@@ -37,7 +37,7 @@ describe('users route permissions', () => {
     expect(await guard.canActivate(context(UsersController, 'findAll'))).toBe(true);
     expect(request.rbac).toMatchObject({ permission: 'usuarios.ver', policy: { scopeIds: [2] } });
   });
-  it.each(['create', 'update', 'changePassword', 'resetPassword', 'setActive'])(
+  it.each(['create', 'update', 'resetPassword', 'setActive'])(
     'denies %s to an area reader even when its legacy role is Admin', async (method) => {
       const { guard, context } = fixture('usuarios.ver');
       await expect(guard.canActivate(context(UsersController, method))).rejects.toMatchObject({ status: 403 });

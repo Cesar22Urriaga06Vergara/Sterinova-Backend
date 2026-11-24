@@ -1,20 +1,6 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/": {
-      "get": {
-        "operationId": "AppController_getHello",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "App"
-        ]
-      }
-    },
     "/tasas-fiscales/iva": {
       "get": {
         "operationId": "TasasFiscalesController_history",
@@ -456,26 +442,6 @@
         "tags": [
           "Users"
         ]
-      }
-    },
-    "/users/{id}/password": {
-      "patch": {
-        "operationId": "UsersController_changePassword",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Users"
-        ],
-        "x-required-permission": "usuarios.identidad.gestionar"
       }
     },
     "/users/{id}/password/reset": {
@@ -944,7 +910,21 @@
     "/productos": {
       "get": {
         "operationId": "ProductosController_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "tipo_item",
+            "required": false,
+            "in": "query",
+            "description": "Omitir para consultar todos los segmentos",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRODUCTO",
+                "SERVICIO"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -991,6 +971,27 @@
         "x-required-permission": "productos.gestionar"
       }
     },
+    "/productos/importar-excel": {
+      "post": {
+        "operationId": "ProductosController_importExcel",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Importar insumos desde un archivo Excel .xlsx",
+        "tags": [
+          "Productos"
+        ],
+        "x-required-permission": "productos.gestionar"
+      }
+    },
     "/productos/buscar/crear": {
       "get": {
         "operationId": "ProductosController_searchForCreation",
@@ -1019,6 +1020,18 @@
             "schema": {
               "maxLength": 100,
               "type": "string"
+            }
+          },
+          {
+            "name": "tipo_item",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRODUCTO",
+                "SERVICIO"
+              ]
             }
           }
         ],
@@ -1067,6 +1080,18 @@
             "schema": {
               "maxLength": 100,
               "type": "string"
+            }
+          },
+          {
+            "name": "tipo_item",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRODUCTO",
+                "SERVICIO"
+              ]
             }
           }
         ],
@@ -1889,6 +1914,33 @@
       }
     },
     "/formatos-documentales/{id}/versiones": {
+      "get": {
+        "operationId": "FormatosDocumentalesController_findVersions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "FormatosDocumentales"
+        ],
+        "x-required-permission": "formatos.ver"
+      },
       "post": {
         "operationId": "FormatosDocumentalesController_createVersion",
         "parameters": [
@@ -2340,35 +2392,6 @@
         "x-required-permission": "logistica.ordenes.ver"
       }
     },
-    "/logistica/documentos-emitidos/{id}/pdf": {
-      "get": {
-        "operationId": "LogisticaController_descargarDocumentoEmitido",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Logistica"
-        ],
-        "x-required-permission": "logistica.ordenes.ver"
-      }
-    },
     "/logistica/ordenes/{id}/estado": {
       "put": {
         "operationId": "LogisticaController_updateEstado",
@@ -2406,131 +2429,6 @@
           "Logistica"
         ],
         "x-required-permission": "logistica.ordenes.cambiar_estado"
-      }
-    },
-    "/logistica/ordenes/{id}/recepcion": {
-      "post": {
-        "operationId": "RecepcionController_createRecepcion",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateRecepcionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Recepcion"
-        ],
-        "x-required-permission": "logistica.recepciones.registrar"
-      },
-      "get": {
-        "operationId": "RecepcionController_findRecepcionByOrden",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Recepcion"
-        ],
-        "x-required-permission": "logistica.ordenes.ver"
-      }
-    },
-    "/logistica/recepciones": {
-      "get": {
-        "operationId": "RecepcionController_findAllRecepciones",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Recepcion"
-        ],
-        "x-required-permission": "logistica.ordenes.ver"
-      }
-    },
-    "/logistica/ordenes/{id}/recepcion/estado": {
-      "patch": {
-        "operationId": "RecepcionController_updateRecepcionEstado",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateRecepcionEstadoDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Recepcion"
-        ],
-        "x-required-permission": "logistica.recepciones.registrar"
       }
     },
     "/logistica/conductores": {
@@ -2737,6 +2635,45 @@
         "x-required-permission": "planta.ciclos.crear"
       }
     },
+    "/planta/ciclos/{id}/autorizar-reproceso": {
+      "patch": {
+        "operationId": "PlantaController_autorizarReproceso",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutorizarReprocesoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Planta"
+        ],
+        "x-required-permission": "planta.reprocesos.registrar"
+      }
+    },
     "/certificados": {
       "get": {
         "operationId": "CertificadosController_findAll",
@@ -2785,6 +2722,67 @@
         ]
       }
     },
+    "/certificados/{id}/anular": {
+      "patch": {
+        "operationId": "CertificadosController_anular",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnularCertificadoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Certificado anulado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Anular certificado aprobado con motivo y confirmación de contraseña",
+        "tags": [
+          "Certificados"
+        ],
+        "x-required-permission": "certificados.anular"
+      }
+    },
+    "/certificados/exportar": {
+      "get": {
+        "operationId": "CertificadosController_exportar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Archivo Excel con certificados"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Exportar certificados a Excel",
+        "tags": [
+          "Certificados"
+        ],
+        "x-required-permission": "certificados.exportar"
+      }
+    },
     "/certificados/{id}": {
       "get": {
         "operationId": "CertificadosController_findOne",
@@ -2813,27 +2811,6 @@
           "Certificados"
         ],
         "x-required-permission": "certificados.ver"
-      }
-    },
-    "/certificados/exportar": {
-      "get": {
-        "operationId": "CertificadosController_exportar",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Archivo Excel con certificados"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Exportar certificados a Excel",
-        "tags": [
-          "Certificados"
-        ],
-        "x-required-permission": "certificados.exportar"
       }
     },
     "/certificados/{id}/descargar": {
@@ -2983,6 +2960,66 @@
           "Calidad"
         ],
         "x-required-permission": "calidad.rechazar"
+      }
+    },
+    "/calidad/ciclos/{id}/autorizar-reproceso": {
+      "patch": {
+        "operationId": "CalidadController_autorizarReproceso",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutorizarReprocesoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Autorizar desde Calidad el reproceso de un ciclo rechazado",
+        "tags": [
+          "Calidad"
+        ],
+        "x-required-permission": "calidad.aprobar"
+      }
+    },
+    "/calidad/reprocesos": {
+      "get": {
+        "operationId": "CalidadController_findReprocesos",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Calidad"
+        ],
+        "x-required-permission": "calidad.ciclos.ver"
       }
     },
     "/ambitos": {
@@ -3136,104 +3173,6 @@
           "Ambito"
         ],
         "x-required-permission": "ambitos.gestionar"
-      }
-    },
-    "/revocacion/usuario/{usuarioId}": {
-      "post": {
-        "operationId": "RevocacionController_revocarAsignacionesUsuario",
-        "parameters": [
-          {
-            "name": "usuarioId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RevocarAsignacionesDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Revocacion"
-        ],
-        "x-required-permission": "usuarios.identidad.gestionar"
-      }
-    },
-    "/revocacion/asignacion": {
-      "post": {
-        "operationId": "RevocacionController_revocarAsignacionEspecifica",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RevocarAsignacionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Revocacion"
-        ],
-        "x-required-permission": "asignaciones.gestionar"
-      }
-    },
-    "/revocacion/historial/{usuarioId}": {
-      "get": {
-        "operationId": "RevocacionController_obtenerHistorial",
-        "parameters": [
-          {
-            "name": "usuarioId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Revocacion"
-        ],
-        "x-required-permission": "usuarios.identidad.gestionar"
       }
     },
     "/sellos": {
@@ -4601,66 +4540,6 @@
           "estado"
         ]
       },
-      "CreateRecepcionDto": {
-        "type": "object",
-        "properties": {
-          "orden_id": {
-            "type": "number",
-            "minimum": 1
-          },
-          "numero_remision_factura": {
-            "type": "string",
-            "maxLength": 100
-          },
-          "fecha_hora_recepcion": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-11-17T10:30:00.000Z",
-            "description": "Fecha y hora real de recepción física del material."
-          },
-          "sede_origen": {
-            "type": "string",
-            "maxLength": 200
-          },
-          "evidencias": {
-            "type": "string"
-          },
-          "estado": {
-            "type": "string",
-            "enum": [
-              "RECIBIDO_PARCIAL",
-              "RECIBIDO_COMPLETO",
-              "RECHAZADO"
-            ]
-          }
-        },
-        "required": [
-          "orden_id",
-          "fecha_hora_recepcion",
-          "sede_origen",
-          "estado"
-        ]
-      },
-      "UpdateRecepcionEstadoDto": {
-        "type": "object",
-        "properties": {
-          "estado": {
-            "type": "string",
-            "enum": [
-              "RECIBIDO_PARCIAL",
-              "RECIBIDO_COMPLETO",
-              "RECHAZADO"
-            ]
-          },
-          "motivo": {
-            "type": "string",
-            "maxLength": 1000
-          }
-        },
-        "required": [
-          "estado"
-        ]
-      },
       "SaveConductorDto": {
         "type": "object",
         "properties": {}
@@ -4692,6 +4571,11 @@
           "protocolo_version_id": {
             "type": "number",
             "minimum": 1
+          },
+          "ciclo_correccion_de_id": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Ciclo rechazado que origina el reproceso; requerido si hay varios"
           },
           "tiempo_secado": {
             "type": "number",
@@ -4756,6 +4640,36 @@
           "tiempo_exposicion",
           "control_biologico",
           "control_quimico"
+        ]
+      },
+      "AutorizarReprocesoDto": {
+        "type": "object",
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "description": "Justificación documentada de la autorización"
+          }
+        },
+        "required": [
+          "motivo"
+        ]
+      },
+      "AnularCertificadoDto": {
+        "type": "object",
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "description": "Motivo documentado de la anulación"
+          },
+          "password": {
+            "type": "string",
+            "description": "Contraseña actual del usuario que anula",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "motivo",
+          "password"
         ]
       },
       "EvaluacionParametroDto": {
@@ -4831,14 +4745,6 @@
         "properties": {}
       },
       "CerrarAmbitoDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "RevocarAsignacionesDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "RevocarAsignacionDto": {
         "type": "object",
         "properties": {}
       },

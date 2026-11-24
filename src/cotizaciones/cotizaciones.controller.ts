@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
+import * as XLSX from '@e965/xlsx';
 import { PdfGeneratorService } from '../pdf/pdf-generator.service.js';
 import { CotizacionesService } from './cotizaciones.service.js';
 import { CreateCotizacionDto } from './dto/create-cotizacion.dto.js';
@@ -81,9 +82,24 @@ export class CotizacionesController {
   @RequirePermission('cotizaciones.exportar')
   async exportar(@Req() request: RbacRequest, @Res() response: Response) {
     const cotizaciones = await this.cotizacionesService.findAll(request.rbac);
+    const rows = cotizaciones.map((quote) => [
+      quote.id,
+      quote.consecutivo,
+      quote.estado,
+      quote.cliente?.razon_social ?? '',
+      quote.fecha instanceof Date ? quote.fecha.toISOString().slice(0, 10) : String(quote.fecha ?? ''),
+      Number(quote.total ?? 0),
+    ]);
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ['ID', 'Consecutivo', 'Estado', 'Cliente', 'Fecha', 'Total'],
+      ...rows,
+    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Cotizaciones');
+    const bytes = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
     response.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     response.setHeader('Content-Disposition', 'attachment; filename="cotizaciones.xlsx"');
-    return response.send(JSON.stringify(cotizaciones));
+    return response.send(bytes);
   }
 
   @Get('iva-vigente')

@@ -4,8 +4,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ClientesModule } from './clientes/clientes.module.js';
@@ -22,7 +20,6 @@ import { PdfModule } from './pdf/pdf.module.js';
 import { FormatosDocumentalesModule } from './formatos-documentales/formatos-documentales.module.js';
 import { AuditoriaModule } from './auditoria/auditoria.module.js';
 import { AmbitoModule } from './rbac/ambitos/ambitos.module.js';
-import { RevocacionModule } from './rbac/revocacion/revocacion.module.js';
 import { SellosModule } from './sellos/sellos.module.js';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
@@ -103,14 +100,11 @@ import { GerenciaModule } from './gerencia/gerencia.module.js';
     FormatosDocumentalesModule,
     AuditoriaModule,
     AmbitoModule,
-    RevocacionModule,
     SellosModule,
     HealthModule,
     RbacModule,
   ],
-  controllers: [AppController],
   providers: [
-    AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useExisting: AuthorizationGuard },

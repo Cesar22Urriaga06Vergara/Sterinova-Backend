@@ -60,6 +60,9 @@ export class Cliente {
   @Column({ type: 'varchar', length: 120, nullable: true })
   ciudad: string | null;
 
+  @Column({ type: 'boolean', default: true })
+  activo: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 }

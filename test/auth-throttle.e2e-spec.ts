@@ -8,6 +8,7 @@ import { AuthController } from '../src/auth/auth.controller.js';
 import { AuthService } from '../src/auth/auth.service.js';
 import { AuditoriaService } from '../src/auditoria/auditoria.service.js';
 import { RbacAuthorizationService } from '../src/rbac/rbac-authorization.service.js';
+import { PasswordResetService } from '../src/users/password-reset.service.js';
 
 describe('Auth login throttling (e2e)', () => {
   let app: INestApplication<App>;
@@ -20,6 +21,7 @@ describe('Auth login throttling (e2e)', () => {
         { provide: RbacAuthorizationService, useValue: {} },
         { provide: AuthService, useValue: { validateUser: vi.fn().mockResolvedValue(null) } },
         { provide: AuditoriaService, useValue: { create: vi.fn().mockResolvedValue(undefined) } },
+        { provide: PasswordResetService, useValue: {} },
         { provide: APP_GUARD, useClass: ThrottlerGuard },
       ],
     }).compile();

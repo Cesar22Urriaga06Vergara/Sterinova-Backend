@@ -3,6 +3,7 @@ import { resourceWhere } from '../rbac/resource-access.js';
 import { CicloParametroEvaluacion } from '../planta/entities/ciclo-parametro-evaluacion.entity.js';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -20,6 +21,7 @@ import { RejectCycleDto } from './dto/reject-cycle.dto.js';
 import { PdfGeneratorService } from '../pdf/pdf-generator.service.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
+import { AutorizarReprocesoDto } from '../planta/dto/autorizar-reproceso.dto.js';
 
 @Injectable()
 export class CalidadService {
@@ -30,6 +32,54 @@ export class CalidadService {
     private readonly pdfGenerator: PdfGeneratorService,
     private readonly auditoriaService: AuditoriaService,
   ) {}
+
+  async autorizarReproceso(id: number, dto: AutorizarReprocesoDto, usuarioId: number, access?: PermissionContext) {
+    const motivo = dto.motivo?.trim();
+    if (!motivo) throw new BadRequestException('Documente el motivo del reproceso');
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(CicloEsterilizacion);
+      const cycle = await repository.findOne({
+        where: access ? resourceWhere<CicloEsterilizacion>(access, { id }, 'operador_id') : { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!cycle) throw new NotFoundException(`Ciclo #${id} no encontrado`);
+      if (cycle.estado !== EstadoCicloEsterilizacion.RECHAZADO) throw new ConflictException('Solo puede autorizarse el reproceso de un ciclo rechazado');
+      if (cycle.operador_id === usuarioId) throw new ForbiddenException('El operador no puede autorizar el reproceso de su propio ciclo desde Calidad');
+      if (cycle.reproceso_calidad_autorizado_por_id != null) throw new ConflictException('Calidad ya autorizó este reproceso');
+      cycle.reproceso_calidad_autorizado_por_id = usuarioId;
+      cycle.reproceso_calidad_autorizado_at = new Date();
+      cycle.reproceso_calidad_motivo = motivo;
+      const saved = await repository.save(cycle);
+      await this.auditoriaService.create({
+        usuario_id: usuarioId,
+        entidad: 'ciclo',
+        entidad_id: id,
+        accion: AccionAuditoria.APROBAR,
+        detalle: { tipo: 'reproceso_calidad', motivo },
+      }, manager);
+      return saved;
+    });
+  }
+
+  findReprocesos(access: PermissionContext): Promise<CicloEsterilizacion[]> {
+    return this.dataSource.getRepository(CicloEsterilizacion).find({
+      where: resourceWhere<CicloEsterilizacion>(access, { estado: EstadoCicloEsterilizacion.RECHAZADO }, 'operador_id'),
+      relations: { orden: true },
+      select: {
+        id: true,
+        orden_id: true,
+        estado: true,
+        motivo_rechazo: true,
+        reproceso_calidad_autorizado_por_id: true,
+        reproceso_calidad_autorizado_at: true,
+        reproceso_planta_autorizado_por_id: true,
+        reproceso_planta_autorizado_at: true,
+        orden: { id: true, consecutivo: true },
+      },
+      loadEagerRelations: false,
+      order: { id: 'DESC' },
+    });
+  }
 
   findPendientes(access?: PermissionContext): Promise<CicloEsterilizacion[]> {
     return this.dataSource.getRepository(CicloEsterilizacion).find({

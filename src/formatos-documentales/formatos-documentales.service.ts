@@ -48,6 +48,16 @@ type VersionEditorFields = {
   nota_precios?: string;
 };
 
+export type FormatoVersionResumen = {
+  id: number;
+  version: number;
+  estado: string;
+  responsable: string;
+  fecha: string;
+  aprobador: { id: number; nombre: string } | null;
+  publicado_por: { id: number; nombre: string } | null;
+};
+
 function splitLines(value: string): string[] {
   return value
     .split(/\r?\n/)
@@ -161,10 +171,38 @@ export class FormatosDocumentalesService {
     return format;
   }
 
+  async findVersions(
+    id: number,
+    context: PermissionContext,
+  ): Promise<FormatoVersionResumen[]> {
+    await this.findOne(id, context);
+    const versions = await this.versionesRepository.find({
+      where: { formato_id: id, scope_id: In(context.policy.scopeIds) },
+      relations: {
+        rbac_aprobador_id_ref: true,
+        rbac_publicado_por_id_ref: true,
+      },
+      order: { version: 'DESC' },
+    });
+    return versions.map((version) => ({
+      id: version.id,
+      version: version.version,
+      estado: version.estado.toLowerCase(),
+      responsable: version.responsable,
+      fecha: version.fecha_version ?? version.created_at.toISOString(),
+      aprobador: version.rbac_aprobador_id_ref
+        ? { id: version.rbac_aprobador_id_ref.id, nombre: version.rbac_aprobador_id_ref.nombre }
+        : null,
+      publicado_por: version.rbac_publicado_por_id_ref
+        ? { id: version.rbac_publicado_por_id_ref.id, nombre: version.rbac_publicado_por_id_ref.nombre }
+        : null,
+    }));
+  }
+
   async create(
     dto: CreateFormatoDocumentalDto,
     usuarioId: number,
-    context: PermissionContext,
+    _context: PermissionContext,
   ): Promise<FormatosDocumentales> {
     if (
       dto.tipo_documento === TipoDocumentoFormato.COTIZACION &&
@@ -248,7 +286,7 @@ export class FormatosDocumentalesService {
     id: number,
     dto: UpdateFormatoDocumentalDto,
     usuarioId: number,
-    context: PermissionContext,
+    _context: PermissionContext,
   ): Promise<FormatosDocumentales> {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(FormatosDocumentales);
@@ -278,7 +316,7 @@ export class FormatosDocumentalesService {
   async remove(
     id: number,
     usuarioId: number,
-    context: PermissionContext,
+    _context: PermissionContext,
   ): Promise<{ message: string }> {
     return this.dataSource.transaction(async (manager) => {
       const formats = manager.getRepository(FormatosDocumentales);
@@ -337,7 +375,7 @@ export class FormatosDocumentalesService {
     id: number,
     dto: CreateFormatoVersionDto,
     usuarioId: number,
-    context: PermissionContext,
+    _context: PermissionContext,
   ): Promise<FormatoVersiones> {
     return this.dataSource.transaction(async (manager) => {
       const formats = manager.getRepository(FormatosDocumentales);
@@ -391,7 +429,7 @@ export class FormatosDocumentalesService {
     versionId: number,
     dto: UpdateFormatoVersionDto,
     usuarioId: number,
-    context: PermissionContext,
+    _context: PermissionContext,
   ): Promise<FormatoVersiones> {
     return this.dataSource.transaction(async (manager) => {
       const formats = manager.getRepository(FormatosDocumentales);
@@ -450,7 +488,7 @@ export class FormatosDocumentalesService {
     versionId: number,
     dto: UpdateFormatoVersionStateDto,
     usuarioId: number,
-    context: PermissionContext,
+    _context: PermissionContext,
   ): Promise<FormatoVersiones> {
     return this.dataSource.transaction(async (manager) => {
       const versions = manager.getRepository(FormatoVersiones);

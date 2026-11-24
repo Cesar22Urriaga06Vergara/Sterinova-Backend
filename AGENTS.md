@@ -1,13 +1,15 @@
 # Sterinova Backend — instrucciones para agentes
 
+Antes de implementar, lee [Fuentes vigentes](docs/FUENTES_VIGENTES.md) y consulta solo el dominio afectado.
+
 ## Lectura progresiva
 
-1. Decide si la tarea afecta al backend, al frontend o a ambos; consulta solo los mapas necesarios: `docs/ESTRUCTURA_BACKEND.md` y, si aplica, `../SterinovaFrontend/docs/ESTRUCTURA_FRONTEND.md`.
+1. Decide si la tarea afecta al backend, al frontend o a ambos; usa `docs/FUENTES_VIGENTES.md` y, si aplica, `../SterinovaFrontend/docs/FUENTES_VIGENTES.md`. Los mapas fechados se retiraron; contrasta las rutas con el código actual.
 2. Usa `docs/CONTEXTO_RAPIDO.md` para ubicar la entrada y el dominio. Lee únicamente los archivos del módulo afectado.
 3. Amplía la lectura a DTO, entidades, servicios, controladores, migraciones y pruebas directamente relacionadas; sigue dependencias directas solo cuando hagan falta.
 4. Limita búsquedas por ruta y extensión (por ejemplo, `src/auth/**/*.ts` o `src/logistica/**/*.spec.ts`). No busques recursivamente ambos repositorios por defecto.
 5. Ejecuta las pruebas focalizadas pertinentes (`npm test -- <archivo>` o `npm run test:e2e -- <archivo>`) y el build si el cambio lo requiere.
-6. Actualiza documentación activa solo cuando cambie el comportamiento documentado. Usa `docs/README.md` para navegar y `docs/archivo/` solo para antecedentes.
+6. Actualiza documentación activa solo cuando cambie el comportamiento documentado. Usa `docs/FUENTES_VIGENTES.md` para navegar por los documentos consolidados.
 
 ## Límites de contexto y datos
 

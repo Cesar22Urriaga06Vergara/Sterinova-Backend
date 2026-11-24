@@ -1,9 +1,14 @@
 import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 import { BadRequestException } from '@nestjs/common';
 import { fechaVencimiento } from './fecha-vencimiento.js';
+import { fechaHoyBogota } from '../common/fecha-bogota.js';
+import { AuthService } from '../auth/auth.service.js';
+import { AuditoriaService } from '../auditoria/auditoria.service.js';
+import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
+import type { AnularCertificadoDto } from './dto/anular-certificado.dto.js';
 import { prepararInformacionTecnica } from './informacion-tecnica.js';
 import { CicloParametroEvaluacion } from '../planta/entities/ciclo-parametro-evaluacion.entity.js';
-import type { EvaluacionParametroDto } from '../calidad/dto/evaluacion-parametro.dto.js';
+import type { EvaluacionParametro } from '../common/evaluacion-parametro.js';
 import { siguienteConsecutivo } from '../documentos/consecutivo.js';
 import {
   ConflictException,
@@ -24,6 +29,7 @@ import {
 import { CertificadoEsterilizacion } from './entities/certificado-esterilizacion.entity.js';
 import { SecuenciaConsecutivos } from '../documentos/entities/secuencia-consecutivos.entity.js';
 import { CicloEsterilizacion } from '../planta/entities/ciclo-esterilizacion.entity.js';
+import { CicloMaterialProcesado } from '../planta/entities/ciclo-material-procesado.entity.js';
 import { FormatoResolverService } from '../formatos-documentales/formato-resolver.service.js';
 import {
   PDF_RENDERER_VERSION,
@@ -61,6 +67,9 @@ const CERTIFICATE_OPERATIVO = {
   parametros_tecnicos: true,
   controles_biologicos: true,
   estado: true,
+  motivo_anulacion: true,
+  anulado_por_id: true,
+  anulado_at: true,
   aprobador_id: true,
   aprobado_at: true,
   version_formato_id: true,
@@ -132,14 +141,49 @@ export class CertificadosService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly formatoResolver: FormatoResolverService,
     private readonly pdfGenerator: PdfGeneratorService,
+    private readonly authService: AuthService,
+    private readonly auditoriaService: AuditoriaService,
   ) {}
+
+  async anular(id: number, dto: AnularCertificadoDto, usuarioId: number, access: PermissionContext): Promise<CertificadoEsterilizacion> {
+    const motivo = dto.motivo?.trim();
+    if (!motivo) throw new BadRequestException('El motivo de anulación es obligatorio');
+    if (!dto.password || !(await this.authService.verifyPassword(usuarioId, dto.password))) {
+      throw new ForbiddenException('La contraseña de confirmación no es válida');
+    }
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(CertificadoEsterilizacion);
+      const certificate = await repository.findOne({
+        where: certificateWhere(access, id),
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!certificate) throw new NotFoundException(`Certificado #${id} no encontrado`);
+      if (certificate.estado !== 'Aprobado') throw new ConflictException('Solo se puede anular un certificado aprobado');
+      if (certificate.aprobador_id === usuarioId) {
+        throw new ForbiddenException('Quien aprobó el ciclo no puede anular su certificado');
+      }
+      certificate.estado = 'Anulado';
+      certificate.motivo_anulacion = motivo;
+      certificate.anulado_por_id = usuarioId;
+      certificate.anulado_at = new Date();
+      const saved = await repository.save(certificate);
+      await this.auditoriaService.create({
+        usuario_id: usuarioId,
+        entidad: 'certificado',
+        entidad_id: id,
+        accion: AccionAuditoria.ANULAR,
+        detalle: { motivo, consecutivo: certificate.consecutivo },
+      }, manager);
+      return saved;
+    });
+  }
 
   async emitirDesdeCiclo(
     manager: EntityManager,
     ciclo: CicloEsterilizacion,
     aprobadorId: number,
     aprobadoAt: Date,
-    evaluaciones: EvaluacionParametroDto[] = [],
+    evaluaciones: EvaluacionParametro[] = [],
   ): Promise<CertificadoEsterilizacion> {
     const sequenceRepository = manager.getRepository(SecuenciaConsecutivos);
     const sequence = await sequenceRepository.findOne({
@@ -162,35 +206,64 @@ export class CertificadosService {
       ciclo.protocolo_version!,
       evaluaciones,
     );
-    const materiales = [...ciclo.orden.materiales]
-      .sort((a, b) => a.posicion - b.posicion)
-      .map(
-        ({
-          id,
-          posicion,
-          descripcion,
-          referencia,
-          lote,
-          cantidad,
-          empaque,
-          muestras_retencion,
-          muestras_cliente,
-          muestras_laboratorio,
-          cotizacion_item_id,
-        }) => ({
-          id,
-          posicion,
-          descripcion,
-          referencia,
-          lote,
-          cantidad,
-          empaque,
-          muestras_retencion,
-          muestras_cliente,
-          muestras_laboratorio,
-          cotizacion_item_id,
-        }),
-      );
+    const procesadosRepo = manager.getRepository(CicloMaterialProcesado);
+    const procesadosRows =
+      typeof procesadosRepo?.find === 'function'
+        ? await procesadosRepo.find({ where: { ciclo_id: ciclo.id } })
+        : [];
+    const procesadoPorMaterial = new Map<number, number>(
+      (procesadosRows ?? [])
+        .filter(
+          (row): row is CicloMaterialProcesado =>
+            row != null &&
+            typeof row.orden_servicio_material_id === 'number' &&
+            row.cantidad_procesada != null,
+        )
+        .map((row) => [
+          row.orden_servicio_material_id,
+          Number(row.cantidad_procesada),
+        ]),
+    );
+    const materialesBase = [...ciclo.orden.materiales].sort(
+      (a, b) => a.posicion - b.posicion,
+    );
+    const materiales = (
+      procesadoPorMaterial.size > 0
+        ? materialesBase.filter(
+            (material) => (procesadoPorMaterial.get(material.id) ?? 0) > 0,
+          )
+        : materialesBase
+    ).map(
+      ({
+        id,
+        posicion,
+        descripcion,
+        referencia,
+        lote,
+        cantidad,
+        cantidad_recibida,
+        empaque,
+        muestras_retencion,
+        muestras_cliente,
+        muestras_laboratorio,
+        cotizacion_item_id,
+      }) => ({
+        id,
+        posicion,
+        descripcion,
+        referencia,
+        lote,
+        cantidad:
+          procesadoPorMaterial.size > 0
+            ? procesadoPorMaterial.get(id)!
+            : Number(cantidad_recibida ?? cantidad),
+        empaque,
+        muestras_retencion,
+        muestras_cliente,
+        muestras_laboratorio,
+        cotizacion_item_id,
+      }),
+    );
     await manager.getRepository(CicloParametroEvaluacion).insert(
       evaluaciones.map((e) => ({
         ciclo_id: ciclo.id,
@@ -461,7 +534,7 @@ export class CertificadosService {
       | undefined;
     const vencimiento =
       certificado.fecha_vencimiento ?? document?.fecha_vencimiento ?? null;
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = fechaHoyBogota();
     let estadoCalculado = certificado.estado;
     if (certificado.estado === 'Anulado') {
       estadoCalculado = 'Anulado';

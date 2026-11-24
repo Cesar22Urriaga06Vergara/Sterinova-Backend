@@ -367,4 +367,36 @@ describe('LogisticaService order creation scope', () => {
     expect(options.where[0]).toMatchObject({ id: 99 });
     expect(options.where[0].scope_id).toBeDefined();
   });
+
+  it('autoriza la orden antes de listar documentos emitidos sin filtrar scope_id en DocumentoEmitido', async () => {
+    const ordersRepository = {
+      findOne: vi.fn().mockResolvedValue({ id: 12, scope_id: 7 }),
+    };
+    const documentosEmitidosRepository = {
+      find: vi.fn().mockResolvedValue([{ id: 1, tipo: 'ORDEN', orden_id: 12 }]),
+    };
+    const service = new LogisticaService(
+      ordersRepository as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      documentosEmitidosRepository as never,
+      {} as never,
+    );
+    const access: PermissionContext = {
+      permission: 'logistica.ordenes.ver',
+      policy: { userId: 8, scopeIds: [7], ownScopeIds: [] },
+      resourceScopeIds: [7],
+    };
+
+    const result = await service.findDocumentosEmitidosPorOrden(12, access);
+
+    expect(ordersRepository.findOne).toHaveBeenCalledTimes(1);
+    expect(documentosEmitidosRepository.find).toHaveBeenCalledWith({
+      where: { orden_id: 12 },
+      order: { fecha_emision: 'DESC' },
+    });
+    expect(result).toHaveLength(1);
+  });
 });

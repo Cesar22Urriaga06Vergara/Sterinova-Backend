@@ -6,12 +6,14 @@ import { CertificadosService } from './certificados.service.js';
 import { CertificadosController } from './certificados.controller.js';
 import { FormatosDocumentalesModule } from '../formatos-documentales/formatos-documentales.module.js';
 import { AuditoriaModule } from '../auditoria/auditoria.module.js';
+import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([CertificadoEsterilizacion, SecuenciaConsecutivos]),
     FormatosDocumentalesModule,
     AuditoriaModule,
+    AuthModule,
   ],
   controllers: [CertificadosController],
   providers: [CertificadosService],

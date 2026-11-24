@@ -1,4 +1,4 @@
-import { IS_PUBLIC_KEY } from '../auth/decorators/public.decorator.js';
+import { IS_PUBLIC_KEY } from '../common/public.decorator.js';
 import { SESSION_REQUIRED_KEY } from './require-session.decorator.js';
 import {
   ForbiddenException,

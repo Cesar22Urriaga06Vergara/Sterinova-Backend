@@ -85,7 +85,7 @@ describe('CotizacionesService consecutivos', () => {
       {} as never,
     );
 
-    return { service, cotizacionesRepository, sequenceRepository };
+    return { service, cotizacionesRepository, sequenceRepository, clientesService };
   };
 
   it.each([
@@ -132,7 +132,7 @@ describe('CotizacionesService consecutivos', () => {
     );
   });
 
-  it('genera consecutivos INDUSTRIAL_ETO con el prefijo COT-IND', async () => {
+  it('genera consecutivos INDUSTRIAL_ETO con el prefijo canónico COT-CEMFA', async () => {
     const { service, cotizacionesRepository } = createService();
 
     await service.create(
@@ -145,7 +145,7 @@ describe('CotizacionesService consecutivos', () => {
     );
 
     expect(cotizacionesRepository.save).toHaveBeenCalledWith(
-      expect.objectContaining({ consecutivo: 'COT-IND-001' }),
+      expect.objectContaining({ consecutivo: 'COT-CEMFA-001' }),
     );
   });
 
@@ -167,11 +167,41 @@ describe('CotizacionesService consecutivos', () => {
   });
 
   it('rejects an exhausted historical sequence without renumbering', async () => {
-    const { service, cotizacionesRepository, sequenceRepository } = createService(['COT-CMI-999999999']);
-    await expect(service.create({ cliente_id: 1, tipo_servicio: TipoServicioCotizacion.INSUMOS,
-      items: [manualItem(TipoServicioCotizacion.INSUMOS)] },
-      quotePermission('cotizaciones.crear'))).rejects.toMatchObject({ response: { code: 'CONSECUTIVO_AGOTADO' } });
+    const { service, cotizacionesRepository, sequenceRepository } =
+      createService(['COT-CMI-999999999']);
+    await expect(
+      service.create(
+        {
+          cliente_id: 1,
+          tipo_servicio: TipoServicioCotizacion.INSUMOS,
+          items: [manualItem(TipoServicioCotizacion.INSUMOS)],
+        },
+        quotePermission('cotizaciones.crear'),
+      ),
+    ).rejects.toMatchObject({ response: { code: 'CONSECUTIVO_AGOTADO' } });
     expect(cotizacionesRepository.save).not.toHaveBeenCalled();
     expect(sequenceRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('rechaza crear una cotización para un cliente inactivo', async () => {
+    const { service, cotizacionesRepository, clientesService } =
+      createService();
+    clientesService.findOne.mockResolvedValueOnce({
+      id: 1,
+      scope_id: 2,
+      activo: false,
+    });
+
+    await expect(
+      service.create(
+        {
+          cliente_id: 1,
+          tipo_servicio: TipoServicioCotizacion.INSUMOS,
+          items: [manualItem(TipoServicioCotizacion.INSUMOS)],
+        },
+        quotePermission('cotizaciones.crear'),
+      ),
+    ).rejects.toThrow('No se puede crear una cotización para un cliente inactivo');
+    expect(cotizacionesRepository.save).not.toHaveBeenCalled();
   });
 });

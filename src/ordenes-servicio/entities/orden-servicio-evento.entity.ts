@@ -14,6 +14,7 @@ export type TipoEventoOrden =
   | 'RECOGIDA'
   | 'RECEPCION_PLANTA'
   | 'PROCESAMIENTO'
+  | 'REPROCESO'
   | 'ENTREGA_CLIENTE';
 
 export type EventoOrdenDatos = {
@@ -32,9 +33,7 @@ export type EventoOrdenDatos = {
 };
 
 @Entity('ordenes_servicio_eventos')
-@Index('UQ_ordenes_servicio_evento_tipo', ['orden_id', 'tipo'], {
-  unique: true,
-})
+@Index('IDX_ordenes_servicio_evento_tipo', ['orden_id', 'tipo'])
 @Index('IDX_ordenes_servicio_eventos_ocurrido', ['orden_id', 'ocurrido_at'])
 export class OrdenServicioEvento {
   @PrimaryGeneratedColumn()

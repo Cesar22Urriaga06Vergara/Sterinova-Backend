@@ -1,0 +1,9 @@
+{
+  "backend_endpoints": 102,
+  "frontend_calls": 111,
+  "backend_permissions": 81,
+  "frontend_permissions": 94,
+  "openapi_endpoints": 102,
+  "missing_openapi": [],
+  "extra_openapi": []
+}

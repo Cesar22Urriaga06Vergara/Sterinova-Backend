@@ -8,15 +8,19 @@ import {
   IsInt,
   IsNotEmpty,
   IsOptional,
+  IsIn,
   IsString,
   MaxLength,
   Matches,
   Min,
   ValidateNested,
 } from 'class-validator';
-import { TipoServicioCotizacion } from '../../cotizaciones/entities/tipo-servicio.enum.js';
 import { TipoDocumentoFormato } from '../entities/formatos-documentales.entity.js';
 import { FormatoFirmaDto } from './formato-firma.dto.js';
+import {
+  TIPOS_FORMATO_COTIZACION,
+  type TipoServicioFormatoCotizacion,
+} from '../../cotizaciones/canonical-quote-format.js';
 
 export class CreateFormatoDocumentalDto {
   @IsOptional()
@@ -34,8 +38,8 @@ export class CreateFormatoDocumentalDto {
   tipo_documento: TipoDocumentoFormato;
 
   @IsOptional()
-  @IsEnum(TipoServicioCotizacion)
-  tipo_servicio?: TipoServicioCotizacion | null;
+  @IsIn(TIPOS_FORMATO_COTIZACION)
+  tipo_servicio?: TipoServicioFormatoCotizacion | null;
 
   @IsString()
   @IsNotEmpty()

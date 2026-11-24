@@ -12,7 +12,7 @@ import { MetodoEsterilizacion } from '../src/planta/entities/ciclo-esterilizacio
 import { EstadoOrdenServicio } from '../src/ordenes-servicio/entities/estado-orden.enum.js';
 import { withRbacFixtureWrite } from './fixtures/rbac-fixture-write.js';
 
-describe('AppController (e2e)', () => {
+describe('App (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
@@ -49,8 +49,8 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET) requires authentication', () => {
-    return request(app.getHttpServer()).get('/').expect(401);
+  it('/ (GET) is not registered', () => {
+    return request(app.getHttpServer()).get('/').expect(404);
   });
 
   it.skipIf(process.env.RUN_E2E_FULL_FLOW !== '1')(

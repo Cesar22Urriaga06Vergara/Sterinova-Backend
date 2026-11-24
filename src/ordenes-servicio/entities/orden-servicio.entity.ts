@@ -8,7 +8,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  OneToOne,
   OneToMany,
   VersionColumn,
   JoinColumn,
@@ -128,7 +127,7 @@ export class OrdenServicio {
   @CreateDateColumn()
   created_at: Date;
 
-  @OneToOne(() => Cotizacion, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => Cotizacion, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'cotizacion_id' })
   cotizacion: Relation<Cotizacion>;
 }

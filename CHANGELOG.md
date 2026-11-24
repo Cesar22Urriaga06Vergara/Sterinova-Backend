@@ -26,7 +26,7 @@ Los cambios relevantes del backend se registran aquí. Las entradas describen ca
 ### Seguridad
 
 - Hash de contraseñas, autorización por roles, endurecimiento HTTP y protección de secretos de render PDF.
-- Se documentó como pendiente la definición de requisitos de evidencias y firmas en el [ADR-001](docs/arquitectura/adr/001-evidencias-y-firmas.md).
+- Se documentó como pendiente la definición de requisitos de evidencias y firmas en el [ADR-001](docs/ARQUITECTURA_Y_CONTRATOS.md#doc-arquitectura-adr-001-evidencias-y-firmas).
 
 ### Operación
 

@@ -10,6 +10,52 @@ import { LocalStorageService } from '../common/services/storage.service.js';
 vi.mock('playwright', () => ({ chromium: { launch: vi.fn() } }));
 
 describe('PdfGeneratorService', () => {
+  it('limits simultaneous PDF pages and releases a slot after a failed render', async () => {
+    process.env.PDF_MAX_CONCURRENCY = '2';
+    process.env.PDF_RENDER_SECRET = 'test-render-secret-containing-at-least-32-bytes';
+    const pending: Array<{ resolve: () => void; reject: (error: Error) => void }> = [];
+    const pages: Array<{ close: ReturnType<typeof vi.fn> }> = [];
+    const browser = {
+      newPage: vi.fn(async () => {
+        const page = {
+          setExtraHTTPHeaders: vi.fn(),
+          goto: vi.fn(async () => ({ ok: () => true })),
+          waitForSelector: vi.fn(),
+          evaluate: vi.fn(),
+          emulateMedia: vi.fn(),
+          pdf: vi.fn(() => new Promise<Buffer>((resolve, reject) => {
+            pending.push({ resolve: () => resolve(Buffer.from('%PDF')), reject });
+          })),
+          close: vi.fn(),
+        };
+        pages.push(page);
+        return page;
+      }),
+      close: vi.fn(),
+    };
+    vi.mocked(chromium.launch).mockResolvedValue(browser as unknown as Browser);
+    const service = new PdfGeneratorService({} as never, {} as never);
+    const snapshot = { documento: { tipo: 'CERTIFICADO' } };
+    try {
+      const first = service.render(snapshot);
+      const second = service.render(snapshot);
+      const third = service.render(snapshot);
+      await vi.waitFor(() => expect(pending).toHaveLength(2));
+      expect(browser.newPage).toHaveBeenCalledTimes(2);
+      pending[0].reject(new Error('render failed'));
+      await expect(first).rejects.toThrow();
+      await vi.waitFor(() => expect(pending).toHaveLength(3));
+      expect(browser.newPage).toHaveBeenCalledTimes(3);
+      pending[1].resolve();
+      pending[2].resolve();
+      await expect(Promise.all([second, third])).resolves.toHaveLength(2);
+      expect(pages.every((page) => page.close.mock.calls.length > 0)).toBe(true);
+    } finally {
+      delete process.env.PDF_MAX_CONCURRENCY;
+      await service.onModuleDestroy();
+    }
+  });
+
   it('refuses schema 2 snapshots when the renderer only implements the old contract', async () => {
     process.env.PDF_RENDER_SECRET='test-render-secret-containing-at-least-32-bytes';
     const page={setExtraHTTPHeaders:vi.fn(),goto:vi.fn(async()=>({ok:()=>true})),

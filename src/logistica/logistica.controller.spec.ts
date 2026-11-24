@@ -89,6 +89,57 @@ describe('LogisticaController PDF route', () => {
     expect(response.send).toHaveBeenCalledWith(pdf);
   });
 
+  it('reuses the stored PDF when the document snapshot has not changed', async () => {
+    const { createHash } = await import('node:crypto');
+    const orden = { id: 12, consecutivo: 'OS-2026-0012', acta_consecutivo: 'AS-2026-0012' };
+    const snapshot = { documento: { tipo: 'ACTA_SERVICIO' }, formato: { id: 1 } };
+    const cachedPdf = Buffer.from('%PDF-1.7 cached');
+    const cachedHash = createHash('sha256').update(cachedPdf).digest('hex');
+    const logisticaService = {
+      findOneForPdf: vi.fn().mockResolvedValue(orden),
+      buildPdfSnapshot: vi.fn().mockResolvedValue(snapshot),
+      findDocumentoEmitido: vi.fn().mockResolvedValue({
+        id: 1,
+        tipo: 'ACTA',
+        consecutivo: 'AS-2026-0012',
+        snapshot_json: snapshot,
+        pdf_storage_key: 'logistica/AS-2026-0012-acta.pdf',
+        pdf_hash: cachedHash,
+      }),
+      upsertDocumentoEmitido: vi.fn(),
+    } as unknown as LogisticaService;
+    const pdfGenerator = { render: vi.fn() } as unknown as PdfGeneratorService;
+    const storage = {
+      getFile: vi.fn().mockResolvedValue(cachedPdf),
+      saveFile: vi.fn(),
+    } as unknown as StorageService;
+    const controller = new LogisticaController(
+      logisticaService,
+      pdfGenerator,
+      storage,
+    );
+    const response = { setHeader: vi.fn(), send: vi.fn() } as unknown as Response;
+    const request = {
+      user: { id: 8 },
+      rbac: {
+        permission: 'logistica.ordenes.ver',
+        policy: { userId: 8, scopeIds: [3], ownScopeIds: [] },
+        resourceScopeIds: [3],
+      },
+    } as RbacRequest;
+
+    await controller.descargarPdf(12, 'acta', response, request);
+
+    expect(logisticaService.findDocumentoEmitido).toHaveBeenCalledWith(
+      'ACTA',
+      'AS-2026-0012',
+    );
+    expect(pdfGenerator.render).not.toHaveBeenCalled();
+    expect(storage.saveFile).not.toHaveBeenCalled();
+    expect(logisticaService.upsertDocumentoEmitido).not.toHaveBeenCalled();
+    expect(response.send).toHaveBeenCalledWith(cachedPdf);
+  });
+
   it.each(['invalid', 'ORDEN_SERVICIO', ''])(
     'rejects unsupported document type %j before looking up an order',
     async (tipo) => {

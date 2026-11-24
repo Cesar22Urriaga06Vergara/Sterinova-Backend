@@ -64,6 +64,8 @@ export const MATERIAL_OPERATIVO = {
   referencia: true,
   lote: true,
   cantidad: true,
+  cantidad_recibida: true,
+  cajas_recibidas: true,
   empaque: true,
   muestras_retencion: true,
   muestras_cliente: true,
@@ -110,6 +112,12 @@ export const CICLO_OPERATIVO = {
   revisado_por: true,
   revisado_en: true,
   motivo_rechazo: true,
+  reproceso_calidad_autorizado_por_id: true,
+  reproceso_calidad_autorizado_at: true,
+  reproceso_calidad_motivo: true,
+  reproceso_planta_autorizado_por_id: true,
+  reproceso_planta_autorizado_at: true,
+  reproceso_planta_motivo: true,
   ciclo_correccion_de_id: true,
 } as const;
 

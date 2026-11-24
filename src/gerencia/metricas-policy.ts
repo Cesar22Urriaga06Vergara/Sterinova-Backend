@@ -6,6 +6,7 @@ import {
 import type { EntityManager } from 'typeorm';
 import type { PermissionContext } from '../rbac/rbac-authorization.service.js';
 import type { MetricasQueryDto } from './dto/metricas-query.dto.js';
+import { fechaHoyBogota } from '../common/fecha-bogota.js';
 
 const DAY = 86400000;
 /** Check every period boundary using the actual connection's date serialization.
@@ -37,12 +38,7 @@ export function metricWindow(
   query: Pick<MetricasQueryDto, 'desde' | 'hasta'>,
   now = new Date(),
 ) {
-  const today = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Bogota',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now);
+  const today = fechaHoyBogota(now);
   const desde = query.desde ?? today;
   const hasta = query.hasta ?? today;
   const parse = (value: string) => {

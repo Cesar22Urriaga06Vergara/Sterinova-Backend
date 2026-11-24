@@ -10,9 +10,7 @@ import { Conductor } from './entities/conductor.entity.js';
 import { ConductoresController } from './conductores.controller.js';
 import { ConductoresService } from './conductores.service.js';
 import { LogisticaController } from './logistica.controller.js';
-import { RecepcionController } from './recepcion.controller.js';
 import { LogisticaService } from './logistica.service.js';
-import { RecepcionService } from './recepcion.service.js';
 import { AuditoriaModule } from '../auditoria/auditoria.module.js';
 import { FormatosDocumentalesModule } from '../formatos-documentales/formatos-documentales.module.js';
 
@@ -30,8 +28,8 @@ import { FormatosDocumentalesModule } from '../formatos-documentales/formatos-do
     AuditoriaModule,
     FormatosDocumentalesModule,
   ],
-  controllers: [LogisticaController, RecepcionController, ConductoresController],
-  providers: [LogisticaService, RecepcionService, ConductoresService],
-  exports: [LogisticaService, RecepcionService],
+  controllers: [LogisticaController, ConductoresController],
+  providers: [LogisticaService, ConductoresService],
+  exports: [LogisticaService],
 })
 export class LogisticaModule {}

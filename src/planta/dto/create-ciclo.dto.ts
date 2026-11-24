@@ -47,6 +47,13 @@ export class CreateCicloDto {
   @Min(1)
   protocolo_version_id?: number;
 
+  @ApiPropertyOptional({ type: Number, minimum: 1, description: 'Ciclo rechazado que origina el reproceso; requerido si hay varios' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  ciclo_correccion_de_id?: number;
+
   @ApiPropertyOptional({
     type: Number,
     nullable: true,

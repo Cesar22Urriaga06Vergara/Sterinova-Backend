@@ -1,6 +1,5 @@
 import { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AppController } from '../app.controller.js';
 import { AuthController } from './auth.controller.js';
 import { IS_PUBLIC_KEY } from './decorators/public.decorator.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
@@ -51,12 +50,6 @@ describe('JWT authentication guard', () => {
         AuthController,
       ]),
     ).toBe(true);
-    expect(
-      reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-        AppController.prototype.getHello,
-        AppController,
-      ]),
-    ).toBeUndefined();
   });
 
   it('rejects login for deactivated users', async () => {

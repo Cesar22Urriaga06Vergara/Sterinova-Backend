@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
   type Relation,
 } from 'typeorm';
-import { TipoServicioCotizacion } from '../../cotizaciones/entities/tipo-servicio.enum.js';
+import { TipoServicioCotizacion } from '../../common/tipo-servicio-cotizacion.js';
 import { RbacScope } from '../../rbac/entities/scope.entity.js';
 
 export enum TipoItemCatalogo {

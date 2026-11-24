@@ -53,14 +53,14 @@ export class SellosService {
     private readonly sellosRepository: Repository<SelloCertificacion>,
   ) {}
 
-  async findAll(context: PermissionContext): Promise<SelloCertificacion[]> {
+  async findAll(_context: PermissionContext): Promise<SelloCertificacion[]> {
     return this.sellosRepository.find({ order: { orden: 'ASC', id: 'ASC' } });
   }
 
   async create(
     dto: CreateSelloCertificacionDto,
     file?: UploadedImage,
-    context?: PermissionContext,
+    _context?: PermissionContext,
   ): Promise<SelloCertificacion> {
     if (!file?.buffer?.length) throw new BadRequestException('La imagen del sello es obligatoria');
     const imagen_key = await this.saveImage(file);
@@ -83,7 +83,7 @@ export class SellosService {
     id: number,
     dto: UpdateSelloCertificacionDto,
     file?: UploadedImage,
-    context?: PermissionContext,
+    _context?: PermissionContext,
   ): Promise<SelloCertificacion> {
     const sello = await this.findOne(id);
     if (dto.nombre_norma !== undefined) sello.nombre_norma = dto.nombre_norma.trim();
@@ -102,13 +102,13 @@ export class SellosService {
     }
   }
 
-  async deactivate(id: number, context?: PermissionContext): Promise<SelloCertificacion> {
+  async deactivate(id: number, _context?: PermissionContext): Promise<SelloCertificacion> {
     const sello = await this.findOne(id);
     sello.activo = false;
     return this.sellosRepository.save(sello);
   }
 
-  async getImage(id: number, context: PermissionContext): Promise<{ buffer: Buffer; mimeType: string }> {
+  async getImage(id: number, _context: PermissionContext): Promise<{ buffer: Buffer; mimeType: string }> {
     const sello = await this.findOne(id);
     const resolvedPath = path.resolve(this.storagePath, sello.imagen_key);
     if (!resolvedPath.startsWith(`${this.storagePath}${path.sep}`)) {

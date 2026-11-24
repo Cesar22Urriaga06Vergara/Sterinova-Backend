@@ -18,9 +18,9 @@ npm run migration:run
 npm run start:dev
 ```
 
-La API escucha en http://localhost:3001. Las migraciones se ejecutan de forma explícita con `npm run migration:run`; revisa el estado de la base y crea un respaldo antes de migrar datos existentes. El arranque del servidor no aplica migraciones ni carga datos iniciales.
+La API escucha por defecto en http://localhost:3002. Las migraciones se ejecutan de forma explícita con `npm run migration:run`; revisa el estado de la base y crea un respaldo antes de migrar datos existentes. `start:dev` y `start:prod` no aplican migraciones ni cargan datos; `start:deploy` ejecuta migraciones y bootstrap antes de iniciar producción.
 
-`start:dev` y `start:prod` solo levantan la API. Para crear el primer administrador ejecuta explícitamente `npm run bootstrap:admin`, inyectando temporalmente `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` desde el entorno privado. El CLI falla si ya existe cualquier usuario, y nunca se crea automáticamente una cuenta al iniciar el servidor. Los demás usuarios se crean desde la gestión protegida por permisos de administrador.
+Para crear el primer administrador en un entorno local, ejecuta `npm run bootstrap:admin`, inyectando temporalmente `ADMIN_NAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` desde el entorno privado. El CLI falla si ya existe cualquier usuario, y `start:deploy` puede crear la cuenta inicial una sola vez cuando recibe esas variables en producción. Los demás usuarios se crean desde la gestión protegida por permisos de administrador.
 
 ## Variables de entorno
 
@@ -45,7 +45,7 @@ Las obligatorias para iniciar la API son `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `D
 
 ## Documentación
 
-Consulta el [índice de documentación](docs/README.md) para arquitectura, esquema, configuración local, estado del proyecto y formatos de referencia.
+Empieza por [fuentes vigentes](docs/FUENTES_VIGENTES.md) y usa el [fuentes vigentes](docs/FUENTES_VIGENTES.md) para arquitectura, esquema, operación y formatos de referencia.
 
 ## PDF rendering
 

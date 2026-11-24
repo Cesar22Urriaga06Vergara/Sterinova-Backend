@@ -10,8 +10,15 @@ import {
   EstadoVersionFormato,
   FormatoVersiones,
 } from './entities/formato-versiones.entity.js';
-import { FormatosDocumentales, TipoDocumentoFormato } from './entities/formatos-documentales.entity.js';
-import { TipoServicioCotizacion } from '../cotizaciones/entities/tipo-servicio.enum.js';
+import {
+  FormatosDocumentales,
+  TipoDocumentoFormato,
+} from './entities/formatos-documentales.entity.js';
+import { TipoServicioCotizacion } from '../common/tipo-servicio-cotizacion.js';
+import {
+  canonicalFormatFor,
+  LEGACY_SERVICES_BY_CANONICAL,
+} from '../common/canonical-quote-format.js';
 
 export const CERTIFICATE_FORMAT_KEY = 'CERTIFICADO_ESTERILIZACION';
 export const ORDER_FORMAT_KEY = 'ORDEN_SERVICIO';
@@ -37,7 +44,9 @@ export class FormatoResolverService {
       where: { clave: formatKey },
     });
     if (!format) {
-      throw new NotFoundException(`No existe el formato documental ${formatKey}`);
+      throw new NotFoundException(
+        `No existe el formato documental ${formatKey}`,
+      );
     }
 
     if (clientId !== undefined && clientId !== null) {
@@ -81,7 +90,11 @@ export class FormatoResolverService {
     clientId: number,
     manager: EntityManager,
   ): Promise<FormatoVersiones> {
-    return this.resolveCotizacionWithClientFallback(tipoServicio, clientId, manager);
+    return this.resolveCotizacionWithClientFallback(
+      tipoServicio,
+      clientId,
+      manager,
+    );
   }
 
   private async resolveCotizacionWithClientFallback(
@@ -90,24 +103,44 @@ export class FormatoResolverService {
     manager: EntityManager,
   ): Promise<FormatoVersiones> {
     const formats = manager.getRepository(FormatosDocumentales);
-    const serviceAliases = tipoServicio === TipoServicioCotizacion.FABRICANTE
-      ? [TipoServicioCotizacion.FABRICANTE, TipoServicioCotizacion.FARMACEUTICO]
-      : [tipoServicio];
+    const canonical = canonicalFormatFor(tipoServicio);
+    const serviceAliases = [
+      ...new Set([
+        tipoServicio,
+        ...LEGACY_SERVICES_BY_CANONICAL[canonical],
+        canonical,
+      ]),
+    ];
     for (const service of serviceAliases) {
       const clientFormat = await formats.findOne({
-        where: { tipo_documento: TipoDocumentoFormato.COTIZACION, tipo_servicio: service, cliente_id: clientId },
+        where: {
+          tipo_documento: TipoDocumentoFormato.COTIZACION,
+          tipo_servicio: service,
+          cliente_id: clientId,
+        },
       });
       if (clientFormat) {
         return this.resolve(clientFormat.clave, clientId, manager);
       }
     }
-    try {
-      return await this.resolve(`COTIZACION_${tipoServicio}`, clientId, manager);
-    } catch (error) {
-      if (tipoServicio !== TipoServicioCotizacion.FABRICANTE && tipoServicio !== TipoServicioCotizacion.FARMACEUTICO) throw error;
-      if (!(error instanceof NotFoundException)) throw error;
-      return this.resolve('COTIZACION_FARMACEUTICO_FABRICANTE', clientId, manager);
+    const legacyKeys = [
+      `COTIZACION_${tipoServicio}`,
+      ...(tipoServicio === TipoServicioCotizacion.FABRICANTE ||
+      tipoServicio === TipoServicioCotizacion.FARMACEUTICO
+        ? ['COTIZACION_FARMACEUTICO_FABRICANTE']
+        : []),
+    ];
+    const keys = [...new Set([`COTIZACION_${canonical}`, ...legacyKeys])];
+    for (const key of keys) {
+      try {
+        return await this.resolve(key, clientId, manager);
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) throw error;
+      }
     }
+    throw new NotFoundException(
+      `No existe un formato documental de cotización para ${canonical}`,
+    );
   }
 
   resolveCertificado(

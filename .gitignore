@@ -26,6 +26,9 @@ node_modules/
 
 # Runtime files and generated documents
 /storage/
+/*.zip
+/*.rar
+/artifacts/
 /tmp/
 /temp/
 *.tmp

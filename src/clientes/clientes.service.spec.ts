@@ -68,6 +68,23 @@ describe('ClientesService.bulk', () => {
     expect(clientesRepository.remove).not.toHaveBeenCalled();
   });
 
+  it('permite inactivar y reactivar un cliente mediante update', async () => {
+    const existing = { id: 5, razon_social: 'Clínica A', activo: true };
+    const clientesRepository = {
+      findOne: vi.fn(async () => existing),
+      save: vi.fn(async (cliente: Cliente) => cliente),
+    };
+    const service = new ClientesService(
+      clientesRepository as unknown as Repository<Cliente>,
+    );
+
+    const inactivated = await service.update(5, { activo: false }, access);
+    expect(inactivated.activo).toBe(false);
+    expect(clientesRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 5, activo: false }),
+    );
+  });
+
   it('recupera un NIT duplicado concurrente e inserta los demás clientes', async () => {
     const duplicateError = new QueryFailedError('INSERT', [], {
       code: 'ER_DUP_ENTRY',

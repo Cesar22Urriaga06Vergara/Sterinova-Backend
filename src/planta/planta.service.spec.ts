@@ -72,7 +72,7 @@ describe('PlantaService', () => {
     } as unknown as DataSource;
 
     return {
-      service: new PlantaService(dataSource),
+      service: new PlantaService(dataSource, { create: vi.fn(async () => ({})) } as never),
       orden,
       ordenesRepository,
       ciclosRepository,
@@ -138,7 +138,7 @@ describe('PlantaService', () => {
     manager.query = vi.fn(async () => [
       { material_id: 1, cantidad_procesada: '4' },
     ]);
-    ciclosRepository.find = vi.fn(async () => [{ id: 34 }]);
+    ciclosRepository.find = vi.fn(async (options) => options?.where?.estado === 'RECHAZADO' ? [] : [{ id: 34 }]);
 
     const dto: CreateCicloDto = {
       orden_id: 21,
@@ -167,10 +167,75 @@ describe('PlantaService', () => {
     );
   });
 
+  it('permite procesar de nuevo las unidades de un ciclo rechazado', async () => {
+    const { service, orden, ciclosRepository, manager } = createService();
+    ciclosRepository.find = vi.fn(async (options) =>
+      options?.where?.estado ? [] : [{ id: 33 }],
+    );
+    manager.query = vi.fn(async () => [{ material_id: 1, cantidad_procesada: '5' }]);
+    await service.createCiclo({
+      orden_id: 21,
+      materiales_procesados: [{ material_id: 1, cantidad: 5 }],
+      equipo: 'CICLO-REPROCESO',
+      fecha_esterilizacion: '2026-11-20',
+      metodo: 'ETO',
+      temperatura: 45,
+      humedad: 60,
+      presion: 1.2,
+      tiempo_exposicion: 120,
+      tiempo_aireacion: 30,
+      control_biologico: 'Negativo',
+      control_quimico: 'Cambio de color',
+    }, 8);
+    expect(orden.estado).toBe(EstadoOrdenServicio.PROCESADO);
+    expect(manager.query).not.toHaveBeenCalled();
+  });
+
+  it('enlaza el nuevo ciclo con el único ciclo rechazado de la orden', async () => {
+    const { service, ciclosRepository } = createService();
+    ciclosRepository.find = vi.fn(async (options) =>
+      options?.where?.estado === 'RECHAZADO' ? [{ id: 33, estado: 'RECHAZADO', reproceso_calidad_autorizado_por_id: 17, reproceso_planta_autorizado_por_id: 18 }] : [],
+    );
+    await service.createCiclo({
+      orden_id: 21,
+      materiales_procesados: [{ material_id: 1, cantidad: 5 }],
+      equipo: 'CICLO-REPROCESO',
+      fecha_esterilizacion: '2026-11-20',
+      metodo: 'ETO',
+      temperatura: 45,
+      humedad: 60,
+      presion: 1.2,
+      tiempo_exposicion: 120,
+      tiempo_aireacion: 30,
+      control_biologico: 'Negativo',
+      control_quimico: 'Cambio de color',
+    }, 8);
+    expect(ciclosRepository.save).toHaveBeenCalledWith(expect.objectContaining({ ciclo_correccion_de_id: 33 }));
+  });
+
+  it('bloquea la creación del nuevo ciclo hasta que Calidad y Planta lo autoricen', async () => {
+    const { service, ciclosRepository } = createService();
+    ciclosRepository.find = vi.fn(async (options) =>
+      options?.where?.estado === 'RECHAZADO' ? [{ id: 33, estado: 'RECHAZADO', reproceso_calidad_autorizado_por_id: 17, reproceso_planta_autorizado_por_id: null }] : [],
+    );
+    await expect(service.createCiclo({
+      orden_id: 21,
+      materiales_procesados: [{ material_id: 1, cantidad: 5 }],
+      equipo: 'CICLO-REPROCESO',
+      fecha_esterilizacion: '2026-11-20',
+      metodo: 'ETO',
+      temperatura: 45,
+      tiempo_exposicion: 120,
+      control_biologico: 'Negativo',
+      control_quimico: 'Cambio de color',
+    }, 8)).rejects.toThrow(/Calidad y Planta/);
+    expect(ciclosRepository.save).not.toHaveBeenCalled();
+  });
+
   it('rejects a cycle when no quantity remains pending for any material', async () => {
     const { service, manager, ciclosRepository } = createService();
     // Ya se procesaron las 5 unidades recibidas (ciclo previo existe)
-    ciclosRepository.find = vi.fn(async () => [{ id: 34 }]);
+    ciclosRepository.find = vi.fn(async (options) => options?.where?.estado === 'RECHAZADO' ? [] : [{ id: 34 }]);
     manager.query = vi.fn(async () => [
       { material_id: 1, cantidad_procesada: '5' },
     ]);

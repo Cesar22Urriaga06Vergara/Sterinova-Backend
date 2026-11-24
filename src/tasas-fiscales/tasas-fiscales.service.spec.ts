@@ -1,5 +1,5 @@
 import { TasasFiscalesService } from './tasas-fiscales.service.js';
-import { PublishIvaDto } from './tasas-fiscales.controller.js';
+import { PublishIvaDto } from './dto/publish-iva.dto.js';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 

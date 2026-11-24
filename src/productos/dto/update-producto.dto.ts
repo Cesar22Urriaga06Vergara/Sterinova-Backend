@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { TipoServicioCotizacion } from '../../cotizaciones/entities/tipo-servicio.enum.js';
+import { TipoServicioCotizacion } from '../../common/tipo-servicio-cotizacion.js';
 import {
   CategoriaProducto,
   TipoItemCatalogo,

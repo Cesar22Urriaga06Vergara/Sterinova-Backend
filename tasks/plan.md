@@ -1,6 +1,6 @@
 # Fase 1 — RBAC y seguridad
 
-Plan aprobado el 8 de noviembre de 2026. Contrato: [autorización RBAC](../docs/arquitectura/contrato-autorizacion-rbac.md).
+Plan aprobado el 8 de noviembre de 2026. Contrato: [autorización RBAC](../docs/ARQUITECTURA_Y_CONTRATOS.md#doc-arquitectura-contrato-autorizacion-rbac).
 
 ## Entrega inicial solicitada
 

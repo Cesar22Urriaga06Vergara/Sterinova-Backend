@@ -129,6 +129,24 @@ export class CicloEsterilizacion {
   motivo_rechazo: string | null;
 
   @Column({ type: 'int', nullable: true })
+  reproceso_calidad_autorizado_por_id: number | null;
+
+  @Column({ type: 'datetime', precision: 6, nullable: true })
+  reproceso_calidad_autorizado_at: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  reproceso_calidad_motivo: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  reproceso_planta_autorizado_por_id: number | null;
+
+  @Column({ type: 'datetime', precision: 6, nullable: true })
+  reproceso_planta_autorizado_at: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  reproceso_planta_motivo: string | null;
+
+  @Column({ type: 'int', nullable: true })
   ciclo_correccion_de_id: number | null;
 
   @ManyToOne(() => CicloEsterilizacion, {

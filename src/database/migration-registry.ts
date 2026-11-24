@@ -41,6 +41,12 @@ import { AddQuoteOperationalScope1795800000000 } from './migrations/179580000000
 import { AddLogisticsDriversRoutes1795900000000 } from './migrations/1795900000000-AddLogisticsDriversRoutes.js';
 import { DynamicQuoteDocuments1796000000000 } from './migrations/1796000000000-DynamicQuoteDocuments.js';
 import { ActaServicePhases1796100000000 } from './migrations/1796100000000-ActaServicePhases.js';
+import { AllowRepeatedOrderEvents1796200000000 } from './migrations/1796200000000-AllowRepeatedOrderEvents.js';
+import { CertificateCancellation1796300000000 } from './migrations/1796300000000-CertificateCancellation.js';
+import { BackfillIssuedQuotes1796400000000 } from './migrations/1796400000000-BackfillIssuedQuotes.js';
+import { ReprocessApprovals1796500000000 } from './migrations/1796500000000-ReprocessApprovals.js';
+import { EnablePlantReprocessApproval1796600000000 } from './migrations/1796600000000-EnablePlantReprocessApproval.js';
+import { AddClienteActivo1796700000000 } from './migrations/1796700000000-AddClienteActivo.js';
 
 /** Shared by the CLI and isolated migration rehearsals; does not load environment variables. */
 export const DATABASE_MIGRATIONS = [
@@ -87,4 +93,10 @@ export const DATABASE_MIGRATIONS = [
   AddLogisticsDriversRoutes1795900000000,
   DynamicQuoteDocuments1796000000000,
   ActaServicePhases1796100000000,
+  AllowRepeatedOrderEvents1796200000000,
+  CertificateCancellation1796300000000,
+  BackfillIssuedQuotes1796400000000,
+  ReprocessApprovals1796500000000,
+  EnablePlantReprocessApproval1796600000000,
+  AddClienteActivo1796700000000,
 ];

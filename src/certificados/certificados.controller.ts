@@ -1,6 +1,6 @@
 import type { RbacRequest } from '../rbac/authorization.guard.js';
 import { RequirePermission, ScopedPermissions } from '../rbac/require-permission.decorator.js';
-import { Controller, Get, Param, ParseIntPipe, Res, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Res, Req } from '@nestjs/common';
 import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { CertificadosService } from './certificados.service.js';
@@ -9,6 +9,8 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { AccionAuditoria } from '../auditoria/entities/auditoria.entity.js';
 import { Throttle } from '@nestjs/throttler';
+import * as XLSX from '@e965/xlsx';
+import { AnularCertificadoDto } from './dto/anular-certificado.dto.js';
 
 type AuthenticatedRequest = RbacRequest;
 
@@ -40,12 +42,12 @@ export class CertificadosController {
     return this.certificadosService.validarToken(token);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Consultar certificado' })
-  @ApiResponse({ status: 200, description: 'Certificado encontrado' })
-  @RequirePermission('certificados.ver')
-  findOne(@Param('id', ParseIntPipe) id: number, @Req() request: RbacRequest) {
-    return this.certificadosService.findOne(id, request.rbac);
+  @Patch(':id/anular')
+  @ApiOperation({ summary: 'Anular certificado aprobado con motivo y confirmación de contraseña' })
+  @ApiResponse({ status: 200, description: 'Certificado anulado' })
+  @RequirePermission('certificados.anular')
+  anular(@Param('id', ParseIntPipe) id: number, @Body() dto: AnularCertificadoDto, @Req() request: AuthenticatedRequest) {
+    return this.certificadosService.anular(id, dto, request.user.id, request.rbac);
   }
 
   @Get('exportar')
@@ -54,9 +56,32 @@ export class CertificadosController {
   @RequirePermission('certificados.exportar')
   async exportar(@Req() request: RbacRequest, @Res() response: Response) {
     const certificados = await this.certificadosService.findAll(request.rbac);
+    const rows = certificados.map((certificate) => [
+      certificate.id,
+      certificate.consecutivo,
+      certificate.estado,
+      certificate.cicloEsterilizacion?.orden?.cotizacion?.cliente?.razon_social ?? '',
+      certificate.fecha_esterilizacion ?? '',
+      certificate.fecha_vencimiento ?? '',
+    ]);
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ['ID', 'Consecutivo', 'Estado', 'Cliente', 'Fecha de esterilización', 'Fecha de vencimiento'],
+      ...rows,
+    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Certificados');
+    const bytes = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
     response.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     response.setHeader('Content-Disposition', 'attachment; filename="certificados.xlsx"');
-    return response.send(JSON.stringify(certificados));
+    return response.send(bytes);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Consultar certificado' })
+  @ApiResponse({ status: 200, description: 'Certificado encontrado' })
+  @RequirePermission('certificados.ver')
+  findOne(@Param('id', ParseIntPipe) id: number, @Req() request: RbacRequest) {
+    return this.certificadosService.findOne(id, request.rbac);
   }
 
   @Get(':id/descargar')

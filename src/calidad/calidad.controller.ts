@@ -1,7 +1,8 @@
 import type { RbacRequest } from '../rbac/authorization.guard.js';
 import { Request } from 'express';
 import { RequirePermission, ScopedPermissions } from '../rbac/require-permission.decorator.js';
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Req } from '@nestjs/common';
+import { AutorizarReprocesoDto } from '../planta/dto/autorizar-reproceso.dto.js';
 import { ApproveCycleDto } from './dto/approve-cycle.dto.js';
 import { RejectCycleDto } from './dto/reject-cycle.dto.js';
 import { CalidadService } from './calidad.service.js';
@@ -71,5 +72,18 @@ export class CalidadController {
       (request as unknown as Request).ip,
       user?.cargo ?? undefined,
     );
+  }
+
+  @Patch('ciclos/:id/autorizar-reproceso')
+  @ApiOperation({ summary: 'Autorizar desde Calidad el reproceso de un ciclo rechazado' })
+  @RequirePermission('calidad.aprobar')
+  autorizarReproceso(@Param('id', ParseIntPipe) id: number, @Body() dto: AutorizarReprocesoDto, @Req() request: AuthenticatedRequest) {
+    return this.calidadService.autorizarReproceso(id, dto, request.user.id, request.rbac);
+  }
+
+  @Get('reprocesos')
+  @RequirePermission('calidad.ciclos.ver')
+  findReprocesos(@Req() request: RbacRequest) {
+    return this.calidadService.findReprocesos(request.rbac);
   }
 }

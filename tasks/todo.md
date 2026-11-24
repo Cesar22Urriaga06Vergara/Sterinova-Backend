@@ -7,7 +7,7 @@
 - [x] Pruebas de metadatos y seguridad de migración, 139 unitarias, 5 sobre MariaDB desechable, lint y build.
 - [x] Revisión final del diff y preservación del OpenAPI previo.
 
-Resultados y límites: [reporte de la entrega](../docs/estado-proyecto/inicio-fase1-rbac-2026-11-08.md).
+Resultados y límites: reporte retirado en la depuración documental.
 
 ## Hitos autorizados: migración local y piloto Cotizaciones
 
@@ -19,7 +19,7 @@ Resultados y límites: [reporte de la entrega](../docs/estado-proyecto/inicio-fa
 - [x] 16 pruebas de integración y 4 E2E aprobadas; 145 unitarias aprobadas, build y lint comprobados.
 - [x] OpenAPI actualizado conservando la descripción anterior.
 
-Resultados: [reporte del piloto](../docs/estado-proyecto/piloto-cotizaciones-rbac-2026-11-08.md).
+Resultados: reporte retirado en la depuración documental.
 
 ## Continuación pendiente de Fase 1
 
@@ -29,3 +29,4 @@ Resultados: [reporte del piloto](../docs/estado-proyecto/piloto-cotizaciones-rba
 - [ ] `/auth/me` y frontend por capacidades, incluida selección de ámbito para cuentas multidepartamento.
 - [ ] Activación gradual y validación del resto del sistema.
 - [ ] Revisar contrato fecha/hora de Logística: el DTO admite ISO con hora y la columna DATE lo rechaza.
+

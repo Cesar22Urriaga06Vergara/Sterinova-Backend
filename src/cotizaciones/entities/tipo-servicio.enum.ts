@@ -1,9 +1,1 @@
-export enum TipoServicioCotizacion {
-  INDUSTRIAL_ETO = 'INDUSTRIAL_ETO',
-  INSTITUCIONAL_ETO = 'INSTITUCIONAL_ETO',
-  INSTITUCIONAL_VAPOR = 'INSTITUCIONAL_VAPOR',
-  INSUMOS = 'INSUMOS',
-  LAVANDERIA = 'LAVANDERIA',
-  FARMACEUTICO = 'FARMACEUTICO',
-  FABRICANTE = 'FABRICANTE',
-}
+export { TipoServicioCotizacion } from '../../common/tipo-servicio-cotizacion.js';

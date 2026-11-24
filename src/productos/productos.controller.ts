@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Get,
   Param,
@@ -9,7 +10,10 @@ import {
   Put,
   Query,
   Req,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { RbacRequest } from '../rbac/authorization.guard.js';
 import {
@@ -20,7 +24,9 @@ import { CreateProductoDto } from './dto/create-producto.dto.js';
 import { SearchProductosDto } from './dto/search-productos.dto.js';
 import { UpdateProductoStatusDto } from './dto/update-producto-status.dto.js';
 import { UpdateProductoDto } from './dto/update-producto.dto.js';
+import { QueryProductosDto } from './dto/query-productos.dto.js';
 import { ProductosService } from './productos.service.js';
+import { TipoItemCatalogo } from './entities/producto.entity.js';
 
 @Controller('productos')
 @ApiTags('Productos')
@@ -31,8 +37,22 @@ export class ProductosController {
   @Get()
   @RequirePermission('productos.gestionar')
   @ApiOperation({ summary: 'Listar catálogo de productos y servicios' })
-  findAll(@Req() request: RbacRequest) {
-    return this.productosService.findAll(request.rbac);
+  findAll(@Query() query: QueryProductosDto, @Req() request: RbacRequest) {
+    return this.productosService.findAll(request.rbac, query.tipo_item);
+  }
+
+  @Post('importar-excel')
+  @UseInterceptors(FileInterceptor('archivo', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @RequirePermission('productos.gestionar')
+  @ApiOperation({ summary: 'Importar insumos desde un archivo Excel .xlsx' })
+  importExcel(@UploadedFile() file: { buffer: Buffer; originalname: string } | undefined, @Query('tipo_item') tipoItem: string | undefined, @Req() request: RbacRequest) {
+    if (!file || !file.originalname.toLocaleLowerCase().endsWith('.xlsx')) {
+      throw new BadRequestException('Adjunte un archivo .xlsx en el campo archivo');
+    }
+    if (tipoItem && tipoItem !== TipoItemCatalogo.PRODUCTO) {
+      throw new BadRequestException('La importación Excel solo admite el segmento de productos e insumos');
+    }
+    return this.productosService.importExcel(file.buffer, request.rbac);
   }
 
   @Get('buscar/crear')
@@ -46,6 +66,7 @@ export class ProductosController {
       query.tipo_servicio,
       query.q,
       request.rbac,
+      query.tipo_item,
     );
   }
 
@@ -60,6 +81,7 @@ export class ProductosController {
       query.tipo_servicio,
       query.q,
       request.rbac,
+      query.tipo_item,
     );
   }
 

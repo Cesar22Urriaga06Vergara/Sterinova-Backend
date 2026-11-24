@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsInt, IsString, MaxLength, Min } from 'class-validator';
+import type { EvaluacionParametro } from '../../common/evaluacion-parametro.js';
 
-export class EvaluacionParametroDto {
+export class EvaluacionParametroDto implements EvaluacionParametro {
   @ApiProperty({ type: String, example: 'temperatura' })
   @IsString()
   @MaxLength(80)
