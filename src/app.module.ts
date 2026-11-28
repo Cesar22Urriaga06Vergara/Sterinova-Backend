@@ -27,6 +27,7 @@ import { randomUUID } from 'node:crypto';
 import { HealthModule } from './health/health.module.js';
 import { ProductosModule } from './productos/productos.module.js';
 import { GerenciaModule } from './gerencia/gerencia.module.js';
+import { validateEnvironment } from './config/env.validation.js';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { GerenciaModule } from './gerencia/gerencia.module.js';
     }),
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnvironment,
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     TypeOrmModule.forRootAsync({
@@ -85,7 +87,7 @@ import { GerenciaModule } from './gerencia/gerencia.module.js';
         migrationsTableName: 'typeorm_migrations',
       }),
     }),
-    // TODO: Cambiar a Redis en producción
+    // Mantener el cache local hasta habilitar un proveedor distribuido en producción.
     CacheModule.register({ isGlobal: true }),
     UsersModule,
     AuthModule,

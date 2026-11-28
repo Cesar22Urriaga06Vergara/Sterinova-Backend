@@ -5,11 +5,11 @@ import {
 
 export function getTemplateSeeds(): SeedFormat[] {
   const sourceByType: Record<string, string> = {
-    INDUSTRIAL_ETO: 'docs/ejemplos-formatos/FARMACEUTICO Y FABRICANTE.docx',
-    INSTITUCIONAL_ETO: 'docs/ejemplos-formatos/INSTITUCIONAL ETO.docx',
-    INSTITUCIONAL_VAPOR: 'docs/ejemplos-formatos/INSTITUCIONAL VAPOR.docx',
-    INSUMOS: 'docs/ejemplos-formatos/INSUMOS.docx',
-    LAVANDERIA: 'docs/ejemplos-formatos/LAVANDERIA FARMACEUTICA.docx',
+    INDUSTRIAL_ETO: 'ejemplos-formatos/FARMACEUTICO Y FABRICANTE.docx',
+    INSTITUCIONAL_ETO: 'ejemplos-formatos/INSTITUCIONAL ETO.docx',
+    INSTITUCIONAL_VAPOR: 'ejemplos-formatos/INSTITUCIONAL VAPOR.docx',
+    INSUMOS: 'ejemplos-formatos/INSUMOS.docx',
+    LAVANDERIA: 'ejemplos-formatos/LAVANDERIA FARMACEUTICA.docx',
   };
   return structuredClone(quoteTemplates).map((seed) => ({
     ...seed,

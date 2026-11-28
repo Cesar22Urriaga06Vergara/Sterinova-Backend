@@ -12,7 +12,7 @@ describe('readDocxTemplate', () => {
   it('extracts text and version metadata from the R-CM-07-5 source DOCX', async () => {
     const sourcePath = path.resolve(
       process.cwd(),
-      'docs/ejemplos-formatos/LAVANDERIA FARMACEUTICA.docx',
+      'ejemplos-formatos/LAVANDERIA FARMACEUTICA.docx',
     );
     const source = await readFile(sourcePath);
 

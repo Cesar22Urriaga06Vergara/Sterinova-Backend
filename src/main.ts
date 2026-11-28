@@ -8,6 +8,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { resolve } from 'node:path';
 import { AppModule } from './app.module.js';
 import { persistOpenApiDocument } from './openapi/persist-openapi-document.js';
+import { getAllowedCorsOrigins } from './config/env.validation.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false, bufferLogs: true });
@@ -22,29 +23,36 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  const allowedOrigins = getAllowedCorsOrigins(process.env.CORS_ORIGINS);
+  const corsOrigin =
+    allowedOrigins.length > 0
+      ? allowedOrigins
+      : process.env.NODE_ENV === 'production'
+        ? false
+        : ['http://localhost:3004'];
   app.enableCors({
-    origin: allowedOrigins,
+    origin: corsOrigin,
     credentials: true,
   });
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Sterinova API')
-    .setDescription('Contrato HTTP del backend Sterinova')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  if (process.env.NODE_ENV !== 'production') {
-    persistOpenApiDocument(
-      swaggerDocument,
-      resolve(process.cwd(), 'docs/arquitectura/openapi.json'),
-    );
+  const shouldExposeSwagger =
+    process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true';
+  if (shouldExposeSwagger) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Sterinova API')
+      .setDescription('Contrato HTTP del backend Sterinova')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+    if (process.env.NODE_ENV !== 'production') {
+      persistOpenApiDocument(
+        swaggerDocument,
+        resolve(process.cwd(), 'docs/arquitectura/openapi.json'),
+      );
+    }
+    SwaggerModule.setup('api/docs', app, swaggerDocument);
   }
-  SwaggerModule.setup('api/docs', app, swaggerDocument);
 
   await app.listen(Number(process.env.PORT ?? 3002));
 }
