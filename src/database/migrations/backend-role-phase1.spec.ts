@@ -40,6 +40,11 @@ describe('backend role phase 1', () => {
       /UPDATE rbac_roles|DELETE FROM rbac_role_permissions/,
     );
     expect(FUTURE_PERMISSIONS).toContain('cotizaciones.aprobar_interna');
+    expect(
+      BACKEND_ROLES.find(({ code }) => code === 'operario_planta')?.grants.some(
+        ({ permission }) => permission === 'certificados.elaborar',
+      ),
+    ).toBe(false);
     for (const role of BACKEND_ROLES)
       expect(new Set(role.grants.map((g) => g.permission)).size).toBe(
         role.grants.length,

@@ -47,6 +47,7 @@ import { BackfillIssuedQuotes1796400000000 } from './migrations/1796400000000-Ba
 import { ReprocessApprovals1796500000000 } from './migrations/1796500000000-ReprocessApprovals.js';
 import { EnablePlantReprocessApproval1796600000000 } from './migrations/1796600000000-EnablePlantReprocessApproval.js';
 import { AddClienteActivo1796700000000 } from './migrations/1796700000000-AddClienteActivo.js';
+import { RevokePlantCertificateElaboration1796800000000 } from './migrations/1796800000000-RevokePlantCertificateElaboration.js';
 
 /** Shared by the CLI and isolated migration rehearsals; does not load environment variables. */
 export const DATABASE_MIGRATIONS = [
@@ -99,4 +100,5 @@ export const DATABASE_MIGRATIONS = [
   ReprocessApprovals1796500000000,
   EnablePlantReprocessApproval1796600000000,
   AddClienteActivo1796700000000,
+  RevokePlantCertificateElaboration1796800000000,
 ];

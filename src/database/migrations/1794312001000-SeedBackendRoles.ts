@@ -194,7 +194,7 @@ export const BACKEND_ROLES = [
   {
     code: 'operario_planta',
     global: false,
-    grants: grants([...plant, 'certificados.elaborar']),
+    grants: grants(plant),
   },
   {
     code: 'admin_calidad',
