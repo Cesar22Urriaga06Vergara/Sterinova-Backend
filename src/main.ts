@@ -12,6 +12,7 @@ import { getAllowedCorsOrigins } from './config/env.validation.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false, bufferLogs: true });
+  app.enableShutdownHooks();
   app.useLogger(app.get(Logger));
   app.use(helmet());
   app.use(express.json({ limit: '10mb' }));
