@@ -561,6 +561,7 @@ export class CotizacionesService {
     if (quote.estado === EstadoCotizacion.ANULADA)
       throw new ConflictException('No se puede emitir una cotización anulada');
     if (quote.fecha_emision) return quote;
+    this.assertEmissionCandidate(quote, access.policy.userId);
     this.assertInternallyApproved(quote);
     const storageKey = `cotizaciones/${quote.consecutivo.replace(/[^\w.-]/g, '_')}.pdf`;
     let generated = false;
@@ -579,6 +580,7 @@ export class CotizacionesService {
             'No se puede emitir una cotización anulada',
           );
         if (current.fecha_emision) return;
+        this.assertEmissionCandidate(current, access.policy.userId);
         this.assertInternallyApproved(current);
         await this.assertNoPendingCancellation(manager, current.id);
         const emittedAt = new Date();
@@ -685,6 +687,14 @@ export class CotizacionesService {
       throw new ConflictException(
         'La cotización debe contar con aprobación interna vigente antes de emitirse',
       );
+  }
+
+  private assertEmissionCandidate(
+    quote: Cotizacion,
+    emitterId: number | null | undefined,
+  ): void {
+    if (quote.creador_id != null && quote.creador_id === emitterId)
+      throw new ForbiddenException('No puede emitir su propia cotización');
   }
 
   private assertApprovalCandidate(

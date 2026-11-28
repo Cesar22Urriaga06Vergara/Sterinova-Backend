@@ -235,6 +235,37 @@ describe('CotizacionesService.emitir', () => {
     expect(pdfGenerator.generate).not.toHaveBeenCalled();
   });
 
+  it('rejects emission by the creator even when another user approved it', async () => {
+    const quote = {
+      id: 7,
+      consecutivo: 'COT-LAV-007',
+      estado: 'APROBADA',
+      creador_id: 42,
+      aprobador_interno_id: 7,
+      aprobado_internamente_at: new Date(),
+      fecha_emision: null,
+    } as Cotizacion;
+    const quoteRepository = { findOne: vi.fn(async () => quote) };
+    const formatResolver = { resolveCotizacion: vi.fn() };
+    const pdfGenerator = { generate: vi.fn() };
+    const service = new CotizacionesService(
+      quoteRepository as unknown as Repository<Cotizacion>,
+      {} as Repository<CotizacionItem>,
+      {} as never,
+      {} as never,
+      formatResolver as never,
+      pdfGenerator as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.emitir(7, quotePermission('cotizaciones.emitir')),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(formatResolver.resolveCotizacion).not.toHaveBeenCalled();
+    expect(pdfGenerator.generate).not.toHaveBeenCalled();
+  });
+
   it('rechecks approval under the emission lock before generating a PDF', async () => {
     const approvedQuote = {
       id: 7,
